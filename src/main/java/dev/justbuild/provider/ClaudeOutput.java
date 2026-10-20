@@ -24,7 +24,7 @@ final class ClaudeOutput {
             String all = result.stderr() + result.stdout();
             if (all.contains("unknown option")) {
                 throw new ProviderException("Your Claude Code is too old for JustBuild (" + ProcessRunner.tail(all, 1)
-                        + "). Update it with `claude update` or `brew upgrade --cask claude-code`.");
+                        + "). Update it with `claude update` or your package manager.");
             }
             String detail = ProcessRunner.tail(result.stderr(), 3);
             if (detail.isEmpty()) {

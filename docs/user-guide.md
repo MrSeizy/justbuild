@@ -27,10 +27,12 @@ Detailed controls, commands, configuration, and multiplayer behavior for JustBui
 
 ## Backends
 
+Install your chosen CLI using its official instructions for your operating system, then sign in as shown below.
+
 | Provider | What it uses | Setup |
 |---|---|---|
-| `claude` (default) | Your Claude subscription through the `claude` CLI | `brew install --cask claude-code`, then `claude auth login` (the Claude desktop app alone is not enough) |
-| `codex` | Your ChatGPT subscription through the `codex` CLI | Authenticate with `codex login`. On macOS, the mod also checks the ChatGPT app's bundled CLI location. |
+| `claude` (default) | Your Claude subscription through the `claude` CLI | Install Claude Code, then run `claude auth login` (the Claude desktop app alone is not enough) |
+| `codex` | Your ChatGPT subscription through the `codex` CLI | Install the Codex CLI, then run `codex login`. |
 | `grok` | Your Grok login through Grok Build CLI | Install Grok Build, run `grok login`, and select a Grok profile. **Pick…** uses `grok models`. |
 | `openai` | Any OpenAI-compatible `/chat/completions` endpoint (OpenAI, OpenRouter, DeepSeek, Groq, Mistral, xAI, Gemini, Qwen, Experiential Labs, Ollama, LM Studio, …) | Fill in a profile in the panel: preset or base URL, API key, then pick a model |
 
@@ -38,11 +40,6 @@ Each backend is used through a **model profile**: a name, a provider, a model, a
 URL and API key. New configurations start with four (Claude, Codex, OpenAI-compatible, Grok Build); add up to 20 profiles, for example one
 per endpoint or one fast and one careful model, and switch between them in one click.
 Choose the **Custom** preset to clear the base URL, then enter your own endpoint.
-
-For Qwen Token Plan, choose **Qwen (Token Plan)** in the profile presets. It uses
-`https://token-plan.maas.qwencloudapi.com/compatible-mode/v1` with the API key from your Token Plan console.
-See [Qwen’s Token Plan setup guide](https://docs.qwencloud.com/token-plan/personal/token-plan-personal-quickstart).
-To update an existing DashScope profile, select the new preset and enter your Token Plan key before saving.
 
 The mod runs the CLIs headless with host tools disabled and personal instructions, skills, and memory suppressed.
 Claude keeps its existing subscription login and uses restricted/safe mode, with automatic instructions, memory,
@@ -757,9 +754,9 @@ subtle dark translucent background, with an ellipsis when the message exceeds th
 
 ## Config
 
-`.minecraft/config/justbuild.json` is created on first launch. CLI paths default to `~/.local/bin/claude` and
-`/opt/homebrew/bin/codex`; set `claude.command`, `codex.command`, or `grok.command` if yours are elsewhere. Merge this profile excerpt
-into the existing configuration object. On Windows use the provider's native executable; `.cmd` and `.bat` launchers
+`config/justbuild.json` is created in your game or server folder on first launch. If the mod cannot find a CLI,
+set `claude.command`, `codex.command`, or `grok.command` to its executable path on your computer. Merge this profile
+excerpt into the existing configuration object. On Windows use the provider's native executable; `.cmd` and `.bat` launchers
 are refused. CLI model fields accept identifiers rather than shell expressions or options. HTTP model names remain
 defined by the endpoint:
 

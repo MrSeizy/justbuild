@@ -67,7 +67,7 @@ public final class ClaudeCliProvider implements BuildProvider {
                 throw e;
             }
             throw new ProviderException("The Claude desktop app doesn't include a Claude CLI the mod can run. Install "
-                    + "Claude Code with `brew install --cask claude-code`, then run `claude auth login`. ("
+                    + "Claude Code for your operating system, then run `claude auth login`. ("
                     + e.getMessage() + ")");
         }
     }
@@ -133,7 +133,7 @@ public final class ClaudeCliProvider implements BuildProvider {
                     token);
             if (!help.stdout().contains("--restricted") || !help.stdout().contains("--safe-mode")) {
                 throw new ProviderException(exe + " is too old for JustBuild (requires --restricted and --safe-mode). Update it "
-                        + "with `claude update` or `brew upgrade --cask claude-code`.");
+                        + "with `claude update` or your package manager.");
             }
             String method = status.has("authMethod") ? status.get("authMethod").getAsString() : "unknown";
             return exe + ", logged in (" + method + ")";
