@@ -1,3 +1,9 @@
+<!--
+  Demo videos: each "video:" comment below names a local MP4 in docs/demos/ (kept out of git).
+  Drag that file into GitHub's README editor, then replace the image just above the comment with
+  the uploaded link on a line of its own. GitHub only plays it when the link stands alone.
+-->
+
 <div align="center">
 
 # JustBuild
@@ -15,7 +21,8 @@
 
 </div>
 
-https://github.com/user-attachments/assets/b04e3b05-1b6f-4629-9dd4-5f150045049a
+![A finished stone cottage built by JustBuild on a grassy plain](docs/images/cottage-build.png)
+<!-- video: docs/demos/02-first-build.mp4 -->
 
 JustBuild is a Fabric mod that turns plain-English requests into real builds. Ask for a cottage, a watchtower, or
 a bridge between two houses. The AI plans the structure, JustBuild checks the plan and shows it as a ghost preview,
@@ -33,34 +40,38 @@ It works with the AI you already have: Claude Code, Codex, Grok Build, or any Op
 Type what you want. The plan appears as a ghost preview you can walk around, raise, lower, or rotate before
 choosing **Build it** or **Discard**.
 
-https://github.com/user-attachments/assets/8b780479-2b28-4e90-88fd-c8ce8100a434
+![A ghost preview of a stone cottage with Up, Down, Rotate, Snap, Build it, and Discard controls floating in the world](docs/images/in-world-preview-controls.png)
+<!-- video: docs/demos/24-in-world-controls.mp4 -->
 
 ### Pick exactly where it goes
 
 The Builder Wand marks out the area: two corners for a rectangle, or any number of points for an irregular footprint.
 Corners can be moved right in the world.
 
-https://github.com/user-attachments/assets/d4fc9b67-9bbc-412d-9876-d141a1a6564e
+![A polygon footprint drawn on the ground next to an existing cottage](docs/images/polygon-footprint.png)
+<!-- video: docs/demos/09-polygon-footprint.mp4 (or 01-select-area.mp4) -->
 
 ### Keep editing
 
 Select a finished building and describe the change: "add a chimney", "swap the roof to dark oak". Compare
 before and after layer by layer, and lock the parts you want left alone.
 
-https://github.com/user-attachments/assets/b75682bd-32bb-433b-b854-466d4177d739
+![Before and after comparison of an edited cottage, viewed from the north](docs/images/before-after.png)
+<!-- video: docs/demos/03-edit-building.mp4 -->
 
 ### Go back to any version
 
 Every change is saved. Browse the visual version history, restore an earlier version, or undo your last action.
 
-https://github.com/user-attachments/assets/47136164-3356-49e0-82f4-39f26703dd20
+![Visual version history listing saved versions with thumbnails and restore options](docs/images/version-history.png)
+<!-- video: docs/demos/11-version-history.mp4 -->
 
 ### Meet Cobble
 
 Cobble, a small builder robot, walks around the site and hammers away while the AI plans and blocks go down.
 Nearby players with the mod see him too.
 
-https://github.com/user-attachments/assets/8401a483-36e4-4d40-854c-f1afb02829fa
+<!-- video: docs/demos/14-alternatives-and-builder.mp4 -->
 
 ### And more
 
@@ -149,7 +160,8 @@ Each player can plan builds with their own AI from their own game, so nobody has
 **Settings → Use my AI here** for a server you trust. It's off for every server until you do. Your login or API key
 never leaves your computer; the server receives the AI's plan, checks it, and places the blocks.
 
-https://github.com/user-attachments/assets/d4023a9a-c85d-4a1d-a5ea-9476cbf2d831
+![Multiplayer settings with Use my AI here turned on](docs/images/multiplayer-ai-settings.png)
+<!-- video: docs/demos/22-multiplayer-ai.mp4 -->
 
 Players must bring their own AI by default. Operators can change this in **Settings → Server AI…** or with
 `/jb playerai require|prefer|off`, allowing fallback to the server's AI or always using it.
@@ -158,7 +170,6 @@ See [your own AI on a server](docs/user-guide.md#your-own-ai-on-a-server).
 ## Documentation
 
 - [User guide](docs/user-guide.md): every control, command, and setting
-- [Demo videos](docs/demos/README.md): 24 short walkthroughs
 - [Schematic formats](docs/schematic-formats.md): what imports and exports, and the limits
 - [Credential storage](docs/security-credentials.md): where keys live and how to recover them
 

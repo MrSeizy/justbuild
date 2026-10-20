@@ -14,7 +14,3 @@ out/
 # Python
 __pycache__/
 .pytest_cache/
-
-# Host demo recordings on GitHub; keep the catalog in the repository.
-!/docs/demos/
-/docs/demos/*.mp4
