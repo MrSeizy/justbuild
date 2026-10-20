@@ -23,14 +23,19 @@ public final class ConfigGuardGameTest implements FabricClientGameTest {
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
                 world.getClientLevel().waitForChunksRender();
                 command(context, "style nordic");
+                command(context, "playerai prefer");
                 check(saw(context, "Settings weren't changed"), "a settings change was not refused");
                 check(Files.readString(file).equals(BROKEN), "the unreadable config file was overwritten");
+                check(context.computeOnClient(mc -> ClientState.string("playerAi", "").equals("require")),
+                        "the policy changed while the config was unreadable");
 
                 JustBuildConfig fixed = JustBuildConfig.defaults();
                 new ConfigStore(file).save(fixed);
                 command(context, "reload");
                 command(context, "style nordic");
+                command(context, "playerai prefer");
                 check(new ConfigStore(file).load().style.equals("nordic"), "after a reload that read the file, the change did not save");
+                check(new ConfigStore(file).load().playerAi.equals("prefer"), "the policy did not save after config recovery");
                 corruptBuilds(context, world, file);
             }
         } catch (Exception e) {

@@ -13,7 +13,7 @@ import java.util.Set;
 /** Contents of config/justbuild.json. Public fields so Gson can read and write them directly. */
 public final class JustBuildConfig {
     public static final List<String> PROVIDERS = List.of("claude", "codex", "grok", "openai");
-    public static final List<String> PLAYER_AI = List.of("prefer", "require", "off");
+    public static final List<String> PLAYER_AI = List.of("require", "prefer", "off");
     public static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     /** Values an OpenAI-compatible profile may send as reasoning_effort; null leaves it to the endpoint. */
     public static final List<String> REASONING_EFFORTS = List.of("none", "low", "medium", "high");
@@ -56,7 +56,7 @@ public final class JustBuildConfig {
      * Server: whose AI plans players' builds. prefer uses a player's own AI (in their game) when it is ready, else this
      * server's active profile; require refuses players without one; off always uses this server's profile.
      */
-    public String playerAi = "prefer";
+    public String playerAi = "require";
     /** Game: plan builds on servers with this computer's profiles when the server allows it. */
     public boolean useMyAi = true;
     /** Game only: hold each normalized AI response for local approval before sending it to a multiplayer server. */

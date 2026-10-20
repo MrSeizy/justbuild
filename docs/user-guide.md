@@ -105,13 +105,19 @@ the player's own AI with the active profile on **their** computer and sends the 
 places it as usual. When a player's own AI handles a request, their key and login stay on their computer.
 With `playerAi: prefer`, requests that fall back to the server use its configured account or API key.
 
-- **Server setting** `playerAi` in the server's `config/justbuild.json`:
-  - `prefer` (default): players whose game is ready use their own AI; everyone else uses the server's active profile.
-  - `require`: only players' own AI; players without it are told how to set it up.
+- **Server setting:** open **Right Shift → Settings → Server AI…**, or run
+  `/jb playerai require`, `/jb playerai prefer`, or `/jb playerai off`. Operators and the world owner can change it;
+  `/jb playerai` shows the current policy. Changes save `playerAi` in the server's `config/justbuild.json` immediately
+  and update every player's panel. AI calls already running can finish.
+  - `require` (default): only players' own AI; players without it are told how to set it up.
+  - `prefer`: players whose game is ready use their own AI; everyone else uses the server's active profile.
   - `off`: always the server's profile.
 
   The console, RCON, and the singleplayer owner or LAN host always use the server's profile (the host's game and
   server share one computer and one config file anyway).
+
+  ![Server AI policy settings with Require players' AI selected](images/server-ai-policy.png)
+
 - **In the player's game:** Right Shift → Settings shows **My profile**, **My profiles…** (the editor, working on this
   computer's `config/justbuild.json`, with Pick… asking this computer's CLI or endpoint), **Use my AI here: On/Off**, and a
   line saying which AI your builds use on this server. The game is "ready" when local AI is enabled for that server and the active profile
@@ -205,7 +211,7 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
 - **World:** equip the Zone wand, draw a polygon, clear the selection, or inspect the world without calling
   the AI. Move corners directly with the wand’s in-world handles. The white outline marks the selected footprint and any height bounds. Locked areas are outlined in blue.
 - **Settings:** the active profile, AI review, style, and model (**Pick…** lists the models the profile offers),
-  plus Doctor and Reload. **Auto-build** is your own choice: when on, AI results place as soon as they're ready,
+  plus Doctor, Reload, and **Server AI…** to choose the player AI policy. **Auto-build** is your own choice: when on, AI results place as soon as they're ready,
   without Build it (undo still works; alternatives, saved plans, and design copies still preview). **Manage profiles…** opens the profile editor:
   - the profiles on the left (★ is the one builds use) with New, Copy, and Delete;
   - name, provider, and model (**Pick…** asks the backend: Codex via `codex debug models`, Grok Build via `grok models`, OpenAI-compatible via
@@ -313,6 +319,7 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild profile [name]` | List AI profiles (click `[Use]`); add a name to switch to one |
 | `/justbuild model [name\|default]` | List the active profile's models; add a name to choose one, or `default` to reset |
 | `/justbuild provider <claude\|codex\|grok\|openai>` | Switch to the first profile using that backend (adds one if none does) |
+| `/justbuild playerai [require\|prefer\|off]` | Show or change the server's player AI policy; `require` is the default |
 | `/justbuild status`, `/justbuild doctor`, `/justbuild reload` | Status, check every profile's install, login, or endpoint, reload config |
 
 Works for the singleplayer world owner (cheats not required), the LAN host, and ops.

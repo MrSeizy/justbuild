@@ -68,7 +68,18 @@ public final class RelayTest implements FabricClientGameTest {
                 var root = s.getCommands().getDispatcher().getRoot();
                 check(!root.getChild("justbuild").canUse(source) && !root.getChild("jb").canUse(source),
                         "a command alias bypassed operator permissions");
+                JustBuildMod.manager().setPlayerAi(source, "off");
             });
+            check(savedPlayerAi(store).equals("require"), "a non-operator changed the server AI policy");
+            context.runOnClient(mc -> mc.setScreen(new JustBuildScreen()));
+            context.clickScreenButton("Settings");
+            context.clickScreenButton("Server AI…");
+            context.waitFor(mc -> mc.screen != null && mc.screen.getTitle().getString().equals("Server AI policy"));
+            check(context.computeOnClient(mc -> mc.screen.children().stream()
+                    .filter(c -> c instanceof net.minecraft.client.gui.components.Button b && !b.getMessage().getString().equals("Back"))
+                    .allMatch(c -> !((net.minecraft.client.gui.components.Button) c).active)),
+                    "a non-operator could use the server AI policy controls");
+            context.runOnClient(mc -> mc.setScreen(null));
             server.runCommand("op " + name);
             context.waitTicks(40);
             server.runOnServer(s -> {
@@ -79,6 +90,9 @@ public final class RelayTest implements FabricClientGameTest {
                             "a bare command failed to show help");
                     check(dispatcher.getCompletionSuggestions(dispatcher.parse("jb conf", source)).join().getList().stream()
                             .anyMatch(suggestion -> suggestion.getText().equals("confirm")), "the alias lost command suggestions");
+                    var policies = dispatcher.getCompletionSuggestions(dispatcher.parse("jb playerai ", source)).join().getList()
+                            .stream().map(com.mojang.brigadier.suggestion.Suggestion::getText).toList();
+                    check(policies.containsAll(List.of("require", "prefer", "off")), "player AI policy suggestions were missing");
                 } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) { throw new AssertionError(e); }
             });
 
@@ -92,6 +106,17 @@ public final class RelayTest implements FabricClientGameTest {
             context.waitForScreen(JustBuildScreen.class);
             context.clickScreenButton("Settings");
             context.waitTicks(5);
+            context.clickScreenButton("Server AI…");
+            context.clickScreenButton("Prefer players' AI");
+            context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
+                    && b.getMessage().getString().equals("★ Prefer players' AI")));
+            check(savedPlayerAi(store).equals("prefer"), "the remote operator's UI policy change did not save");
+            context.takeScreenshot("relay-server-ai-policy");
+            context.clickScreenButton("Require players' AI");
+            context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
+                    && b.getMessage().getString().equals("★ Require players' AI")));
+            check(savedPlayerAi(store).equals("require"), "the remote operator could not restore Require");
+            context.clickScreenButton("Back");
             context.takeScreenshot("relay-settings-off");
             context.clickScreenButton("Use my AI here: Off");
             context.waitTicks(20);
@@ -430,7 +455,6 @@ public final class RelayTest implements FabricClientGameTest {
             List<JustBuildConfig.ModelProfile> profiles = new java.util.ArrayList<>(config.profiles);
             profiles.add(stub);
             config.replaceProfiles(profiles, "Stub");
-            config.playerAi = "require";
             config.useMyAi = true;
             config.detail = "detailed";
             config.previewAbove = -1;
@@ -439,6 +463,11 @@ public final class RelayTest implements FabricClientGameTest {
         } catch (Exception e) {
             throw new AssertionError("Could not write " + store.file(), e);
         }
+    }
+
+    private static String savedPlayerAi(ConfigStore store) {
+        try { return store.load().playerAi; }
+        catch (Exception e) { throw new AssertionError("Could not read saved server AI policy", e); }
     }
 
     private static int buildCount(TestDedicatedServerContext server) {

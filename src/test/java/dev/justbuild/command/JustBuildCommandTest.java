@@ -18,6 +18,12 @@ class JustBuildCommandTest {
         assertTrue(JustBuildCommand.registeredSubcommands().contains("add"));
         assertFalse(JustBuildCommand.registeredSubcommands().contains("adopt"));
         assertFalse(dev.justbuild.relay.RelayGate.startsAi("justbuild add My house"));
+        assertTrue(JustBuildCommand.registeredSubcommands().contains("playerai"));
+        for (String root : java.util.List.of("justbuild", "jb")) {
+            for (String policy : java.util.List.of("", " require", " prefer", " off")) {
+                assertFalse(dev.justbuild.relay.RelayGate.startsAi(root + " playerai" + policy));
+            }
+        }
     }
 
     @Test

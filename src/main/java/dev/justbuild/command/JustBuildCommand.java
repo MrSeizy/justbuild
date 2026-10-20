@@ -28,7 +28,7 @@ public final class JustBuildCommand {
     private static final java.util.Set<String> SUBCOMMANDS = java.util.Set.of(
             "add", "again", "alternatives", "answer", "autobuild", "box", "build", "cancel", "checkpoint", "confirm", "connect",
             "constraints", "design", "detail", "doctor", "edit", "help", "history", "inspect", "interior", "link", "lock", "materials",
-            "model", "models", "new", "preview", "profile", "profiles", "project", "provider", "reload", "rename",
+            "model", "models", "new", "playerai", "preview", "profile", "profiles", "project", "provider", "reload", "rename",
             "quality", "release", "repair", "retry", "select", "status", "style", "template", "templates", "undo", "unlock",
             "usage", "walkability", "zone");
 
@@ -213,6 +213,11 @@ public final class JustBuildCommand {
                         .then(Commands.literal("cancel").executes(ctx -> run(ctx, BuildSessionManager::cancelUndo))))
                 .then(Commands.literal("cancel").executes(ctx -> run(ctx, BuildSessionManager::cancel)))
                 .then(Commands.literal("confirm").executes(ctx -> run(ctx, BuildSessionManager::confirm)))
+                .then(Commands.literal("playerai")
+                        .executes(ctx -> run(ctx, BuildSessionManager::playerAi))
+                        .then(Commands.argument("policy", StringArgumentType.word())
+                                .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(JustBuildConfig.PLAYER_AI, builder))
+                                .executes(ctx -> run(ctx, (m, s) -> m.setPlayerAi(s, StringArgumentType.getString(ctx, "policy"))))))
                 .then(Commands.literal("provider")
                         .then(Commands.argument("name", StringArgumentType.word())
                                 .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(JustBuildConfig.PROVIDERS, builder))

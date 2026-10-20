@@ -144,6 +144,7 @@ final class CommandHelp {
             e("profiles", "Alias for /justbuild profile (list profiles)."),
             e("models", "Alias for /justbuild model (list models)."),
             e("provider <claude|codex|grok|openai>", "Switch to a profile using that backend."),
+            e("playerai [require|prefer|off]", "Show or change the server's player AI policy; require is the default."),
             e("usage", "Refresh session AI usage in the panel."),
             e("usage show", "Refresh session AI usage in the panel."),
             e("usage <max-calls> <max-reported-tokens>", "Limit server-handled requests this session; 0 is unlimited."),

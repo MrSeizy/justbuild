@@ -3164,6 +3164,37 @@ public final class BuildSessionManager {
 
     // ---- config / status ----
 
+    public void playerAi(CommandSourceStack source) {
+        String description = switch (config.playerAi) {
+            case "require" -> "Remote players must use their own AI; unavailable player AI is refused.";
+            case "prefer" -> "Use remote players' AI when ready, otherwise use the server's active profile.";
+            default -> "Always use the server's active profile.";
+        };
+        send(source, Chat.info("Player AI policy: " + config.playerAi + ". " + description
+                + " The singleplayer owner, LAN host, and console always use the server's profile."));
+    }
+
+    public void setPlayerAi(CommandSourceStack source, String policy) {
+        if (!JustBuildCommand.allowed(source)) {
+            send(source, Chat.error("Only operators or the world owner can change the server's player AI policy."));
+            return;
+        }
+        String value = policy.strip().toLowerCase(java.util.Locale.ROOT);
+        if (!JustBuildConfig.PLAYER_AI.contains(value)) {
+            send(source, Chat.error("Unknown player AI policy “" + policy + "”. Use require, prefer, or off."));
+            return;
+        }
+        if (!configWritable(source)) return;
+        String previous = config.playerAi;
+        config.playerAi = value;
+        if (!saveConfig(source)) {
+            config.playerAi = previous;
+            return;
+        }
+        sendStateToAll();
+        playerAi(source);
+    }
+
     /** Switches to the first profile using that provider, adding a starter profile if there is none. */
     public void setProvider(CommandSourceStack source, String id) {
         if (!JustBuildConfig.PROVIDERS.contains(id)) {

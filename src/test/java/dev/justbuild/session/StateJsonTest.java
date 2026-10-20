@@ -79,7 +79,7 @@ class StateJsonTest {
     void saysWhichAiBuildsUse() {
         JsonObject state = JsonParser.parseString(StateJson.build(config(), List.of(), false,
                 new StateJson.Ai("player", "Claude (Claude CLI)"))).getAsJsonObject();
-        assertEquals("prefer", state.get("playerAi").getAsString());
+        assertEquals("require", state.get("playerAi").getAsString());
         assertEquals("player", state.get("aiSource").getAsString());
         assertEquals("Claude (Claude CLI)", state.get("aiLabel").getAsString());
         JsonObject server = JsonParser.parseString(StateJson.build(config(), List.of(), false, StateJson.Ai.SERVER))

@@ -130,14 +130,20 @@ class ConfigStoreTest extends CredentialVaultTest {
     void playerAiSettingsDefaultAndFallBack() throws Exception {
         Path file = dir.resolve("justbuild.json");
         JustBuildConfig c = new ConfigStore(file).load();
-        assertEquals("prefer", c.playerAi);
+        assertEquals("require", c.playerAi);
         assertTrue(c.useMyAi);
         Files.writeString(file, "{\"playerAi\": \" REQUIRE \", \"useMyAi\": false}");
         c = new ConfigStore(file).load();
         assertEquals("require", c.playerAi);
         assertFalse(c.useMyAi);
         Files.writeString(file, "{\"playerAi\": \"sometimes\"}");
-        assertEquals("prefer", new ConfigStore(file).load().playerAi);
+        assertEquals("require", new ConfigStore(file).load().playerAi);
+        for (String policy : List.of("prefer", "off")) {
+            c = JustBuildConfig.defaults();
+            c.playerAi = policy;
+            new ConfigStore(file).save(c);
+            assertEquals(policy, new ConfigStore(file).load().playerAi, "an explicit policy must survive reloading");
+        }
         assertEquals(List.of(), new ConfigStore(file).load().myAiServers, "no server gets your AI by default");
         Files.writeString(file, "{\"myAiServers\": [\" Play.Example.com \", null, \"\", \"play.example.com\"]}");
         assertEquals(List.of("play.example.com"), new ConfigStore(file).load().myAiServers);

@@ -504,8 +504,7 @@ public final class JustBuildScreen extends FormScreen {
                         "Check that each profile's backend is installed and logged in"))).build());
         addRenderableWidget(GlassButton.builder(Component.literal("Reload config"), b -> run("justbuild reload"))
                 .bounds(left + bw + 2, y + 100, bw, 20).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Templates in chat"), b -> run("justbuild templates"))
-                .bounds(left + 2 * (bw + 2), y + 100, bw, 20).build());
+        addRenderableWidget(serverAiSettings(left + 2 * (bw + 2), y + 100, bw));
 
     }
 
@@ -579,13 +578,18 @@ public final class JustBuildScreen extends FormScreen {
                         "Check the server's profiles and which AI your builds use"))).build());
         addRenderableWidget(GlassButton.builder(Component.literal("Reload config"), b -> run("justbuild reload"))
                 .bounds(left + bw + 2, y + 100, bw, 20).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Templates in chat"), b -> run("justbuild templates"))
-                .bounds(left + 2 * (bw + 2), y + 100, bw, 20).build());
+        addRenderableWidget(serverAiSettings(left + 2 * (bw + 2), y + 100, bw));
         addRenderableWidget(GlassButton.builder(Component.literal("Review before sending: "
                 + (local.reviewAiResponses ? "On" : "Off")), b -> changeLocal(c -> c.reviewAiResponses = !c.reviewAiResponses))
                 .bounds(left, y + 124, w, 20).tooltip(Tooltip.create(Component.literal(
                         "Hold each response from your AI for Send or Cancel, including guide, inspection, and review rounds. "
                                 + "Saved on this computer for all servers; off by default."))).build());
+    }
+
+    private Button serverAiSettings(int x, int y, int w) {
+        return GlassButton.builder(Component.literal("Server AI…"), b -> minecraft.setScreen(new ServerAiScreen(this)))
+                .bounds(x, y, w, 20).tooltip(Tooltip.create(Component.literal(
+                        "Choose whether remote players must use their own AI or may use the server's profile"))).build();
     }
 
     /** Saves a change to this computer's profiles, tells the server, and redraws. */

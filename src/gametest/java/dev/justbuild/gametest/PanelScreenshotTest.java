@@ -66,6 +66,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
             context.clickScreenButton("Settings");
             context.waitTicks(5);
             context.takeScreenshot("justbuild-settings");
+            serverAiPolicy(context, store);
             context.clickScreenButton("AI review: One pass");
             context.waitTicks(5);
             check("masterpiece".equals(savedDetail(store)), "Two passes changed the saved detail identifier");
@@ -220,13 +221,50 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
     private static void resetProfiles(ConfigStore store) {
         try {
             JustBuildConfig config = store.load();
-            config.replaceProfiles(JustBuildConfig.defaults().profiles, "Claude");
+            JustBuildConfig defaults = JustBuildConfig.defaults();
+            config.replaceProfiles(defaults.profiles, "Claude");
+            config.playerAi = defaults.playerAi;
             config.detail = "detailed";
             config.profile("OpenAI-compatible").orElseThrow().apiKey = "sk-gametest-0000";
             store.save(config);
         } catch (Exception e) {
             throw new AssertionError("Could not prepare " + store.file(), e);
         }
+    }
+
+    private static void serverAiPolicy(ClientGameTestContext context, ConfigStore store) {
+        context.clickScreenButton("Server AI…");
+        context.waitFor(mc -> mc.screen != null && mc.screen.getTitle().getString().equals("Server AI policy"));
+        context.runOnClient(mc -> {
+            check(!widget(mc, "★ Require players' AI").active, "Require was not the selected default");
+            mc.screen.resize(320, 240);
+            for (var child : mc.screen.children()) if (child instanceof AbstractWidget w) {
+                check(w.getX() >= 0 && w.getY() >= 0 && w.getRight() <= 320 && w.getBottom() <= 240,
+                        "policy control left the small screen: " + w.getMessage().getString());
+            }
+            mc.screen.resize(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        });
+        context.takeScreenshot("server-ai-policy-default");
+        context.clickScreenButton("Prefer players' AI");
+        context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof Button b
+                && b.getMessage().getString().equals("★ Prefer players' AI")));
+        check(savedPlayerAi(store).equals("prefer"), "the UI policy change did not save");
+        context.runOnClient(mc -> mc.player.connection.sendCommand("jb playerai off"));
+        context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof Button b
+                && b.getMessage().getString().equals("★ Use server AI")));
+        check(savedPlayerAi(store).equals("off"), "the alias policy command did not save");
+        context.takeScreenshot("server-ai-policy-command-update");
+        context.clickScreenButton("Require players' AI");
+        context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof Button b
+                && b.getMessage().getString().equals("★ Require players' AI")));
+        check(savedPlayerAi(store).equals("require"), "the UI could not restore Require");
+        context.clickScreenButton("Back");
+        context.waitForScreen(JustBuildScreen.class);
+    }
+
+    private static String savedPlayerAi(ConfigStore store) {
+        try { return store.load().playerAi; }
+        catch (Exception e) { throw new AssertionError("Could not read saved player AI policy", e); }
     }
 
     private static String savedDetail(ConfigStore store) {

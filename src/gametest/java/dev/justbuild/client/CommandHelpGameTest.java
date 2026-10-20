@@ -46,6 +46,15 @@ public final class CommandHelpGameTest implements FabricClientGameTest {
             command(c, "justbuild model default", "set to CLI default");
             command(c, "justbuild help model", "/justbuild model [name|default]");
             c.takeScreenshot("command-help-model");
+            command(c, "jb help playerai", "/justbuild playerai [require|prefer|off]");
+            command(c, "jb playerai", "Player AI policy: require.");
+            command(c, "justbuild playerai prefer", "Player AI policy: prefer.");
+            command(c, "justbuild playerai invalid", "Unknown player AI policy");
+            command(c, "jb playerai", "Player AI policy: prefer.");
+            command(c, "justbuild reload", "Reloaded justbuild.json.");
+            command(c, "jb playerai", "Player AI policy: prefer.");
+            command(c, "jb playerai off", "Player AI policy: off.");
+            command(c, "justbuild playerai require", "Player AI policy: require.");
             check(c.computeOnClient(mc -> ClientState.preview() == null && ClientState.string("selectedBuild", null) == null),
                     "help or new unexpectedly selected a build or started a preview");
         }

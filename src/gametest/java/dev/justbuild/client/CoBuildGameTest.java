@@ -69,6 +69,7 @@ public final class CoBuildGameTest implements FabricClientGameTest {
             var profile = new JustBuildConfig.ModelProfile("Stub", "openai", "stub");
             profile.baseUrl = "http://127.0.0.1:" + stub.server.getAddress().getPort() + "/v1";
             config.replaceProfiles(List.of(profile), "Stub");
+            config.playerAi = "off"; // The simulated teammate uses this fixture's server-side AI.
             config.previewAbove = 0;
             config.undoHistory = 1;
             config.detail = "quick";

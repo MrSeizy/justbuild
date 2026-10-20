@@ -163,8 +163,9 @@ never leaves your computer; the server receives the AI's plan, checks it, and pl
 ![Multiplayer settings with Use my AI here turned on](docs/images/multiplayer-ai-settings.png)
 <!-- video: docs/demos/22-multiplayer-ai.mp4 -->
 
-Server owners choose whether players must bring their own AI, may fall back to the server's, or always use the
-server's. See [your own AI on a server](docs/user-guide.md#your-own-ai-on-a-server).
+Players must bring their own AI by default. Operators can change this in **Settings → Server AI…** or with
+`/jb playerai require|prefer|off`, allowing fallback to the server's AI or always using it.
+See [your own AI on a server](docs/user-guide.md#your-own-ai-on-a-server).
 
 ## Documentation
 
