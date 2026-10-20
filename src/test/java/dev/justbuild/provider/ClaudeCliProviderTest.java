@@ -19,13 +19,14 @@ class ClaudeCliProviderTest {
 
     @Test
     void commandDisablesToolsAndKeepsSubscriptionAuth() {
-        List<String> cmd = ClaudeCliProvider.command(Path.of("/bin/claude"), request(""));
-        assertEquals(List.of("/bin/claude", "-p", "--output-format", "stream-json", "--verbose",
+        Path executable = dir.resolve("claude");
+        List<String> cmd = ClaudeCliProvider.command(executable, request(""));
+        assertEquals(List.of(executable.toString(), "-p", "--output-format", "stream-json", "--verbose",
                 "--include-partial-messages", "--json-schema", "{\"type\":\"object\"}",
                 "--system-prompt", "SYSTEM", "--tools", "", "--restricted", "--safe-mode", "--disable-slash-commands", "--strict-mcp-config",
                 "--no-session-persistence"), cmd);
         assertFalse(cmd.contains("--bare"));
-        List<String> withModel = ClaudeCliProvider.command(Path.of("/bin/claude"), request(" sonnet "));
+        List<String> withModel = ClaudeCliProvider.command(executable, request(" sonnet "));
         assertEquals(List.of("--model", "sonnet"), withModel.subList(withModel.size() - 2, withModel.size()));
     }
 

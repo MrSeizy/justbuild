@@ -19,9 +19,11 @@ class CodexCliProviderTest {
     /** Pinned on purpose: removing any of these re-enables a tool that can read the player's files. */
     @Test
     void commandDisablesEveryTool() {
-        List<String> cmd = CodexCliProvider.command(Path.of("/bin/codex"), Path.of("/t/schema.json"),
-                Path.of("/t/out.json"), "");
-        assertEquals(List.of("/bin/codex", "exec", "--ephemeral", "--ignore-user-config", "--ignore-rules",
+        Path executable = dir.resolve("codex");
+        Path schema = dir.resolve("schema.json");
+        Path output = dir.resolve("out.json");
+        List<String> cmd = CodexCliProvider.command(executable, schema, output, "");
+        assertEquals(List.of(executable.toString(), "exec", "--ephemeral", "--ignore-user-config", "--ignore-rules",
                 "--skip-git-repo-check", "-s", "read-only",
                 "--disable", "shell_tool", "--disable", "unified_exec", "--disable", "view_image",
                 "--disable", "apps", "--disable", "plugins", "--disable", "multi_agent",
@@ -35,8 +37,8 @@ class CodexCliProviderTest {
                 "-c", "skills.bundled.enabled=false", "--enable", "skip_host_skill_discovery",
                 "-c", "memories.use_memories=false", "-c", "memories.generate_memories=false",
                 "-c", "tools.experimental_request_user_input.enabled=false", "--json",
-                "--output-schema", "/t/schema.json", "-o", "/t/out.json", "-"), cmd);
-        List<String> withModel = CodexCliProvider.command(Path.of("/bin/codex"), Path.of("/s"), Path.of("/o"), "gpt-5.5");
+                "--output-schema", schema.toString(), "-o", output.toString(), "-"), cmd);
+        List<String> withModel = CodexCliProvider.command(executable, schema, output, "gpt-5.5");
         assertEquals(List.of("-m", "gpt-5.5", "-"), withModel.subList(withModel.size() - 3, withModel.size()));
     }
 

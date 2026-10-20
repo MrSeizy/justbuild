@@ -168,7 +168,7 @@ class ProcessRunnerTest {
     @Test
     void childEnvironmentDropsClaudeSessionVarsAndExtendsPath() {
         Map<String, String> env = ProcessRunner.childEnvironment(
-                Map.of("CLAUDECODE", "1", "CLAUDE_CODE_ENTRYPOINT", "cli", "PATH", "/usr/bin:/custom", "HOME", "/h"), "/h");
+                Map.of("CLAUDECODE", "1", "CLAUDE_CODE_ENTRYPOINT", "cli", "PATH", "/usr/bin:/custom", "HOME", "/h"), "/h", false);
         assertFalse(env.containsKey("CLAUDECODE"));
         assertFalse(env.containsKey("CLAUDE_CODE_ENTRYPOINT"));
         assertEquals("/usr/bin:/custom:/h/.local/bin:/opt/homebrew/bin:/usr/local/bin:/bin", env.get("PATH"));
@@ -187,7 +187,10 @@ class ProcessRunnerTest {
 
     @Test
     void windowsPathKeepsItsKeyAndSeparator() {
-        Map<String, String> env = ProcessRunner.childEnvironment(Map.of("Path", "C:\\Windows;C:\\tools"), "C:\\Users\\m", true);
+        Map<String, String> env = ProcessRunner.childEnvironment(
+                Map.of("CLAUDECODE", "1", "CLAUDE_CODE_ENTRYPOINT", "cli", "Path", "C:\\Windows;C:\\tools"), "C:\\Users\\m", true);
+        assertFalse(env.containsKey("CLAUDECODE"));
+        assertFalse(env.containsKey("CLAUDE_CODE_ENTRYPOINT"));
         assertEquals("C:\\Windows;C:\\tools", env.get("Path"));
         assertFalse(env.containsKey("PATH"));
     }
