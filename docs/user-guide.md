@@ -2,9 +2,12 @@
 
 [Back to the README](../README.md)
 
-[AI setup](demos/12-ai-setup.mp4) ·
-[Reusable prompts](demos/13-reusable-prompts.mp4) · [Cancel, retry, and undo](demos/15-cancel-retry-undo.mp4) ·
-[Multiplayer](demos/22-multiplayer-ai.mp4) · [Team building](demos/23-team-building.mp4)
+[AI setup](https://github.com/user-attachments/assets/537efbb2-57de-47fb-8122-4e6153153bc2) ·
+[Reusable prompts](https://github.com/user-attachments/assets/ebcbb0cb-5764-490d-a575-b68cc8490972) ·
+[Cancel, retry, and undo](https://github.com/user-attachments/assets/6c5620b8-1317-41ac-ae62-9523f9100ea2) ·
+[Multiplayer](https://github.com/user-attachments/assets/d4023a9a-c85d-4a1d-a5ea-9476cbf2d831) ·
+[Team building](https://github.com/user-attachments/assets/56e26d4c-cb2b-4211-9454-0f9a24b622ee) ·
+[All demos](demos/README.md)
 
 Detailed controls, commands, configuration, and multiplayer behavior for JustBuild.
 
@@ -430,7 +433,7 @@ still affect neighboring blocks.
 
 ## Preview controls and alternatives
 
-[Watch the close-up: move, cancel, and build in the world](demos/24-in-world-controls.mp4).
+[Watch the close-up: move, cancel, and build in the world](https://github.com/user-attachments/assets/8b780479-2b28-4e90-88fd-c8ce8100a434).
 
 Controls float at the base of a waiting preview, along the side nearest you: look at one and right-click it (no tool needed; the click does nothing
 else). Floating controls and labels have dark drop shadows for contrast against the world.
