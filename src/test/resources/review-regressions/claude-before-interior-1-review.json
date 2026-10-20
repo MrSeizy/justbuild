@@ -1,0 +1,68 @@
+{
+  "kind": "build",
+  "question": null,
+  "options": null,
+  "title": "Furnished oak cottage",
+  "summary": "Only the interior is furnished with a red bed, crafting table and two bookshelves; the existing shell, door, windows, approach and chest are left untouched.",
+  "operations": [
+    {
+      "op": "set",
+      "block": "minecraft:red_bed[facing=south,part=foot]",
+      "from": [
+        7,
+        1,
+        4
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:red_bed[facing=south,part=head]",
+      "from": [
+        7,
+        1,
+        5
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:crafting_table",
+      "from": [
+        7,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:bookshelf",
+      "from": [
+        1,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:bookshelf",
+      "from": [
+        2,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    }
+  ],
+  "guides": null,
+  "inspection": null,
+  "blockQuery": null,
+  "texture": null
+}

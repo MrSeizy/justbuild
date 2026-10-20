@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "justbuild-gametest",
+  "version": "1.0.0",
+  "name": "JustBuild client tests",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "dev.justbuild.client.GlassGuard"
+    ],
+    "fabric-client-gametest": [
+      "dev.justbuild.gametest.PanelScreenshotTest",
+      "dev.justbuild.client.FormDraftGameTest",
+      "dev.justbuild.client.GettingStartedGameTest",
+      "dev.justbuild.client.PromptEditorGameTest",
+      "dev.justbuild.gametest.PreviewTest",
+      "dev.justbuild.client.PersistentPreviewTest",
+      "dev.justbuild.gametest.RoofTest",
+      "dev.justbuild.gametest.RelayTest",
+      "dev.justbuild.gametest.GuidesTest",
+      "dev.justbuild.gametest.PortalTest",
+      "dev.justbuild.gametest.WorldToolsGameTest",
+      "dev.justbuild.client.ZoneWandPermissionsTest",
+      "dev.justbuild.client.BuilderWandGameTest",
+      "dev.justbuild.client.ZoneWandInputTest",
+      "dev.justbuild.client.BuildWorkspaceGameTest",
+      "dev.justbuild.client.AdvancedToolsGameTest",
+      "dev.justbuild.client.WorkshopGameTest",
+      "dev.justbuild.client.PlanningWorkflowGameTest",
+      "dev.justbuild.client.DimensionGameTest",
+      "dev.justbuild.client.SafetyGameTest",
+      "dev.justbuild.client.PlacementPermissionsGameTest",
+      "dev.justbuild.client.ConfigGuardGameTest",
+      "dev.justbuild.client.MalformedStateGameTest",
+      "dev.justbuild.client.LargePreviewGameTest",
+      "dev.justbuild.client.PreviewBenchmarkGameTest",
+      "dev.justbuild.client.CoBuildGameTest",
+      "dev.justbuild.client.PreviewControlsGameTest",
+      "dev.justbuild.client.AutoBuildGameTest",
+      "dev.justbuild.client.WorkflowUpgradeGameTest",
+      "dev.justbuild.client.CornerRelocationGameTest",
+      "dev.justbuild.client.WandReachGameTest",
+      "dev.justbuild.client.WandTargetGameTest",
+      "dev.justbuild.client.WandClearGameTest",
+      "dev.justbuild.client.StatusOverlayGameTest",
+      "dev.justbuild.client.BuilderBotGameTest",
+      "dev.justbuild.client.SelectionOutlineGameTest",
+      "dev.justbuild.client.CommandHelpGameTest",
+      "dev.justbuild.client.ConnectionPathGameTest",
+      "dev.justbuild.client.ProfileDiagnosticsGameTest",
+      "dev.justbuild.quality.QualityGalleryGameTest"
+    ]
+  },
+  "depends": {
+    "justbuild": "*",
+    "fabric-api": "*"
+  }
+}

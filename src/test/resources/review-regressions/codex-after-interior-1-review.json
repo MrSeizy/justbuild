@@ -1,0 +1,64 @@
+{
+  "kind": "build",
+  "question": null,
+  "options": null,
+  "title": "Furnished oak cottage",
+  "summary": "Adds the requested furniture entirely inside the cottage, preserving its shell, windows, approach, clear circulation and existing chest with its diamonds.",
+  "operations": [
+    {
+      "op": "set",
+      "block": "minecraft:crafting_table",
+      "from": [
+        1,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "fill",
+      "block": "minecraft:bookshelf",
+      "from": [
+        1,
+        1,
+        2
+      ],
+      "to": [
+        1,
+        1,
+        3
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:red_bed[facing=south,part=foot,occupied=false]",
+      "from": [
+        7,
+        1,
+        4
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:red_bed[facing=south,part=head,occupied=false]",
+      "from": [
+        7,
+        1,
+        5
+      ],
+      "repeat": null,
+      "mirror": null
+    }
+  ],
+  "guides": null,
+  "inspection": null,
+  "blockQuery": null,
+  "texture": null
+}

@@ -1,0 +1,248 @@
+{
+  "kind": "build",
+  "question": null,
+  "options": null,
+  "title": "Oak cottage",
+  "summary": "Oak cottage furnished with a red bed, crafting table and two bookshelves, leaving the chest spot and doorway clear.",
+  "operations": [
+    {
+      "op": "fill",
+      "block": "stone_bricks",
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        8,
+        0,
+        6
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "fill",
+      "block": "oak_planks",
+      "from": [
+        0,
+        1,
+        0
+      ],
+      "to": [
+        8,
+        3,
+        0
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "fill",
+      "block": "oak_planks",
+      "from": [
+        0,
+        1,
+        6
+      ],
+      "to": [
+        8,
+        3,
+        6
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "fill",
+      "block": "oak_planks",
+      "from": [
+        0,
+        1,
+        1
+      ],
+      "to": [
+        0,
+        3,
+        5
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "fill",
+      "block": "oak_planks",
+      "from": [
+        8,
+        1,
+        1
+      ],
+      "to": [
+        8,
+        3,
+        5
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "oak_door[facing=north]",
+      "from": [
+        4,
+        1,
+        0
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "oak_door[facing=north,half=upper]",
+      "from": [
+        4,
+        2,
+        0
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "glass",
+      "from": [
+        2,
+        2,
+        0
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "glass",
+      "from": [
+        6,
+        2,
+        0
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "roof",
+      "block": "spruce_stairs",
+      "trim": "spruce_planks",
+      "edge": null,
+      "from": [
+        -1,
+        4,
+        -1
+      ],
+      "to": [
+        9,
+        4,
+        7
+      ],
+      "style": "gable",
+      "axis": "z",
+      "pitch": null,
+      "rim": null,
+      "eaves": null,
+      "flare": null,
+      "mix": null,
+      "beam": null,
+      "finial": null,
+      "height": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "fill",
+      "block": "stone_bricks",
+      "from": [
+        3,
+        0,
+        -5
+      ],
+      "to": [
+        5,
+        0,
+        -1
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "red_bed[facing=south,part=foot]",
+      "from": [
+        7,
+        1,
+        4
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "red_bed[facing=south,part=head]",
+      "from": [
+        7,
+        1,
+        5
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "crafting_table",
+      "from": [
+        7,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "bookshelf",
+      "from": [
+        1,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "bookshelf",
+      "from": [
+        2,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    }
+  ],
+  "guides": null,
+  "inspection": null,
+  "blockQuery": null,
+  "texture": null
+}

@@ -1,0 +1,20 @@
+{
+  "key.justbuild.panel": "Open JustBuild panel",
+  "key.justbuild.build": "Build the waiting preview",
+  "key.justbuild.discard": "Discard the waiting preview",
+  "key.category.justbuild.main": "JustBuild",
+  "item.justbuild.zone_wand": "Builder Wand · Zone",
+  "item.justbuild.zone_wand.corner1": "Left-click a block: corner 1",
+  "item.justbuild.zone_wand.corner2": "Right-click a block: corner 2",
+  "item.justbuild.zone_wand.select": "Sneak-right-click a build: select for editing",
+  "item.justbuild.zone_wand.height": "Ground footprint: automatic height",
+  "item.justbuild.box_wand": "Builder Wand · Box",
+  "item.justbuild.box_wand.start": "Left-click a block: start a new box",
+  "item.justbuild.box_wand.extend": "Right-click a block: grow the box to include it",
+  "item.justbuild.box_wand.clear": "Sneak-left-click: clear the box",
+  "item.justbuild.box_wand.select": "Sneak-right-click a build: select for editing",
+  "item.justbuild.box_wand.outline": "The purple box shows the selected area",
+  "item.justbuild.builder_wand.zone": "Builder Wand · Zone",
+  "item.justbuild.builder_wand.box": "Builder Wand · Box",
+  "item.justbuild.zone_wand.switch": "Sneak-right-click in the air: switch Zone / Box"
+}

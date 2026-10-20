@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "dev.justbuild.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ConnectScreenMixin",
+    "MultiLineEditBoxAccessor",
+    "MultilineTextFieldAccessor",
+    "StatusOverlayMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

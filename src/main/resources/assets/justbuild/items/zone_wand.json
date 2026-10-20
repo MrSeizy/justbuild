@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "justbuild:item/builder_wand",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 16764736
+      }
+    ]
+  }
+}

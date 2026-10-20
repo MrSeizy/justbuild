@@ -1,0 +1,116 @@
+plugins {
+    id "net.fabricmc.fabric-loom" version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "justbuild" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+fabricApi {
+    // A separate "gametest" source set (not shipped in the mod jar) for scripted client tests: runClientGameTest.
+    configureTests {
+        createSourceSet = true
+        modId = "justbuild-gametest"
+        enableGameTests = false
+        enableClientGameTests = true
+        eula = true
+    }
+}
+
+// Filter only the generated test manifest; the source always lists the full suite.
+def clientTests = providers.gradleProperty("clientTests").orElse("")
+tasks.named("processGametestResources") {
+    inputs.property("clientTests", clientTests)
+    doLast {
+        def requested = clientTests.get().split(",").collect { it.trim() }.findAll { !it.isEmpty() }
+        if (requested.isEmpty()) return
+        def manifest = new File(destinationDir, "fabric.mod.json")
+        def metadata = new groovy.json.JsonSlurper().parse(manifest)
+        def available = metadata.entrypoints["fabric-client-gametest"]
+        def matches = { name, entry -> entry == name || entry.tokenize('.').last() == name }
+        def missing = requested.findAll { name -> !available.any { entry -> matches(name, entry) } }
+        if (!missing.isEmpty()) {
+            throw new GradleException("Unknown client tests: ${missing.join(', ')}. Available: "
+                    + available.collect { it.tokenize('.').last() }.join(', '))
+        }
+        metadata.entrypoints["fabric-client-gametest"] = available.findAll { entry ->
+            requested.any { name -> matches(name, entry) }
+        }
+        manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)) + "\n"
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    testImplementation platform("org.junit:junit-bom:5.12.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    inputs.property "archivesName", project.base.archivesName
+    from("LICENSE") {
+        rename { "${it}_${inputs.properties.archivesName}" }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = "UTF-8"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+test {
+    useJUnitPlatform()
+    // Plan images render with AWT; headless keeps tests off the window server (and working in sandboxes).
+    systemProperty "java.awt.headless", "true"
+    // Synthetic test credentials must never touch the developer's OS keychain.
+    systemProperty "justbuild.credentialsDir", layout.buildDirectory.dir("test-credentials").get().asFile.absolutePath
+}
+
+// Artifacts survive recreation of the graphical test run directory.
+def galleryRevision = providers.exec {
+    commandLine "git", "describe", "--always", "--dirty"
+    ignoreExitValue = true
+}.standardOutput.asText.map { it.trim() }
+tasks.named("runClientGameTest") {
+    jvmArgs "-Djustbuild.galleryDir=${layout.buildDirectory.dir('quality-gallery').get().asFile.absolutePath}"
+    def revision = "unknown"
+    try { revision = galleryRevision.getOrElse("") ?: "unknown" } catch (Exception ignored) { /* Git is optional provenance. */ }
+    jvmArgs "-Djustbuild.galleryRevision=${revision}"
+    jvmArgs "-Djustbuild.credentialsDir=${layout.buildDirectory.dir('gametest-credentials').get().asFile.absolutePath}"
+}

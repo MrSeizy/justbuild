@@ -1,0 +1,132 @@
+[
+  {
+    "id": "timber-frame",
+    "title": "Half-timbered walls",
+    "menu": "timber bays, posts and beams, infill, jetties and supported projections for halls and houses"
+  },
+  {
+    "id": "nordic",
+    "title": "Viking and Nordic buildings",
+    "menu": "halls and cabins with timber structure, large roofs, grounded foundations and usable hearth spaces"
+  },
+  {
+    "id": "steampunk",
+    "title": "Steampunk",
+    "menu": "purposeful machinery, pipes and supports integrated with brick, timber and copper architecture"
+  },
+  {
+    "id": "glowing-ceilings",
+    "title": "Lighting with lanterns and hidden lights",
+    "menu": "visible and concealed lighting for routes, tasks and mood; ceilings, floors and planting"
+  },
+  {
+    "id": "windows",
+    "title": "Windows with frames",
+    "menu": "openings sized for rooms and structure, glazing, frames, recesses, shutters and bay windows"
+  },
+  {
+    "id": "roof-details",
+    "title": "Roof details",
+    "menu": "roof hierarchy, junctions, restrained trim, dormers, cross gables and optional finials"
+  },
+  {
+    "id": "castles",
+    "title": "Castles and fortifications",
+    "menu": "fortified enclosure, masonry keep, projecting towers, gatehouse, courtyard and connected wall walks"
+  },
+  {
+    "id": "shops",
+    "title": "Taverns, shops, and market stalls",
+    "menu": "usable stalls, shops, taverns and workshops with counters, trade cues and clear customer routes"
+  },
+  {
+    "id": "small-details",
+    "title": "Small details",
+    "menu": "purposeful trim, furniture props, lighting and weathering without cluttering a finished layout"
+  },
+  {
+    "id": "porches",
+    "title": "Porches and raised houses",
+    "menu": "raised floors, supports, useful deck width, connected stairs and clear railing openings"
+  },
+  {
+    "id": "chimneys",
+    "title": "Chimneys",
+    "menu": "supported hearths and stacks, roof penetrations, modest caps and optional smoke"
+  },
+  {
+    "id": "towers",
+    "title": "Towers and spires",
+    "menu": "defensive, inhabited or ornamental towers; proportion, stairs, landings, parapets and spires"
+  },
+  {
+    "id": "ships",
+    "title": "Ships and boats",
+    "menu": "hull and deck layout, connected cabins, coherent rigging, sails and maritime details"
+  },
+  {
+    "id": "portals",
+    "title": "Decorated portals",
+    "menu": "valid working portals inside readable gate, sword, ruin or statue surrounds with clear approaches"
+  },
+  {
+    "id": "modern",
+    "title": "Modern houses",
+    "menu": "proportioned volumes, planes, glazing, usable interiors, cantilevers and restrained details"
+  },
+  {
+    "id": "city",
+    "title": "City buildings and skyscrapers",
+    "menu": "usable repeated floors, stairs, facade bays, street entrances, balconies and roof equipment"
+  },
+  {
+    "id": "japanese",
+    "title": "Japanese and Chinese buildings",
+    "menu": "coherent Japanese or Chinese-inspired timber bays, roofs, verandas, pagodas, castles and gates"
+  },
+  {
+    "id": "interiors",
+    "title": "Interiors",
+    "menu": "room activities, furniture layout, connected circulation, storage access and preserving existing rooms"
+  },
+  {
+    "id": "gothic",
+    "title": "Gothic churches",
+    "menu": "vertical bays, pointed openings, buttresses, roof hierarchy and restrained spires or pinnacles"
+  },
+  {
+    "id": "barns",
+    "title": "Barns and farmsteads",
+    "menu": "working barns, stable bays, loft access, silos, windmills and connected farm yards"
+  },
+  {
+    "id": "desert",
+    "title": "Desert and Mediterranean",
+    "menu": "shaded courtyards and terraces, desert compounds or Mediterranean houses, selective domes and arcades"
+  },
+  {
+    "id": "classical",
+    "title": "Classical temples",
+    "menu": "ordered columns and bays, porticoes, platforms, pediments, arcades and usable ceremonial space"
+  },
+  {
+    "id": "fantasy",
+    "title": "Fantasy and whimsical",
+    "menu": "a clear imaginative silhouette, unusual roofs and materials, with usable inhabited spaces"
+  },
+  {
+    "id": "statues",
+    "title": "Statues and creatures",
+    "menu": "readable silhouette, anatomy, pose, support, material roles and selective voxel detail at any scale"
+  },
+  {
+    "id": "trees",
+    "title": "Custom trees",
+    "menu": "species-like branching and canopy silhouettes, grounded roots and varied natural groupings"
+  },
+  {
+    "id": "landscaping",
+    "title": "Landscaping and paths",
+    "menu": "paths tied to destinations and terrain, usable bridges, planting, water and deliberate open space"
+  }
+]

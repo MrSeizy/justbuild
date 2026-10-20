@@ -1,0 +1,16 @@
+.gradle/
+build/
+run/
+logs/
+mods/
+.DS_Store
+
+# IDEs and editors
+.idea/
+*.iml
+out/
+.vscode/
+
+# Python
+__pycache__/
+.pytest_cache/

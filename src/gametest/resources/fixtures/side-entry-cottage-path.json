@@ -1,0 +1,11 @@
+{
+  "kind": "build",
+  "title": "Rejected side-entry cottage path",
+  "summary": "The previous live result reached both doors but turned alongside the facades.",
+  "operations": [
+    {"op":"fill","block":"stone_bricks","from":[-13,-1,0],"to":[-11,-1,4],"hollow":false},
+    {"op":"fill","block":"stone_bricks","from":[-10,-1,2],"to":[-2,-1,4],"hollow":false},
+    {"op":"fill","block":"stone_bricks","from":[-3,-1,2],"to":[-1,-1,4],"hollow":false,"repeat":{"count":9,"step":[1,0,1]}},
+    {"op":"fill","block":"stone_bricks","from":[8,-1,10],"to":[17,-1,12],"hollow":false}
+  ]
+}

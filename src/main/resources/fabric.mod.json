@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "justbuild",
+  "version": "${version}",
+  "name": "JustBuild",
+  "description": "Describe a build and an AI plans it, previews it, and places it in your world. Works with Claude Code, Codex, Grok Build, or any OpenAI-compatible API, and on servers each player can use their own AI from their own game.",
+  "authors": ["MrSeizy"],
+  "contact": {
+    "homepage": "https://github.com/MrSeizy/justbuild",
+    "sources": "https://github.com/MrSeizy/justbuild",
+    "issues": "https://github.com/MrSeizy/justbuild/issues"
+  },
+  "license": "LGPL-3.0-only",
+  "icon": "assets/justbuild/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.justbuild.JustBuildMod"],
+    "client": ["dev.justbuild.client.JustBuildClient"]
+  },
+  "mixins": [
+    "justbuild.mixins.json",
+    {"config": "justbuild.client.mixins.json", "environment": "client"}
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

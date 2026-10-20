@@ -1,0 +1,64 @@
+{
+  "kind": "build",
+  "question": null,
+  "options": null,
+  "title": "Furnished oak cottage",
+  "summary": "Adds a red bed, crafting table and two bookshelves inside the cottage, leaving its shell, approach, windows and existing chest with its diamonds untouched.",
+  "operations": [
+    {
+      "op": "set",
+      "block": "minecraft:red_bed[facing=south,part=foot,occupied=false]",
+      "from": [
+        7,
+        1,
+        4
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:red_bed[facing=south,part=head,occupied=false]",
+      "from": [
+        7,
+        1,
+        5
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "set",
+      "block": "minecraft:crafting_table",
+      "from": [
+        1,
+        1,
+        1
+      ],
+      "repeat": null,
+      "mirror": null
+    },
+    {
+      "op": "fill",
+      "block": "minecraft:bookshelf",
+      "from": [
+        3,
+        1,
+        5
+      ],
+      "to": [
+        4,
+        1,
+        5
+      ],
+      "hollow": false,
+      "mix": null,
+      "repeat": null,
+      "mirror": null
+    }
+  ],
+  "guides": null,
+  "inspection": null,
+  "blockQuery": null,
+  "texture": null
+}

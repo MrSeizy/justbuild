@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "dev.justbuild.mixin.common",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "NameCacheAccessor",
+    "NameCacheEntryAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
