@@ -31,8 +31,9 @@ Every build stays editable afterwards, with saved versions and undo.
 
 It works with the AI you already have: Claude Code, Codex, Grok Build, or any OpenAI-compatible API.
 
-> [!NOTE]
-> JustBuild is in development and has no public release yet. To try it, [build the jar from source](#building-from-source).
+> [!TIP]
+> [Download JustBuild 0.1.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.1.0) for Minecraft 26.3,
+> or [build the jar from source](#building-from-source).
 
 ## Features
 
@@ -128,7 +129,9 @@ Save up to 20 profiles, such as one fast model and one careful one, and switch b
 **Requirements:** Minecraft Java Edition 26.3 · Fabric Loader 0.20.1 or newer · Fabric API · Java 25 or newer
 
 1. Create a Fabric instance for Minecraft 26.3 in your launcher.
-2. Put [Fabric API](https://modrinth.com/mod/fabric-api) and `justbuild-<version>.jar` in the instance's `mods` folder.
+2. Put [Fabric API](https://modrinth.com/mod/fabric-api) and
+   [`justbuild-0.1.0.jar`](https://github.com/MrSeizy/justbuild/releases/download/v0.1.0/justbuild-0.1.0.jar)
+   in the instance's `mods` folder.
 3. Start the game, open a world, and press **Right Shift**.
 
 For multiplayer, install the same version on the server too. Building through the panel or commands requires

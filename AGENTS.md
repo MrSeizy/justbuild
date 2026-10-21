@@ -1,8 +1,8 @@
 ## Release status
 
-- This mod is unreleased. Backward compatibility with earlier development versions is not a requirement.
-- When changing commands, configuration, storage, or network protocols, make the intended change directly and update the affected code, tests, and documentation together. Do not add legacy aliases, compatibility layers, or migrations solely to support old development versions.
-- Verify that the current behavior works and existing functionality remains correct. Revisit this policy when the mod has its first public release or the maintainer explicitly changes it.
+- The compatibility baseline is the first public release, 0.1.0. Earlier development versions do not require compatibility support.
+- Treat released save formats, item IDs, configuration, commands, and network protocols as compatibility contracts. Preserve existing user data. When a breaking change is necessary, provide appropriate migration or explicit version rejection and document the change.
+- Update affected code, tests, and documentation together. Verify upgrades from released formats and ensure existing functionality remains correct.
 
 ## Verification
 
