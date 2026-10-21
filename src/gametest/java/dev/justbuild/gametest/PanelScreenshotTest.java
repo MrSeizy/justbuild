@@ -61,7 +61,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
             check(said.contains("History tab") && !said.contains("Selected"), "another tab narrates \"" + said + "\"");
             context.clickScreenButton("World");
             context.waitTicks(3);
-            check(context.computeOnClient(mc -> request(mc).getValue().equals(request) && widget(mc, "Wand: Zone") != null),
+            check(context.computeOnClient(mc -> request(mc).getValue().equals(request) && widget(mc, "Equip wand: Zone") != null),
                     "pressing the current tab changed the panel");
             context.clickScreenButton("Settings");
             context.waitTicks(5);

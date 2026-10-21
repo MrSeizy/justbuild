@@ -54,12 +54,12 @@ public final class ZoneWandInputTest implements FabricClientGameTest {
                 world.getServer().runCommand("gamemode " + mode + " " + name);
                 long zoneMessages = count(context, messages, "Builder Wand · Zone mode equipped");
                 context.runOnClient(mc -> mc.gui.setScreen(new AddExistingScreen(new WorkshopScreen(new JustBuildScreen()))));
-                context.clickScreenButton("Wand: Box");
+                context.clickScreenButton("Equip wand: Box");
                 context.waitFor(mc -> mc.player.getMainHandItem().is(ZoneWand.ITEM) && ZoneWand.isPart(mc.player.getMainHandItem()));
                 check(context.computeOnClient(mc -> mc.player.getMainHandItem().getHoverName().getString().equals("Builder Wand · Box")),
                         "the button did not equip the named Builder Wand in Box mode");
                 context.runOnClient(mc -> mc.gui.setScreen(new EditingToolsScreen(new JustBuildScreen())));
-                context.clickScreenButton("Wand: Box");
+                context.clickScreenButton("Equip wand: Box");
                 context.waitTicks(10);
                 check(context.computeOnClient(mc -> mc.player.getMainHandItem().is(ZoneWand.ITEM) && ZoneWand.isPart(mc.player.getMainHandItem())
                         && mc.player.getInventory().getNonEquipmentItems().stream().filter(s -> ZoneWand.isWand(s)).count() == 1),
@@ -133,9 +133,25 @@ public final class ZoneWandInputTest implements FabricClientGameTest {
             context.takeScreenshot("part-wand-adopt-controls");
             context.runOnClient(mc -> mc.gui.setScreen(new EditingToolsScreen(new JustBuildScreen())));
             context.takeScreenshot("part-wand-editing-controls");
+            context.clickScreenButton("Clear box");
+            context.waitFor(mc -> ClientState.partOutline() == null && !hasClearBox(mc));
+            context.takeScreenshot("part-wand-editing-empty");
+            // A first point is still a selection the user must be able to cancel from the open panel.
+            command(context, "box 1 " + first.getX() + " " + first.getY() + " " + first.getZ());
+            context.waitFor(mc -> ClientState.flag("selectingPart") && hasClearBox(mc));
+            context.runOnClient(mc -> mc.gui.screen().resize(320, 240));
+            context.takeScreenshot("part-wand-editing-first-point-small");
+            context.clickScreenButton("Clear box");
+            context.waitFor(mc -> ClientState.partOutline() == null && !hasClearBox(mc));
+            context.runOnClient(mc -> mc.resizeGui());
         } finally {
             recording.set(false);
         }
+    }
+
+    private static boolean hasClearBox(net.minecraft.client.Minecraft mc) {
+        return mc.gui.screen().children().stream().anyMatch(w -> w instanceof net.minecraft.client.gui.components.Button b
+                && b.getMessage().getString().equals("Clear box"));
     }
 
     private static void assertPart(ClientGameTestContext context, BlockPos min, BlockPos max, String scenario) {

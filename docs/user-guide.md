@@ -193,13 +193,13 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
   The bottom row follows what's waiting: **Build it** for a preview, **Confirm undo** for an undo, **Discard** or
   **Stop request**, and **Undo** names what it would undo. Build and confirmation buttons share the same mint styling.
   Buttons in the panel's messages can be clicked. A
-  rejected or discarded plan gets **Retry saved plan** (no new AI call) and **Wand: Zone** to move corners before retrying. **Workshop** is here too.
+  rejected or discarded plan gets **Retry saved plan** (no new AI call) and **Equip wand: Zone** to move corners before retrying. **Workshop** is here too.
   While a preview waits, its dimensions and full-plan add/replace/remove counts stay visible. **Checks** opens its
   warnings; **Before**, **After**, and **Show** control the comparison, including the floor view. The selected
   alternative is highlighted and numbered. All controls are reachable with Tab and Enter.
 - **Templates:** 24 ready-made requests in 6 categories (homes, castles, villages, nature, fantasy, monuments). Click
   one to put it in the request box, tweak it if you like, then Build.
-- **History:** select a recent build with **Edit** or its name to load its saved area. **Manage** opens naming,
+- **History:** click a recent build's name to load its saved area and focus the request field for editing. **Manage** opens naming,
   checkpoints, and **Save design**. The Create tab also has **Manage build** for the current selection.
 - **Designs:** place saved copies, rotated by 0°, 90°, 180°, or 270° from your facing. **Swap materials…** picks a
   block to swap out and its replacement with the block picker. Copies always preview and make no AI call.
@@ -336,7 +336,7 @@ Existing zone and part wands in your inventory combine into one Builder Wand whe
 Automatic delivery keeps your selected slot and other items intact. If your inventory is full, it waits for room.
 It does not keep replacing a wand you deliberately put away or drop during that session.
 
-Open **Right Shift → World → Wand: Zone**, or run `/justbuild zone wand`, to equip the wand in Zone mode.
+Open **Right Shift → World → Equip wand: Zone**, or run `/justbuild zone wand`, to equip the wand in Zone mode.
 Left-click a block for corner 1, then right-click another block for corner 2. The wand reaches up to **64 blocks** and
 leaves the blocks intact, including containers. Requesting either mode reuses the same wand. If you lost it,
 the panel can supply a replacement when you have room. Selecting corners and switching modes do not call the AI.
@@ -386,7 +386,7 @@ selected build, finishing a new footprint, expanding it, or clearing it updates 
 before drawing an area for another house. The active selection clears when you leave; selecting the house again loads
 its saved area. Finish or cancel any request, preview, or placement before changing it.
 
-**Sneak-right-click a saved build with the wand** to select it, or use **Right Shift → History → Edit**. The panel shows the
+**Sneak-right-click a saved build with the wand** to select it, or click its name in **Right Shift → History**. The panel shows the
 selected name. The wand recognizes the building even when the clicked block is outside its saved zone.
 If no building is selected and you have drawn a complete zone containing that block, wand selection keeps your drawn
 zone and saves it for the building when you have permission to edit it. Otherwise it loads the building's saved zone;
@@ -474,7 +474,7 @@ completed options remain available.
 
 Select a saved building, then open **Right Shift → Editing tools → Parts**. **Roof** suggests its upper section; **Wall** selects
 the vertical plane of the side you point at; **Room** finds an enclosed air space beside the surface you point at
-and includes a one-block shell. Check the purple box before editing. **Wand: Box** equips the same Builder Wand in purple Box mode
+and includes a one-block shell. Check the purple box before editing. **Equip wand: Box** equips the same Builder Wand in purple Box mode
 using [WorldEdit-style Extend selection](https://worldedit.enginehub.org/en/latest/usage/regions/selections/#selection-modes):
 left-click starts a new selection; each right-click grows the box to include that block. Start with a bottom corner,
 right-click the opposite footprint corner, then right-click the roof to include its height. Keep right-clicking to
@@ -486,8 +486,8 @@ separate upper and lower handles, so you can adjust its height. When no corner i
 selection. Open or large rooms need manual selection. An edit changes only
 the selected part within the build zone, even if the AI revises other parts of the plan. **Sneak + left-click** while
 holding the wand in Box mode clears the active box; it works when aiming at a block or empty air.
-The HUD shows your bound controls. **Clear box** in the panel and `/justbuild box clear` do the same thing,
-restoring editing across the build area. Saved named parts remain available. These tools apply to saved builds,
+The HUD shows your bound controls. **Clear box** appears in the panel while a box or its first point is selected.
+It and `/justbuild box clear` restore editing across the build area. Saved named parts remain available. These tools apply to saved builds,
 including structures you built by hand.
 
 **Named parts** saves the current box under a name such as Kitchen, East tower, or Roof. A building can retain 32
@@ -562,7 +562,7 @@ the existing locked-area controls. Finish or cancel active work before changing 
 
 ![Build requirements for a 16-block maximum height and one target floor](images/build-requirements.png)
 
-- **Add existing build:** use **Wand: Box**, left-click a bottom corner of a hand-built structure, then right-click
+- **Add existing build:** use **Equip wand: Box**, left-click a bottom corner of a hand-built structure, then right-click
   to include the opposite footprint corner and the roof. Add more points until the purple box surrounds the whole
   structure, then name it. Adding a build saves its current blocks and an **Original building** checkpoint without placing anything. Future
   edits work like other saved builds; undo cannot remove the original building. Containers, signs, other block-entity

@@ -20,17 +20,13 @@ public final class EditingToolsScreen extends ToolScreen {
         (locks ? lockedAreas : parts).current();
         button("Connections", left + 2 * (third + 4), 34, third, () -> minecraft.gui.setScreen(new ConnectionsScreen(this)));
         if (!locks) {
-            button("Wand: Box", left, 66, third, () -> { run("box wand"); minecraft.gui.setScreen(null); })
+            button("Equip wand: Box", left, 66, panelWidth, () -> { run("box wand"); minecraft.gui.setScreen(null); })
                     .setTooltip(Tooltip.create(Component.literal("Equips the Builder Wand in purple Box mode. Sneak-left-click clears the box. Sneak-right-click in the air switches modes. Left-click starts again; each right-click grows the box to include that block. Select the footprint, then the roof.")));
-            button("Start box", left + third + 4, 66, third, () -> { run("box 1"); minecraft.gui.setScreen(null); })
-                    .setTooltip(Tooltip.create(Component.literal("Start a new selection at the block under your crosshair, or underfoot.")));
-            button("Include point", left + 2 * (third + 4), 66, third, () -> { run("box 2"); minecraft.gui.setScreen(null); })
-                    .setTooltip(Tooltip.create(Component.literal("Grow the box to include the block under your crosshair, or underfoot. Repeat to include more points.")));
             String[] labels = {"Select roof", "Select wall", "Select room"};
             String[] kinds = {"roof", "wall", "room"};
             String[] help = {"Select the upper roof band of the saved build. Check the purple box before editing.",
                     "Point at a wall of the selected build to select its vertical plane. Check the purple box before editing.",
-                    "Stand inside a room and point at its surface. Selects the enclosed space and a one-block shell. For open or large rooms, use the wand in Part mode."};
+                    "Stand inside a room and point at its surface. Selects the enclosed space and a one-block shell. For open or large rooms, use the wand in Box mode."};
             for (int i = 0; i < 3; i++) {
                 int index = i;
                 var select = button(labels[i], left + i * (third + 4), 90, third, () -> { run("box " + kinds[index]); minecraft.gui.setScreen(null); });
@@ -38,8 +34,9 @@ public final class EditingToolsScreen extends ToolScreen {
                 select.setTooltip(Tooltip.create(Component.literal(help[i])));
             }
             int half = (panelWidth - 4) / 2;
-            button("Named parts", left, 114, half, () -> minecraft.gui.setScreen(new NamedPartsScreen(this)));
-            button("Clear box", left + half + 4, 114, half, () -> run("box clear"));
+            boolean hasBox = ClientState.partOutline() != null;
+            button("Named parts", left, 114, hasBox ? half : panelWidth, () -> minecraft.gui.setScreen(new NamedPartsScreen(this)));
+            if (hasBox) button("Clear box", left + half + 4, 114, half, () -> run("box clear"));
         } else {
             EditBox name = new GlassEditBox(font, left, 66, panelWidth - 94, 20, Component.literal("Locked area name"));
             name.setMaxLength(60); name.setValue(lockName);
@@ -74,8 +71,8 @@ public final class EditingToolsScreen extends ToolScreen {
             String selection = ClientState.flag("selectingPart") ? "Start point selected. Right-click another block to include it."
                     : ClientState.string("partLabel", "No box selected; edits can use the whole build area.");
             int y = text(graphics, selection, 146, height - 48, 0xFFD88BFF);
-            text(graphics, "Box mode: left-click starts again; right-click grows the box. Select the footprint, then the roof. "
-                    + "Sneak-left-click clears the selection. Check the purple box before editing.", y + 5, height - 48, 0xFFAAAAAA);
+            text(graphics, "Left-click starts a box; right-click grows it.\nSneak-left-click clears it.",
+                    y + 5, height - 48, 0xFFAAAAAA);
         }
     }
 }

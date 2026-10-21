@@ -77,8 +77,8 @@ public final class ReadmeDemo implements FabricClientGameTest {
             // Zone selection uses actual left and right mouse clicks with the equipped wand.
             begin("01-select-area", "SELECT A BUILD AREA");
             open(c, "World");
-            hold(c, "Press Right Shift, then World and Wand: Zone.", "Wand: Zone", 16);
-            c.clickScreenButton("Wand: Zone"); c.waitTicks(8);
+            hold(c, "Press Right Shift, then World and Equip wand: Zone.", "Equip wand: Zone", 16);
+            c.clickScreenButton("Equip wand: Zone"); c.waitTicks(8);
             lookDown(c, world, player, base.offset(-14, -1, -14));
             hold(c, "Left-click the first ground corner.", null, 12);
             c.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT); c.waitTicks(5);
@@ -121,8 +121,12 @@ public final class ReadmeDemo implements FabricClientGameTest {
             finish();
 
             begin("03-edit-building", "EDIT A SAVED BUILDING");
-            open(c, "History"); hold(c, "Choose Edit beside a saved building in History.", "Edit", 17);
-            c.clickScreenButton("Edit"); c.waitTicks(5); c.tryClickScreenButton("Create");
+            open(c, "History");
+            String historyBuild = c.computeOnClient(mc -> mc.gui.screen().children().stream()
+                    .filter(w -> w instanceof Button b && b.getMessage().getString().startsWith("“"))
+                    .map(w -> ((Button) w).getMessage().getString()).findFirst().orElseThrow());
+            hold(c, "Choose a building's name in History to edit it.", historyBuild, 17);
+            c.clickScreenButton(historyBuild); c.waitTicks(5); c.tryClickScreenButton("Create");
             type(c, "Request", "Change the roof to dark oak and add a brick chimney.", "The selected building uses Apply instead of Build.");
             replies.add(cottage(true)); hold(c, "Apply requests an edit to this building.", "Apply", 12); c.clickScreenButton("Apply");
             c.waitFor(mc -> ClientState.preview() != null); close(c);

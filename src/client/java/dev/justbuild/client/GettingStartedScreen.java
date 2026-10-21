@@ -24,7 +24,7 @@ final class GettingStartedScreen extends ToolScreen {
         }
         String action = switch (step) {
             case 0 -> "Open AI settings";
-            case 1 -> "Equip Zone wand";
+            case 1 -> "Equip wand: Zone";
             case 2 -> "Write a request";
             default -> ClientState.preview() != null ? "Inspect preview" : "Return to Create";
         };

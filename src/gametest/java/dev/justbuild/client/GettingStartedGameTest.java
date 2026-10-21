@@ -27,7 +27,7 @@ public final class GettingStartedGameTest implements FabricClientGameTest {
             c.waitForScreen(JustBuildScreen.class);
             c.clickScreenButton("Guide"); c.clickScreenButton("2 · Area");
             c.takeScreenshot("first-build-guide-area");
-            c.clickScreenButton("Equip Zone wand");
+            c.clickScreenButton("Equip wand: Zone");
             c.waitFor(mc -> mc.gui.screen() == null);
             c.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen())); c.clickScreenButton("Guide");
             c.clickScreenButton("3 · Request"); c.takeScreenshot("first-build-guide-request");

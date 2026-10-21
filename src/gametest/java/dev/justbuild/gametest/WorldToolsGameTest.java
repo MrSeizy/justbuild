@@ -263,7 +263,7 @@ public final class WorldToolsGameTest implements FabricClientGameTest {
         });
         context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
         context.tryClickScreenButton("World");
-        context.clickScreenButton("Wand: Zone");
+        context.clickScreenButton("Equip wand: Zone");
         context.waitFor(mc -> mc.gui.screen() == null && mc.player.getMainHandItem().is(ZoneWand.ITEM));
         command(context, "zone wand");
         check(itemCount(world, ZoneWand.ITEM) == 1 && itemCount(world, Items.GOLD_INGOT) == 63,

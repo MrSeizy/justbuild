@@ -73,6 +73,7 @@ public final class WorkshopGameTest implements FabricClientGameTest {
             check(adopted.adopted() && adopted.versions().size() == 1 && adopted.checkpoints().size() == 1, "adoption did not save the original record and checkpoint");
             check(!adopted.baseline().containsKey(chest), "adoption acquired a container position");
             check(state(world, chest).is(Blocks.CHEST) && state(world, missing).is(Blocks.OAK_PLANKS), "adoption changed the building");
+            checkHistorySelection(context, id);
             close(context); command(context, "undo"); command(context, "undo confirm");
             check(state(world, missing).is(Blocks.OAK_PLANKS) && record(world, id).versions().size() == 1, "undo removed an adopted original");
 
@@ -172,6 +173,29 @@ public final class WorkshopGameTest implements FabricClientGameTest {
             stub.stop(0); try { config.save(JustBuildConfig.defaults()); } catch (Exception e) { throw new AssertionError(e); }
         }
     }
+    private static void checkHistorySelection(ClientGameTestContext context, String id) {
+        String draft = "Keep the windows and change the roof.";
+        context.runOnClient(mc -> PromptDrafts.put(PromptDrafts.key(id, null), draft));
+        command(context, "select clear");
+        context.waitFor(mc -> ClientState.string("selectedBuild", null) == null);
+        context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
+        context.clickScreenButton("History");
+        context.clickScreenButton("“Handbuilt House” · v1");
+        context.waitFor(mc -> id.equals(ClientState.string("selectedBuild", null)));
+        context.runOnClient(mc -> {
+            check(mc.gui.screen().getFocused() instanceof EditBox field && field.getMessage().getString().equals("Request")
+                    && field.getValue().equals(draft), "History selection did not focus this building's edit draft");
+            mc.gui.screen().resize(320, 240);
+            check(mc.gui.screen().getFocused() instanceof EditBox field && field.getValue().equals(draft),
+                    "resizing History lost the selected build's draft or focus");
+        });
+        context.takeScreenshot("workshop-history-selection-small");
+        context.runOnClient(mc -> {
+            PromptDrafts.put(PromptDrafts.key(id, null), "");
+            mc.resizeGui();
+        });
+    }
+
     private static void checkZonedLocalEdits(ClientGameTestContext context, TestSingleplayerContext world,
             String id, BlockPos base, BlockPos inside, BlockPos outside) {
         // A saved build can span older zones. A material swap must edit only the current footprint.

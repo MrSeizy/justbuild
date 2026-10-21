@@ -82,7 +82,7 @@ public final class AdvancedToolsGameTest implements FabricClientGameTest {
                 // A real part-wand click pair selects one block with its exact height.
                 world.getServer().runOnServer(server -> server.overworld().setBlock(center.west(), Blocks.DIAMOND_BLOCK.defaultBlockState(),
                         Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE));
-                openCreate(context); context.clickScreenButton("Editing tools"); context.clickScreenButton("Wand: Box");
+                openCreate(context); context.clickScreenButton("Editing tools"); context.clickScreenButton("Equip wand: Box");
                 world.getServer().runCommand("gamemode creative " + player);
                 world.getServer().runCommand("tp " + player + " " + (center.getX() - 0.5) + " " + (center.getY() + 2)
                         + " " + (center.getZ() + 0.5) + " 180 90");

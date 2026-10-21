@@ -178,7 +178,7 @@ public final class JustBuildScreen extends FormScreen {
             addRenderableWidget(GlassButton.builder(Component.literal("Retry saved plan"), b -> run("justbuild retry"))
                     .bounds(left, rows + 24, half, 20).tooltip(Tooltip.create(Component.literal(
                             "Preview the kept plan again, without another AI call"))).build());
-            addRenderableWidget(GlassButton.builder(Component.literal("Wand: Zone"), b -> {
+            addRenderableWidget(GlassButton.builder(Component.literal("Equip wand: Zone"), b -> {
                 run("justbuild zone wand");
                 onClose();
             }).bounds(left + half + 4, rows + 24, half, 20).tooltip(Tooltip.create(Component.literal(
@@ -282,7 +282,7 @@ public final class JustBuildScreen extends FormScreen {
 
     private void initWorld() {
         int half = (panelWidth - 4) / 2;
-        addRenderableWidget(GlassButton.builder(Component.literal("Wand: Zone"), b -> {
+        addRenderableWidget(GlassButton.builder(Component.literal("Equip wand: Zone"), b -> {
             run("justbuild zone wand");
             onClose();
         }).bounds(left, contentTop, half, 20).tooltip(Tooltip.create(Component.literal(
@@ -366,7 +366,7 @@ public final class JustBuildScreen extends FormScreen {
         }
     }
 
-    // ---- History: the player's recent builds with Again / Edit ----
+    // ---- History: select a recent build to edit, or manage its saved versions ----
 
     private void initHistory() {
         List<ClientState.Build> builds = ClientState.builds();
@@ -376,23 +376,20 @@ public final class JustBuildScreen extends FormScreen {
         for (int i = 0; historyPage * rows + i < builds.size() && i < rows; i++) {
             ClientState.Build b = builds.get(historyPage * rows + i);
             int y = contentTop + i * 22;
-            int actions = 112;
+            int actions = 64;
             String where = b.elsewhere() == null ? "" : b.elsewhere().substring(b.elsewhere().indexOf(':') + 1).replace('_', ' ');
             addRenderableWidget(GlassButton.builder(Component.literal("“" + b.title() + "” · v" + b.versions()
                     + (where.isEmpty() ? "" : " · " + where)), x -> {
                 run("justbuild select " + b.id());
+                setFocused(request);
             }).bounds(left, y, panelWidth - actions - 4, 20)
-                    .tooltip(Tooltip.create(Component.literal(b.request() + (where.isEmpty() ? ""
+                    .tooltip(Tooltip.create(Component.literal("Select this build and write an edit.\n" + b.request() + (where.isEmpty() ? ""
                             : "\nIn " + b.elsewhere() + ". Travel there to select or edit it.")))).build());
             addRenderableWidget(GlassButton.builder(Component.literal("Manage"), x -> {
                 run("justbuild select " + b.id());
                 minecraft.gui.setScreen(new BuildDetailsScreen(this, b.id()));
             })
-                    .bounds(left + panelWidth - actions, y, 54, 20).build());
-            addRenderableWidget(GlassButton.builder(Component.literal("Edit"), x -> {
-                run("justbuild select " + b.id());
-                setFocused(request);
-            }).bounds(left + panelWidth - 56, y, 56, 20).build());
+                    .bounds(left + panelWidth - actions, y, actions, 20).build());
         }
         if (pages > 1) {
             addRenderableWidget(GlassButton.builder(Component.literal("Previous"), b -> { historyPage--; rebuildWidgets(); })
