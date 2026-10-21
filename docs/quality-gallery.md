@@ -13,7 +13,7 @@ separately in the report.
 | --- | --- |
 | Cottage | 9×7 oak cottage, spruce gable roof, complete two-block north door, clear inside/outside approaches, reachable ground-floor spaces and a straight three-wide approach. |
 | Interior | Bed, crafting table and bookshelves; exact shell preservation; existing chest and seven diamonds preserved; accessible circulation on the walking floor. Furniture tops are excluded from floor reachability. |
-| Bridge | Continuous three-wide oak deck across a stream, rails and support piers; accessible crossing; water outside the work area preserved. |
+| Bridge | Continuous three-wide oak deck at y=0 across a stream, continuous oak fence rails at y=1 along both full edges x=0..12,z=±2, and support piers; accessible crossing; water outside the work area preserved. |
 | Terrain | Level stone-brick terrace on a two-level hillside, support under every floor cell, stair approach and unchanged hillside outside the work area. |
 | Editing | Replace oak wall planks with bricks while keeping the complete footprint and every other block state, door, window, roof, approach and existing inventory. |
 | Castle (opt-in) | Large 55×55 site, four upper towers, an open courtyard, three connected indoor levels and elevated wall walks reached from the north approach. Architecture and palette are chosen by the provider. |
@@ -26,6 +26,10 @@ walkability code. Invalid out-of-scope requests fail acceptance and are clipped 
 Screenshots show that placed result; raw candidate plans remain available for diagnosing what was rejected.
 Ground-floor circulation checks require a continuous route around furniture; crossing over beds or chests is not counted.
 Roof-stair/support notes remain visible as advisories because decorative roof geometry can trigger them.
+The bridge's rail check inspects all 26 fence positions in the placed world; fences elsewhere or at the wrong height
+cannot pass by meeting the material quota. Scene resets remove dropped item entities from the disposable gallery
+world, and every screenshot clears any later drops after the view has settled. This leaves players, other entities
+and retained chest inventories intact.
 
 ## Run deterministic fixtures
 
@@ -33,11 +37,15 @@ Roof-stair/support notes remain visible as advisories because decorative roof ge
 JUSTBUILD_GALLERY_LABEL=fixtures ./gradlew runClientGameTest -PclientTests=QualityGalleryGameTest
 ```
 
+Include `GalleryChecksGameTest` in `clientTests` to exercise the cleanup regression and rail counterexamples:
+enough fences at deck level, raised above the railing line, or moved away from a gap must fail the rail check.
+
 The command prints an output directory under `build/quality-gallery/`. Each run has a unique timestamp and survives
 recreation of `build/run/clientGameTest/`. It contains `results.json`, before/after PNGs, an inside-room PNG, each
 candidate plan and the exact prompt. The result records provider/model, detail/review settings, revision, guide
 hash, prompt hash, plan hash and a hash of the actual initial blocks and inventory. A dirty revision is explicitly
-labeled; retain the corresponding checkout to reproduce it.
+labeled; retain the corresponding checkout to reproduce it. The harness hash includes the compiled gallery,
+cleanup/rail helpers, castle scene and castle route probes.
 
 Generate a self-contained report, replacing the example directories with the printed paths:
 

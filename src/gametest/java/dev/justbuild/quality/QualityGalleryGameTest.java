@@ -77,9 +77,12 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         boolean failed = false;
         try {
             Files.createDirectories(output);
-            try (var bytecode = QualityGalleryGameTest.class.getResourceAsStream("QualityGalleryGameTest.class")) {
-                report.addProperty("harnessHash", hashBytes(Objects.requireNonNull(bytecode).readAllBytes()));
-            }
+            StringBuilder harness = new StringBuilder();
+            for (Class<?> type : List.of(QualityGalleryGameTest.class, GalleryChecks.class, CastleScene.class, CastleRouteProbe.class))
+                try (var bytecode = type.getResourceAsStream(type.getSimpleName() + ".class")) {
+                    harness.append(type.getName()).append(':').append(hashBytes(Objects.requireNonNull(bytecode).readAllBytes())).append('\n');
+                }
+            report.addProperty("harnessHash", hash(harness.toString()));
             try (var world = context.worldBuilder().create()) {
                 world.getConnection().waitForChunksRender();
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
@@ -102,7 +105,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                     world.getServer().runOnServer(server -> prepare(server.overworld(), scenario, at));
                     String sourceHash = world.getServer().computeOnServer(server -> sourceHash(server.overworld(), scenario, at));
                     camera(context, world, player, scenario, at, false);
-                    Files.copy(context.takeScreenshot("gallery-" + key + "-before"), output.resolve(key + "-before.png"));
+                    Files.copy(GalleryChecks.screenshot(context, world, "gallery-" + key + "-before"), output.resolve(key + "-before.png"));
                     BuildPlan plan = scenario.reference();
                     JsonObject row;
                     String promptHash = null;
@@ -312,12 +315,12 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
     private static void capture(ClientGameTestContext context, TestSingleplayerContext world, String player,
             Scenario scenario, BlockPos at, Path output, String key, JsonObject row) throws java.io.IOException {
         camera(context, world, player, scenario, at, false); context.waitTicks(8);
-        Files.copy(context.takeScreenshot("gallery-" + key + "-after"), output.resolve(key + "-after.png"));
+        Files.copy(GalleryChecks.screenshot(context, world, "gallery-" + key + "-after"), output.resolve(key + "-after.png"));
         row.addProperty("after", key + "-after.png");
         if (scenario.id().equals("castle")) CastleScene.capture(context, world, player, at, output, key, row);
         if (scenario.id().equals("interior")) {
             camera(context, world, player, scenario, at, true);
-            Files.copy(context.takeScreenshot("gallery-" + key + "-room"), output.resolve(key + "-room.png"));
+            Files.copy(GalleryChecks.screenshot(context, world, "gallery-" + key + "-room"), output.resolve(key + "-room.png"));
             row.addProperty("detailImage", key + "-room.png");
         }
     }
@@ -335,7 +338,11 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         return spec;
     }
     private static void prepare(net.minecraft.server.level.ServerLevel level, Scenario scenario, BlockPos at) {
-        if (scenario.id().equals("castle")) { CastleScene.prepare(level, at); return; }
+        if (scenario.id().equals("castle")) {
+            CastleScene.prepare(level, at);
+            GalleryChecks.clearDroppedItems(level);
+            return;
+        }
         for (BlockPos p : BlockPos.betweenClosed(at.offset(-8, -5, -8), at.offset(20, 15, 16))) {
             int x = p.getX() - at.getX(), y = p.getY() - at.getY(), z = p.getZ() - at.getZ();
             BlockState state = y < -1 ? Blocks.STONE.defaultBlockState() : y == -1 ? Blocks.GRASS_BLOCK.defaultBlockState() : Blocks.AIR.defaultBlockState();
@@ -353,6 +360,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
             BlockPos chest = at.offset(1, 1, 4); level.setBlock(chest, Blocks.CHEST.defaultBlockState(), FLAGS);
             ((Container) level.getBlockEntity(chest)).setItem(0, new ItemStack(Items.DIAMOND, 7));
         }
+        GalleryChecks.clearDroppedItems(level);
     }
     private static Evaluation evaluate(net.minecraft.server.level.ServerLevel level, Scenario scenario, BuildPlan plan, BlockPos at) throws PlanException {
         JsonObject row = new JsonObject(); row.add("checks", new JsonArray());
@@ -414,6 +422,8 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
             boolean continuous = true;
             for (int x = 0; x <= 12; x++) for (int z = -1; z <= 1; z++) continuous &= level.getBlockState(at.offset(x, 0, z)).is(Blocks.OAK_PLANKS) && clear(level, at.offset(x, 1, z));
             check(row, "Full-width crossing", continuous && level.getBlockState(at.offset(6, -1, 5)).is(Blocks.WATER), "A clear three-block-wide deck crosses the stream; water outside the crossing stays intact.");
+            int rails = GalleryChecks.bridgeRailCells(level::getBlockState, at);
+            check(row, "Deck-height rails", rails == 26, rails + "/26 oak fence cells at y=1, one block above the deck, along both full edges x=0..12,z=-2 and z=2.");
         }
         if (s.id().equals("terrain")) {
             boolean supported = true;
@@ -488,7 +498,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         return List.of(
             new Scenario("cottage", "Build a 9 by 7 oak-plank cottage: stone-brick floor y=0, walls y=1..3, spruce gable roof starting y=4. A two-block-high north door at (4,1,0), glass windows at (2,2,0) and (6,2,0), and a three-wide straight stone approach x=3..5,z=-5..-1. Keep the room walkable.", shell, null, new BlockPos(-1, -2, -5), new BlockPos(9, 12, 7)),
             new Scenario("interior", "Furnish this cottage with a red bed, crafting table and two bookshelves. Preserve its exact shell, approach and windows. Keep the chest at (1,1,4), including its diamonds. Only change interior x=1..7,y=1..3,z=1..5. Keep the doorway and circulation clear.", new BuildPlan("Furnished cottage", "", interior), shell, new BlockPos(-1, -2, -5), new BlockPos(9, 12, 7)),
-            new Scenario("bridge", "Build an oak bridge with a flat, clear three-wide deck x=0..12,y=0,z=-1..1, fence rails at z=-2 and z=2, and support piers. Banks reach y=0. Water fills x=3..9,y=-1,z=-6..6 above stone y=-2. Preserve water outside the crossing.", new BuildPlan("Oak bridge", "", bridge), null, new BlockPos(0, -2, -2), new BlockPos(12, 4, 2)),
+            new Scenario("bridge", "Build an oak bridge with a flat, clear three-wide deck x=0..12,y=0,z=-1..1, continuous oak fence rails at y=1,z=-2 and z=2 along the full x=0..12 span, and support piers. Banks reach y=0. Water fills x=3..9,y=-1,z=-6..6 above stone y=-2. Preserve water outside the crossing.", new BuildPlan("Oak bridge", "", bridge), null, new BlockPos(0, -2, -2), new BlockPos(12, 4, 2)),
             new Scenario("terrain", "Make a level stone-brick terrace x=0..8,y=2,z=0..6. Ground is y=-1 except the raised hillside x=4..12,z=-2..10 which reaches y=1. Fill supports down to the existing ground. Add a three-wide stair approach x=3..5: south-facing steps at z=-2,y=0 and z=-1,y=1. Preserve the hillside outside the terrace.", new BuildPlan("Supported terrace", "", List.of(Operation.foundation("stone_bricks", new Cell(0, 1, 0), new Cell(8, 1, 6)), Operation.fill("stone_bricks", new Cell(0, 2, 0), new Cell(8, 2, 6), false), Operation.fill("stone_brick_stairs[facing=south]", new Cell(3, 0, -2), new Cell(5, 0, -2), false), Operation.fill("stone_brick_stairs[facing=south]", new Cell(3, 1, -1), new Cell(5, 1, -1), false))), null, new BlockPos(0, -3, -2), new BlockPos(8, 4, 6)),
             new Scenario("editing", "Replace only the cottage's oak-plank walls with bricks. Preserve exact geometry and all other block states, including spruce roof, door, windows, floor and approach. Keep the existing chest at (1,1,4) and its diamonds.", new BuildPlan("Brick cottage", "", cottage("bricks")), shell, new BlockPos(-1, -2, -5), new BlockPos(9, 12, 7)));
     }

@@ -50,6 +50,7 @@
       "dev.justbuild.client.ProfileDiagnosticsGameTest",
       "dev.justbuild.client.AnthropicProfilesGameTest",
       "dev.justbuild.client.DoctorGameTest",
+      "dev.justbuild.quality.GalleryChecksGameTest",
       "dev.justbuild.quality.QualityGalleryGameTest"
     ]
   },

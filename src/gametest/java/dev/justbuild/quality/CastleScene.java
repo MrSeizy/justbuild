@@ -105,7 +105,7 @@ final class CastleScene {
             Path output, String key, JsonArray views, String suffix, String label, double x, double y, double z,
             double tx, double ty, double tz) throws java.io.IOException {
         camera(c, world, player, at, x, y, z, tx, ty, tz);
-        String file = key + "-" + suffix + ".png"; Files.copy(c.takeScreenshot("gallery-" + key + "-" + suffix), output.resolve(file));
+        String file = key + "-" + suffix + ".png"; Files.copy(GalleryChecks.screenshot(c, world, "gallery-" + key + "-" + suffix), output.resolve(file));
         var view = new JsonObject(); view.addProperty("label", label); view.addProperty("image", file); views.add(view);
     }
 

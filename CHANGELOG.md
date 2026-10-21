@@ -13,6 +13,7 @@ User-visible changes are recorded here. Unreleased entries describe development 
 ### Changed
 
 - Saved API keys are retained only while both the provider and base URL remain the same.
+- Quality gallery scenes and screenshots clear dropped items, and bridge acceptance checks require continuous fence rails at the correct height along both deck edges.
 
 ## [0.1.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.1.0) — 2026-10-21
 
