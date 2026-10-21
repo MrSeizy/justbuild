@@ -35,12 +35,27 @@ Install your chosen CLI using its official instructions for your operating syste
 | `claude` (default) | Your Claude subscription through the `claude` CLI | Install Claude Code, then run `claude auth login` (the Claude desktop app alone is not enough) |
 | `codex` | Your ChatGPT subscription through the `codex` CLI | Install the Codex CLI, then run `codex login`. |
 | `grok` | Your Grok login through Grok Build CLI | Install Grok Build, run `grok login`, and select a Grok profile. **Pick…** uses `grok models`. |
+| `anthropic` (unreleased) | Native Anthropic `/v1/messages`, including compatible services | Choose Anthropic-compatible, enter a base URL and API key, then pick a model |
 | `openai` | Any OpenAI-compatible `/chat/completions` endpoint (OpenAI, OpenRouter, DeepSeek, Groq, Mistral, xAI, Gemini, Qwen, Experiential Labs, Ollama, LM Studio, …) | Fill in a profile in the panel: preset or base URL, API key, then pick a model |
 
-Each backend is used through a **model profile**: a name, a provider, a model, and for OpenAI-compatible ones a base
-URL and API key. New configurations start with four (Claude, Codex, OpenAI-compatible, Grok Build); add up to 20 profiles, for example one
+Each backend is used through a **model profile**: a name, a provider, a model, and for HTTP API profiles a base
+URL and API key. New configurations start with five (Claude, Codex, OpenAI-compatible, Grok Build, Anthropic-compatible); add up to 20 profiles, for example one
 per endpoint or one fast and one careful model, and switch between them in one click.
 Choose the **Custom** preset to clear the base URL, then enter your own endpoint.
+Existing configurations keep their profiles; choose **New**, then cycle **Provider** to add another backend.
+
+Anthropic API support is available in development builds after 0.1.0. For Anthropic itself, use
+`https://api.anthropic.com/v1`; for another compatible service, use its API base URL. A root URL without `/v1`
+is also accepted: JustBuild appends `/v1/messages` and `/v1/models`. Requests use `x-api-key` and
+`anthropic-version: 2023-06-01`. This uses API billing, separate from a Claude subscription; the **Claude CLI**
+provider still uses your existing CLI login. **Pick…** reads the endpoint's model list; if the service has no
+model-list endpoint, type its model identifier manually and use **Test connection**.
+
+**Max tokens** controls Anthropic's maximum response length (default 8,192; allowed range 1–128,000).
+The selected model may support a lower maximum. Raise this value if a large plan reaches the output limit.
+JustBuild requests structured JSON and streams text, progress, and token usage. Compatible services that reject
+structured output are retried with the JSON schema in the prompt. Review images use native image blocks;
+services that reject images are retried with the text views and diagnostics. Incomplete responses are rejected.
 
 The mod runs the CLIs headless with host tools disabled and personal instructions, skills, and memory suppressed.
 Claude keeps its existing subscription login and uses restricted/safe mode, with automatic instructions, memory,
@@ -119,7 +134,7 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
 - **In the player's game:** Right Shift → Settings shows **My profile**, **My profiles…** (the editor, working on this
   computer's `config/justbuild.json`, with Pick… asking this computer's CLI or endpoint), **Use my AI here: On/Off**, and a
   line saying which AI your builds use on this server. The game is "ready" when local AI is enabled for that server and the active profile
-  works: an installed CLI, or an OpenAI-compatible profile with a model.
+  works: an installed CLI, or an HTTP API profile with a model.
 - **Optional response review:** **Right Shift → Settings → Review before sending** starts **Off**, including for
   existing configs. Turning it on saves `reviewAiResponses: true` on this computer for all multiplayer servers.
   Each normalized response opens a read-only viewer with its destination, request id, full response text/error,
@@ -215,17 +230,18 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
   **Auto-build** is your own choice: when on, AI results place as soon as they're ready,
   without Build it (undo still works; alternatives, saved plans, and design copies still preview). **Manage profiles…** opens the profile editor:
   - the profiles on the left (★ is the one builds use) with New, Copy, and Delete;
-  - name, provider, and model (**Pick…** asks the backend: Codex via `codex debug models`, Grok Build via `grok models`, OpenAI-compatible via
+  - name, provider, and model (**Pick…** asks the backend: Codex via `codex debug models`, Grok Build via `grok models`, HTTP APIs via
     `GET /models` with that profile's key, Claude from a built-in list because its CLI cannot list models);
-  - for OpenAI-compatible profiles, a **Preset** button that fills in the base URL of a known service, the base URL,
+  - for HTTP API profiles, a **Preset** button that fills in the base URL of a known service, the base URL,
     and the API key (hidden as `*` unless you press Show; leave it blank to keep the saved key, Clear removes it; a
-    saved key is dropped if you change the base URL, so it can't be sent to another host);
+    saved key is dropped if you change the provider or base URL, so it can't be sent to another host);
   - for OpenAI-compatible profiles, **Reasoning** (Endpoint default, None, Low, Medium, High), sent as
     `reasoning_effort`. Thinking models may spend a long time reasoning before writing a plan. None requests no
     reasoning where supported; available settings depend on the model and endpoint. Endpoint default leaves the field out;
+  - for Anthropic-compatible profiles, **Max tokens**, the maximum response length;
   - **Save** (green; saves edits while builds keep using ★) and **Cancel**. Return to Settings and click **Profile**
     (or **My profile** on a remote server) to switch the active profile. An
-    OpenAI-compatible profile needs a model before it saves, and Cancel asks again before dropping unsaved changes.
+    HTTP API profile needs a model before it saves, and Cancel asks again before dropping unsaved changes.
 
   In singleplayer and as LAN host the editor works on the world's server: API keys go to it as a packet, never as a
   command (command text ends up in logs: Fabric writes it to the game's `debug.log`), and are never sent back to the
@@ -319,7 +335,7 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild cancel` | Stop a request or a build in progress |
 | `/justbuild profile [name]` | List AI profiles (click `[Use]`); add a name to switch to one |
 | `/justbuild model [name\|default]` | List the active profile's models; add a name to choose one, or `default` to reset |
-| `/justbuild provider <claude\|codex\|grok\|openai>` | Switch to the first profile using that backend (adds one if none does) |
+| `/justbuild provider <claude\|codex\|grok\|openai\|anthropic>` | Switch to the first profile using that backend (adds one if none does) |
 | `/justbuild playerai [require\|prefer\|off]` | Show or change the server's player AI policy; `require` is the default |
 | `/justbuild status`, `/justbuild doctor`, `/justbuild reload` | Status, check every profile's install, login, or endpoint, reload config |
 
@@ -750,7 +766,7 @@ counters while retaining the chosen limits; both counters and limits reset when 
 are separate from the multiplayer relay's existing rate limit.
 
 Chat shows when a request is sent, then a "Still working (1:00): …" line once a minute with what the AI is doing
-(planning, thinking, or writing the plan with a live count of operations for Claude and OpenAI-compatible
+(planning, thinking, or writing the plan with a live count of operations for Claude, OpenAI-compatible, and Anthropic-compatible
 endpoints; Codex only reports when it is done), then "Plan ready in 0:48 (30 operations)", placement milestones for
 long builds, and the total time when it finishes. Every progress line has a `[Cancel]` button. The action bar above
 the hotbar shows the same status every second, including a placement percentage. It wraps within the screen over a
@@ -783,7 +799,8 @@ Use the profile editor to rename an encrypted profile or change its endpoint, si
 Copying the configuration to another computer does not copy access to the keys. See
 [credential storage and recovery](security-credentials.md) for vault locations, headless servers, and recovery.
 An OpenAI-compatible profile may also set `"reasoningEffort"` to `none`, `low`, `medium`, or `high`; without it the
-endpoint's default applies.
+endpoint's default applies. An Anthropic-compatible profile may set `"maxTokens"` (default `8192`);
+it does not send `reasoningEffort`.
 A dedicated server's owner can edit the file and run `/justbuild reload`.
 
 Limits: `maxBlocks` (250,000), `maxSize` (96 per axis), `maxOperations` (2,000), `blocksPerTick` (2,000),

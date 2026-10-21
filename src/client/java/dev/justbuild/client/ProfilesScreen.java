@@ -41,11 +41,14 @@ public final class ProfilesScreen extends FormScreen {
             new String[] {"LM Studio (local)", "http://localhost:1234/v1"},
             new String[] {"Custom", ""});
 
+    private static final List<String[]> ANTHROPIC_PRESETS = List.of(
+            new String[] {"Anthropic", JustBuildConfig.DEFAULT_ANTHROPIC_BASE_URL}, new String[] {"Custom", ""});
+
     private static final int WHITE = 0xFFFFFFFF;
     private static final int GRAY = 0xFFAAAAAA;
     private static final int RED = 0xFFFF5555;
     private static final int LIST_WIDTH = 120;
-    private static final int LABEL_WIDTH = 52;
+    private static final int LABEL_WIDTH = 60;
     /** Row pitch of the list and the form, so the hints below an OpenAI-compatible form clear Save at 480 px tall. */
     private static final int ROW = 22;
 
@@ -78,7 +81,7 @@ public final class ProfilesScreen extends FormScreen {
         if (local) {
             JustBuildConfig config = LocalProfiles.load();
             source = config.profiles.stream().map(p -> new ClientState.Profile(p.name, p.provider, p.model, p.baseUrl,
-                    p.hasKey(), p.reasoningEffort)).toList();
+                    p.hasKey(), p.reasoningEffort, p.maxTokens)).toList();
             current = config.activeProfile;
         } else {
             source = ClientState.profiles();
@@ -180,7 +183,7 @@ public final class ProfilesScreen extends FormScreen {
             selected = drafts.size() - 1;
             message = "";
             rebuildWidgets();
-        }).bounds(left, y, w, 20).tooltip(Tooltip.create(Component.literal("Add an OpenAI-compatible profile"))).build();
+        }).bounds(left, y, w, 20).tooltip(Tooltip.create(Component.literal("Add a profile, then choose its provider"))).build();
         add.active = drafts.size() < JustBuildConfig.MAX_PROFILES;
         addRenderableWidget(add);
         Button copy = GlassButton.builder(Component.literal("Copy"), b -> {
@@ -235,12 +238,13 @@ public final class ProfilesScreen extends FormScreen {
         y += ROW;
         addRenderableWidget(GlassButton.builder(Component.literal(Providers.displayName(d.provider)), b -> {
             int next = (JustBuildConfig.PROVIDERS.indexOf(d.provider) + 1) % JustBuildConfig.PROVIDERS.size();
-            d.provider = JustBuildConfig.PROVIDERS.get(next);
+            d.provider(JustBuildConfig.PROVIDERS.get(next));
             message = "";
             rebuildWidgets();
         }).bounds(fieldX, y, fieldWidth, 20).tooltip(Tooltip.create(Component.literal(switch (d.provider) {
             case "codex" -> "Your ChatGPT subscription through the Codex CLI on the server's computer";
             case "grok" -> "Your Grok login through Grok Build CLI on the computer running this profile";
+            case "anthropic" -> "An Anthropic Messages API endpoint with an API key";
             case "openai" -> "Any /chat/completions endpoint with an API key, or a local server";
             default -> "Your Claude subscription through the Claude CLI on the server's computer";
         }))).build());
@@ -248,7 +252,7 @@ public final class ProfilesScreen extends FormScreen {
 
         y += ROW;
         EditBox model = box(fieldX, y, fieldWidth - 64, 200, d.model,
-                d.isOpenAi() ? "Model (required)" : "Model (blank = CLI default)");
+                d.isApi() ? "Model (required)" : "Model (blank = CLI default)");
         model.setResponder(v -> d.model = v);
         Button pick = GlassButton.builder(Component.literal("Pick…"), b -> {
             String problem = urlProblem(d);
@@ -264,13 +268,14 @@ public final class ProfilesScreen extends FormScreen {
         addRenderableWidget(pick);
         label("Model", formX, y);
 
-        if (!d.isOpenAi()) {
+        if (!d.isApi()) {
             return;
         }
         y += ROW;
-        int preset = presetIndex(d.baseUrl);
-        addRenderableWidget(GlassButton.builder(Component.literal(preset < 0 ? "Custom" : PRESETS.get(preset)[0]), b -> {
-            d.baseUrl = PRESETS.get((presetIndex(d.baseUrl) + 1) % PRESETS.size())[1];
+        List<String[]> presets = "anthropic".equals(d.provider) ? ANTHROPIC_PRESETS : PRESETS;
+        int preset = presetIndex(d.baseUrl, presets);
+        addRenderableWidget(GlassButton.builder(Component.literal(preset < 0 ? "Custom" : presets.get(preset)[0]), b -> {
+            d.baseUrl = presets.get((presetIndex(d.baseUrl, presets) + 1) % presets.size())[1];
             message = "";
             rebuildWidgets();
         }).bounds(fieldX, y, fieldWidth, 20).tooltip(Tooltip.create(Component.literal(
@@ -310,6 +315,13 @@ public final class ProfilesScreen extends FormScreen {
         label("API key", formX, y);
 
         y += ROW;
+        if ("anthropic".equals(d.provider)) {
+            EditBox tokens = box(fieldX, y, fieldWidth, 6, d.maxTokens, "Maximum output tokens");
+            tokens.setResponder(v -> d.maxTokens = v);
+            tokens.setTooltip(Tooltip.create(Component.literal("Maximum response tokens (1–128000). The model may have a lower limit. Default: 8192.")));
+            label("Max tokens", formX, y);
+            return;
+        }
         addRenderableWidget(GlassButton.builder(Component.literal(effortLabel(d.reasoningEffort)), b -> {
             List<String> efforts = JustBuildConfig.REASONING_EFFORTS;
             // List.of rejects indexOf(null), and null (the endpoint's default) comes first.
@@ -334,7 +346,8 @@ public final class ProfilesScreen extends FormScreen {
         if (d.keepsSavedKey()) {
             return "Saved (blank keeps it)";
         }
-        return d.hasKey ? "New URL: retype key" : "API key";
+        return !d.hasKey ? "API key" : d.provider.equals(d.savedProvider)
+                ? "New URL: retype key" : "New provider: retype key";
     }
 
     private EditBox box(int x, int y, int w, int maxLength, String value, String hint) {
@@ -350,10 +363,10 @@ public final class ProfilesScreen extends FormScreen {
         labels.add(new Label(text, x, y));
     }
 
-    private static int presetIndex(String url) {
+    private static int presetIndex(String url, List<String[]> presets) {
         String u = url == null ? "" : url.strip().replaceAll("/+$", "");
-        for (int i = 0; i < PRESETS.size(); i++) {
-            if (PRESETS.get(i)[1].equalsIgnoreCase(u)) {
+        for (int i = 0; i < presets.size(); i++) {
+            if (presets.get(i)[1].equalsIgnoreCase(u)) {
                 return i;
             }
         }
@@ -382,9 +395,11 @@ public final class ProfilesScreen extends FormScreen {
             ProfileDraft d = drafts.get(i);
             String problem = d.name.isBlank() ? "Every profile needs a name."
                     : !names.add(d.name.strip().toLowerCase(Locale.ROOT)) ? "Two profiles are called “" + d.name.strip() + "”."
-                    : d.isOpenAi() && d.model.isBlank() && (d == active || d.edited())
+                    : d.isApi() && d.model.isBlank() && (d == active || d.edited())
                     ? "“" + d.name.strip() + "” needs a model: press Pick… or type one."
-                    : urlProblem(d);
+                    : "anthropic".equals(d.provider) && (d.outputTokens() < 1
+                            || d.outputTokens() > JustBuildConfig.MAX_OUTPUT_TOKENS)
+                    ? "Max tokens must be between 1 and 128000." : urlProblem(d);
             if (problem != null) {
                 // Show the profile that needs attention while preserving the active choice (★).
                 selected = i;
@@ -418,7 +433,7 @@ public final class ProfilesScreen extends FormScreen {
     }
 
     private static String urlProblem(ProfileDraft d) {
-        if (!d.isOpenAi()) {
+        if (!d.isApi()) {
             return null;
         }
         try {
@@ -462,7 +477,7 @@ public final class ProfilesScreen extends FormScreen {
         }
         ProfileDraft d = drafts.get(selected);
         int formX = left + LIST_WIDTH + 8;
-        int y = 24 + ROW * (d.isOpenAi() ? 7 : 3) + 2;
+        int y = 24 + ROW * (d.isApi() ? 7 : 3) + 2;
         if (!message.isEmpty()) {
             for (FormattedCharSequence line : font.split(Component.literal(message), panelWidth - LIST_WIDTH - 8)) {
                 graphics.text(font, line, formX, y, RED);
@@ -470,7 +485,7 @@ public final class ProfilesScreen extends FormScreen {
             }
             return;
         }
-        String note = d.isOpenAi() && !d.willHaveKey() && !d.baseUrl.contains("localhost")
+        String note = d.isApi() && !d.willHaveKey() && !d.baseUrl.contains("localhost")
                 && !d.baseUrl.contains("127.0.0.1") ? "Most hosted services need an API key." : "";
         String active = d == this.active ? "Builds use this profile."
                 : "Builds use “" + this.active.name.strip() + "”. Switch profiles in Settings.";

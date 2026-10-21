@@ -18,7 +18,7 @@ class ConfigStoreTest extends CredentialVaultTest {
         Path file = dir.resolve("config/justbuild.json");
         JustBuildConfig config = new ConfigStore(file).load();
         assertTrue(Files.exists(file));
-        assertEquals(List.of("Claude", "Codex", "OpenAI-compatible", "Grok Build"), config.profileNames());
+        assertEquals(List.of("Claude", "Codex", "OpenAI-compatible", "Grok Build", "Anthropic-compatible"), config.profileNames());
         assertEquals("Claude", config.activeProfile);
         assertEquals("claude", config.active().provider);
         assertEquals("~/.local/bin/claude", config.claude.command);
@@ -37,6 +37,36 @@ class ConfigStoreTest extends CredentialVaultTest {
     }
 
     @Test
+    void anthropicKeysAndTokenLimitsRoundTripWithoutChangingReleasedProfiles() throws Exception {
+        Path file = dir.resolve("released.json");
+        // The profile shape shipped in 0.1.0 has no maxTokens field or Anthropic entry.
+        Files.writeString(file, """
+                {"profiles":[{"name":"Released API","provider":"openai","model":"existing-model",
+                "baseUrl":"https://example.test/v1","apiKey":"synthetic-existing-key","reasoningEffort":"low"},
+                {"name":"Claude","provider":"claude","model":""}],"activeProfile":"Released API"}
+                """);
+        var store = new ConfigStore(file);
+        var config = store.load();
+        assertEquals(List.of("Released API", "Claude"), config.profileNames());
+        assertEquals("synthetic-existing-key", config.active().apiKey);
+        assertNull(config.active().maxTokens);
+        var anthropic = new JustBuildConfig.ModelProfile("Anthropic API", "anthropic", "model-from-list");
+        anthropic.apiKey = "synthetic-anthropic-key"; anthropic.maxTokens = 24000;
+        config.profiles.add(anthropic);
+        store.save(config);
+        String disk = Files.readString(file);
+        assertFalse(disk.contains("synthetic-")); assertFalse(disk.contains("\"apiKey\""));
+        assertTrue(disk.contains("encryptedApiKey"));
+        var loaded = store.load();
+        assertEquals("Released API", loaded.activeProfile);
+        assertEquals("low", loaded.active().reasoningEffort);
+        assertEquals("synthetic-existing-key", loaded.active().apiKey);
+        assertEquals("synthetic-anthropic-key", loaded.profile("Anthropic API").orElseThrow().apiKey);
+        assertEquals(24000, loaded.profile("Anthropic API").orElseThrow().maxTokens);
+        assertEquals(JustBuildConfig.DEFAULT_ANTHROPIC_BASE_URL, loaded.profile("Anthropic API").orElseThrow().baseUrl);
+    }
+
+    @Test
     void handEditedValuesAreNormalized() throws Exception {
         Path file = dir.resolve("justbuild.json");
         Files.writeString(file, """
@@ -47,7 +77,7 @@ class ConfigStoreTest extends CredentialVaultTest {
         assertEquals("/opt/homebrew/bin/codex", c.codex.command);
         assertEquals(2000, c.blocksPerTick);
         assertEquals(0, c.maxQuestions);
-        assertEquals(List.of("Claude", "Codex", "OpenAI-compatible", "Grok Build"), c.profiles.stream().map(p -> p.name).toList());
+        assertEquals(List.of("Claude", "Codex", "OpenAI-compatible", "Grok Build", "Anthropic-compatible"), c.profiles.stream().map(p -> p.name).toList());
     }
 
     /** Previews, quality checks, and relayed requests size themselves from maxBlocks, up to one million. */
@@ -95,7 +125,7 @@ class ConfigStoreTest extends CredentialVaultTest {
         JustBuildConfig.ModelProfile openai = c.profile("Profile 3").orElseThrow();
         assertEquals("https://api.openai.com/v1", openai.baseUrl);
         assertEquals("", openai.apiKey);
-        assertNull(c.profile("Local").orElseThrow().apiKey, "only OpenAI-compatible profiles keep a key");
+        assertNull(c.profile("Local").orElseThrow().apiKey, "only HTTP API profiles keep a key");
         assertEquals("none", openai.reasoningEffort);
         assertNull(c.profile("Local").orElseThrow().reasoningEffort, "only OpenAI-compatible profiles send one");
         assertNull(c.profile("Odd").orElseThrow().reasoningEffort, "an unknown effort falls back to the default");
@@ -109,7 +139,7 @@ class ConfigStoreTest extends CredentialVaultTest {
         assertEquals("Only", new ConfigStore(file).load().activeProfile);
         Files.writeString(file, "{\"profiles\": [], \"activeProfile\": \"Gone\"}");
         JustBuildConfig c = new ConfigStore(file).load();
-        assertEquals(4, c.profiles.size());
+        assertEquals(5, c.profiles.size());
         assertEquals("Claude", c.activeProfile);
     }
 

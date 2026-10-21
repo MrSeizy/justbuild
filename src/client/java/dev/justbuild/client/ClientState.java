@@ -40,7 +40,10 @@ final class ClientState {
 
     record Version(String id, int number, String request, long createdAt, boolean current, DesignThumbnail.Image thumbnail) { }
 
-    record Profile(String name, String provider, String model, String baseUrl, boolean hasKey, String reasoningEffort) {
+    record Profile(String name, String provider, String model, String baseUrl, boolean hasKey, String reasoningEffort, Integer maxTokens) {
+        Profile(String name, String provider, String model, String baseUrl, boolean hasKey, String reasoningEffort) {
+            this(name, provider, model, baseUrl, hasKey, reasoningEffort, null);
+        }
     }
 
     record Snapshot(Map<String, String> strings, Map<String, List<String>> lists,

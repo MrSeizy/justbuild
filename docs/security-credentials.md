@@ -1,6 +1,6 @@
 # API credential storage
 
-JustBuild encrypts OpenAI-compatible API keys before writing `config/justbuild.json`. The provider receives the
+JustBuild encrypts OpenAI-compatible and Anthropic-compatible API keys before writing `config/justbuild.json`. The provider receives the
 original key in memory when making a request. A one-way hash cannot replace that key because the endpoint needs
 the original credential.
 

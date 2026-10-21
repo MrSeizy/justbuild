@@ -126,7 +126,7 @@ public final class ModelPickerScreen extends FormScreen {
         }
         String f = filter.strip().toLowerCase(Locale.ROOT);
         java.util.ArrayList<String> out = new java.util.ArrayList<>();
-        if (!"openai".equals(provider) && f.isEmpty() && !models.isEmpty()) {
+        if (!dev.justbuild.config.JustBuildConfig.isApi(provider) && f.isEmpty() && !models.isEmpty()) {
             out.add(CLI_DEFAULT);
         }
         models.stream().filter(m -> m.toLowerCase(Locale.ROOT).contains(f)).forEach(out::add);

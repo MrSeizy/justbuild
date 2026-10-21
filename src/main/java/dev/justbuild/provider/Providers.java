@@ -12,6 +12,7 @@ public final class Providers {
             case "codex" -> new CodexCliProvider(config.codex.command);
             case "grok" -> new GrokCliProvider(config.grok.command);
             case "openai" -> new OpenAiCompatibleProvider(profile);
+            case "anthropic" -> new AnthropicCompatibleProvider(profile);
             default -> new ClaudeCliProvider(config.claude.command);
         };
     }
@@ -21,6 +22,7 @@ public final class Providers {
             case "codex" -> "Codex CLI";
             case "grok" -> "Grok Build CLI";
             case "openai" -> "OpenAI-compatible";
+            case "anthropic" -> "Anthropic-compatible";
             default -> "Claude CLI";
         };
     }

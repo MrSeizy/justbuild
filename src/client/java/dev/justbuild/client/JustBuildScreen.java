@@ -471,7 +471,7 @@ public final class JustBuildScreen extends FormScreen {
         addRenderableWidget(cycle("Style", "style", "styles", y + 48, (w - 4) / 2, null));
         addRenderableWidget(autoBuildToggle(y + 48, w));
         model.setMaxLength(200);
-        model.setHint(Component.literal("openai".equals(ClientState.string("provider", "")) ? "Model (required)"
+        model.setHint(Component.literal(JustBuildConfig.isApi(ClientState.string("provider", "")) ? "Model (required)"
                 : "Model (blank = CLI default)"));
         model.setValue(modelDraft.receive("server:" + ClientState.string("profile", ""), ClientState.string("model", "")));
         model.setResponder(modelDraft::edit);
@@ -554,13 +554,13 @@ public final class JustBuildScreen extends FormScreen {
         addRenderableWidget(autoBuildToggle(y + 48, w));
         EditBox model = new GlassEditBox(font, left, y + 72, w - 132, 20, Component.literal("Model"));
         model.setMaxLength(200);
-        model.setHint(Component.literal(mine.isOpenAi() ? "Model (required)" : "Model (blank = CLI default)"));
+        model.setHint(Component.literal(mine.isApi() ? "Model (required)" : "Model (blank = CLI default)"));
         model.setValue(modelDraft.receive("local:" + mine.name, mine.model));
         model.setResponder(modelDraft::edit);
         addRenderableWidget(model);
         addRenderableWidget(GlassButton.builder(Component.literal("Pick…"), b -> {
             ProfileDraft d = new ProfileDraft(mine.name, mine.name, mine.provider, mine.model, mine.baseUrl, mine.hasKey(),
-                    mine.reasoningEffort);
+                    mine.reasoningEffort, mine.maxTokens);
             minecraft.gui.setScreen(new ModelPickerScreen(this, mine.name, mine.provider, d.toEdit(),
                     value -> { modelDraft.replace(value); changeLocal(c -> c.setModel(value)); }, true));
         }).bounds(left + w - 128, y + 72, 62, 20).tooltip(Tooltip.create(Component.literal(

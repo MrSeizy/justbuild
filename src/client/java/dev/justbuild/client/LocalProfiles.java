@@ -119,7 +119,7 @@ final class LocalProfiles {
             switch (p.provider) {
                 case "codex" -> CommandLocator.resolve(config.codex.command, "codex", CommandLocator.defaultSearchDirs());
                 case "grok" -> CommandLocator.resolve(config.grok.command, "grok", CommandLocator.defaultSearchDirs());
-                case "openai" -> {
+                case "openai", "anthropic" -> {
                     if (p.model.isBlank()) {
                         return "“" + p.name + "” needs a model.";
                     }

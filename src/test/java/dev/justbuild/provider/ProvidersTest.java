@@ -12,6 +12,8 @@ class ProvidersTest {
         assertEquals("claude", Providers.create(config, config.profile("Claude").orElseThrow()).id());
         assertEquals("codex", Providers.create(config, config.profile("Codex").orElseThrow()).id());
         assertEquals("openai", Providers.create(config, config.profile("OpenAI-compatible").orElseThrow()).id());
+        assertEquals("anthropic", Providers.create(config, config.profile("Anthropic-compatible").orElseThrow()).id());
+        assertEquals("Anthropic-compatible", Providers.displayName("anthropic"));
         assertEquals("Codex CLI", Providers.displayName("codex"));
         assertEquals("OpenAI-compatible", Providers.displayName("openai"));
         assertEquals("Claude CLI", Providers.displayName("anything else"));

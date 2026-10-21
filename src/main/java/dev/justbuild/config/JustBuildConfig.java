@@ -12,9 +12,21 @@ import java.util.Set;
 
 /** Contents of config/justbuild.json. Public fields so Gson can read and write them directly. */
 public final class JustBuildConfig {
-    public static final List<String> PROVIDERS = List.of("claude", "codex", "grok", "openai");
+    public static final List<String> PROVIDERS = List.of("claude", "codex", "grok", "openai", "anthropic");
     public static final List<String> PLAYER_AI = List.of("require", "prefer", "off");
     public static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
+    public static final String DEFAULT_ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1";
+    public static final int DEFAULT_MAX_TOKENS = 8192;
+    public static final int MAX_OUTPUT_TOKENS = 128000;
+
+    public static boolean isApi(String provider) {
+        return "openai".equals(provider) || "anthropic".equals(provider);
+    }
+
+    public static String defaultBaseUrl(String provider) {
+        return "anthropic".equals(provider) ? DEFAULT_ANTHROPIC_BASE_URL : DEFAULT_BASE_URL;
+    }
+
     /** Values an OpenAI-compatible profile may send as reasoning_effort; null leaves it to the endpoint. */
     public static final List<String> REASONING_EFFORTS = List.of("none", "low", "medium", "high");
     public static final int MAX_PROFILES = 20;
@@ -78,17 +90,19 @@ public final class JustBuildConfig {
         }
     }
 
-    /** One switchable backend: a provider and a model, plus an endpoint and key for OpenAI-compatible ones. */
+    /** One switchable backend: a provider and a model, plus an endpoint and key for HTTP APIs. */
     public static final class ModelProfile {
         public String name;
         public String provider;
         public String model = "";
-        /** OpenAI-compatible only; null for the CLIs, so Gson leaves it out of the file. */
+        /** HTTP APIs only; null for the CLIs, so Gson leaves it out of the file. */
         public String baseUrl;
         /** Plaintext only in memory. ConfigStore writes encryptedApiKey instead. */
         public String apiKey;
         /** OpenAI-compatible only: sent as reasoning_effort when set (one of REASONING_EFFORTS). */
         public String reasoningEffort;
+        /** Anthropic Messages API maximum output tokens. */
+        public Integer maxTokens;
 
         public ModelProfile() {
         }
@@ -97,15 +111,22 @@ public final class JustBuildConfig {
             this.name = name;
             this.provider = provider;
             this.model = model;
-            if (isOpenAi()) {
-                baseUrl = DEFAULT_BASE_URL;
+            if (isApi()) {
+                baseUrl = defaultBaseUrl(provider);
                 apiKey = "";
             }
+            if (isAnthropic()) maxTokens = DEFAULT_MAX_TOKENS;
         }
 
         public boolean isOpenAi() {
             return "openai".equals(provider);
         }
+
+        public boolean isAnthropic() { return "anthropic".equals(provider); }
+
+        public boolean isApi() { return JustBuildConfig.isApi(provider); }
+
+        public int outputTokens() { return maxTokens == null ? DEFAULT_MAX_TOKENS : maxTokens; }
 
         public boolean hasKey() {
             return apiKey != null && !apiKey.isBlank();
@@ -119,6 +140,7 @@ public final class JustBuildConfig {
             p.baseUrl = baseUrl;
             p.apiKey = apiKey;
             p.reasoningEffort = reasoningEffort;
+            p.maxTokens = maxTokens;
             return p;
         }
 
@@ -234,15 +256,17 @@ public final class JustBuildConfig {
             String name = q.name == null ? "" : q.name.strip();
             q.name = unique(name.isEmpty() ? "Profile " + (clean.size() + 1) : clip(name, MAX_NAME), seen);
             q.model = q.model == null ? "" : q.model.strip();
-            if (q.isOpenAi()) {
-                q.baseUrl = q.baseUrl == null || q.baseUrl.isBlank() ? DEFAULT_BASE_URL : q.baseUrl.strip();
+            if (q.isApi()) {
+                q.baseUrl = q.baseUrl == null || q.baseUrl.isBlank() ? defaultBaseUrl(q.provider) : q.baseUrl.strip();
                 q.apiKey = q.apiKey == null ? "" : q.apiKey.strip();
-                q.reasoningEffort = ModelProfile.reasoningEffort(q.reasoningEffort);
+                q.reasoningEffort = q.isOpenAi() ? ModelProfile.reasoningEffort(q.reasoningEffort) : null;
             } else {
                 q.baseUrl = null;
                 q.apiKey = null;
                 q.reasoningEffort = null;
             }
+            q.maxTokens = q.isAnthropic() ? (q.outputTokens() > 0 && q.outputTokens() <= MAX_OUTPUT_TOKENS
+                    ? q.outputTokens() : DEFAULT_MAX_TOKENS) : null;
             clean.add(q);
         }
         profiles = clean.isEmpty() ? starters() : clean;
@@ -256,6 +280,7 @@ public final class JustBuildConfig {
         list.add(new ModelProfile("Codex", "codex", ""));
         list.add(new ModelProfile("OpenAI-compatible", "openai", ""));
         list.add(new ModelProfile("Grok Build", "grok", ""));
+        list.add(new ModelProfile("Anthropic-compatible", "anthropic", ""));
         return list;
     }
 

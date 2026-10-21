@@ -252,7 +252,8 @@ final class ClientStateDecoder {
                     out.add(new Profile(o.get("name").getAsString(), o.get("provider").getAsString(),
                             o.get("model").getAsString(), o.get("baseUrl") instanceof JsonPrimitive url ? url.getAsString() : null,
                             o.get("hasKey") instanceof JsonPrimitive key && key.getAsBoolean(),
-                            o.get("reasoningEffort") instanceof JsonPrimitive effort ? effort.getAsString() : null));
+                            o.get("reasoningEffort") instanceof JsonPrimitive effort ? effort.getAsString() : null,
+                            o.get("maxTokens") instanceof JsonPrimitive max ? max.getAsInt() : null));
                 } catch (RuntimeException ignored) { }
             }
         }

@@ -141,9 +141,10 @@ public final class StateJson {
             e.addProperty("provider", p.provider);
             e.addProperty("model", p.model);
             if (manage) {
-                if (p.isOpenAi()) {
+                if (p.isApi()) {
                     e.addProperty("baseUrl", p.baseUrl);
-                    e.addProperty("reasoningEffort", p.reasoningEffort);
+                    if (p.isOpenAi()) e.addProperty("reasoningEffort", p.reasoningEffort);
+                    if (p.isAnthropic()) e.addProperty("maxTokens", p.outputTokens());
                 }
                 e.addProperty("hasKey", p.hasKey());
             }

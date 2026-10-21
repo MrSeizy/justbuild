@@ -21,15 +21,17 @@ public final class ProfileDiagnostics {
             throws CancelledException {
         // A diagnostic does not need the normal build-sized response allowance.
         BuildProvider provider = profile.isOpenAi() ? new OpenAiCompatibleProvider(profile, 64 * 1024)
+                : profile.isAnthropic() ? new AnthropicCompatibleProvider(profile, 64 * 1024)
                 : Providers.create(config, profile);
         return run(provider, profile.model, token);
     }
     static List<Check> run(BuildProvider provider, String model, CancellationToken token) throws CancelledException {
         var checks = new ArrayList<Check>();
         token.throwIfCancelled();
-        boolean openai = provider.id().equals("openai");
+        boolean api = JustBuildConfig.isApi(provider.id());
+        String endpoint = provider.id().equals("anthropic") ? "/messages" : "/chat/completions";
         try {
-            if (openai) {
+            if (api) {
                 var models = provider.models(token);
                 checks.add(new Check(Status.PASS, "Endpoint and authentication", "The endpoint accepted the model-list request."));
                 checks.add(new Check(models.contains(model) ? Status.PASS : Status.WARN, "Model listing",
@@ -41,12 +43,12 @@ public final class ProfileDiagnostics {
             }
         } catch (CancelledException e) { throw e; }
         catch (ProviderException e) {
-            if (openai && (http(e, 404) || http(e, 405)))
-                checks.add(new Check(Status.WARN, "Model listing", "This endpoint has no model list. Testing /chat/completions directly."));
-            else return List.of(failure(e, openai));
+            if (api && (http(e, 404) || http(e, 405)))
+                checks.add(new Check(Status.WARN, "Model listing", "This endpoint has no model list. Testing " + endpoint + " directly."));
+            else return List.of(failure(e, api));
         } catch (RuntimeException e) { return List.of(unexpected()); }
         token.throwIfCancelled();
-        if (openai && (model == null || model.isBlank())) {
+        if (api && (model == null || model.isBlank())) {
             checks.add(new Check(Status.FAIL, "Model", "Enter a model name or choose one with Pick…, then test again."));
             return List.copyOf(checks);
         }
@@ -65,23 +67,23 @@ public final class ProfileDiagnostics {
             } catch (RuntimeException e) { valid = false; }
             checks.add(new Check(valid ? Status.PASS : Status.FAIL, "Model response and JSON",
                     valid ? "The selected model returned valid JSON. This profile is ready to try a build."
-                            : "The response was not the requested JSON. Try another model or check the endpoint's chat-completions support."));
+                            : "The response was not the requested JSON. Try another model or check the endpoint's API support."));
         } catch (CancelledException e) { throw e; }
-        catch (ProviderException e) { checks.add(failure(e, openai)); }
+        catch (ProviderException e) { checks.add(failure(e, api)); }
         catch (RuntimeException e) { checks.add(unexpected()); }
         return List.copyOf(checks);
     }
     private static boolean http(ProviderException e, int status) { return e.getMessage() != null && e.getMessage().startsWith("HTTP " + status + ":"); }
-    private static Check failure(ProviderException e, boolean openai) {
+    private static Check failure(ProviderException e, boolean api) {
         if (http(e, 401) || http(e, 403)) return new Check(Status.FAIL, "Authentication", "The service refused access. Check the API key, account permissions and access to this model.");
         if (http(e, 404)) return new Check(Status.FAIL, "Endpoint or model", "The service could not find the chat endpoint or model. Check the base URL (often ending in /v1) and model name.");
         if (http(e, 429)) return new Check(Status.FAIL, "Service quota", "The service rate limit or quota was reached. Check your account allowance and retry later.");
         String text = e.getMessage() == null ? "" : e.getMessage().toLowerCase(Locale.ROOT);
         if (text.contains("no response") || text.contains("timed out")) return new Check(Status.FAIL, "Response timeout", "The service did not respond in time. Check that it is running, then retry or choose a faster model.");
-        if (http(e, 400) || http(e, 422)) return new Check(Status.FAIL, "Request compatibility", "The service rejected the test request. Check the model name, reasoning setting and chat-completions support.");
-        return openai ? new Check(Status.FAIL, "Endpoint response", "The endpoint could not complete the check. Verify the base URL, network connection and service status.")
+        if (http(e, 400) || http(e, 422)) return new Check(Status.FAIL, "Request compatibility", "The service rejected the test request. Check the model name, provider, token limit and API support.");
+        return api ? new Check(Status.FAIL, "Endpoint response", "The endpoint could not complete the check. Verify the base URL, network connection and service status.")
                 : new Check(Status.FAIL, "CLI or model", "Check that the configured CLI runs and is logged in on this computer. Try its default model, then test again.");
     }
     public static Check unexpected() { return new Check(Status.FAIL, "Connection check", "The check could not complete. Verify the profile settings and service, then retry."); }
-    public static Check invalidDraft() { return new Check(Status.FAIL, "Profile settings", "Check the profile name, provider, base URL, model and reasoning setting. The draft was not saved."); }
+    public static Check invalidDraft() { return new Check(Status.FAIL, "Profile settings", "Check the profile name, provider, base URL, model and output settings. The draft was not saved."); }
 }

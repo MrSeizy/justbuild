@@ -301,7 +301,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
         check("opus".equals(saved.profile("Claude").orElseThrow().model), "Claude model was not saved");
         check("gpt-4o-mini".equals(openai.model), "model is " + openai.model);
         check("none".equals(openai.reasoningEffort), "reasoning effort is " + openai.reasoningEffort);
-        check(saved.profiles.size() == 4, "expected 4 profiles, got " + saved.profileNames());
+        check(saved.profiles.size() == 5, "expected 5 profiles, got " + saved.profileNames());
     }
 
     private static void check(boolean ok, String message) {

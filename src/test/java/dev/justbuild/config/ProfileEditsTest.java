@@ -17,7 +17,8 @@ class ProfileEditsTest {
         JustBuildConfig c = new JustBuildConfig();
         c.normalize();
         c.profile("OpenAI-compatible").orElseThrow().apiKey = "sk-old";
-        return c.profiles;
+        // Exercise edits to the four profiles shipped in 0.1.0.
+        return c.profiles.subList(0, 4);
     }
 
     static Edit unchanged(ModelProfile p) {
@@ -117,6 +118,30 @@ class ProfileEditsTest {
         var e = assertThrows(ConfigException.class, () -> ProfileEdits.resolve(current(),
                 new Edit(null, "Draft", "openai", "", "nope", null)));
         assertTrue(e.getMessage().contains("base URL"));
+    }
+
+    @Test
+    void anthropicEditsValidateTokensAndPinSavedKeysToTheProvider() throws Exception {
+        var saved = new ModelProfile("API", "anthropic", "model");
+        saved.apiKey = "synthetic-anthropic-key";
+        var same = new Edit("API", "Renamed", "anthropic", "new model", saved.baseUrl, null, "high", 24000);
+        var roundTrip = ProfileEdits.parseEdit(ProfileEdits.toJson(same));
+        assertEquals(same, roundTrip);
+        var resolved = ProfileEdits.resolve(List.of(saved), roundTrip);
+        assertEquals(saved.apiKey, resolved.apiKey);
+        assertEquals(24000, resolved.maxTokens);
+        assertNull(resolved.reasoningEffort);
+        assertEquals(8192, ProfileEdits.resolve(List.of(saved),
+                new Edit("API", "API", "anthropic", "model", saved.baseUrl, null)).maxTokens);
+        assertEquals("", ProfileEdits.resolve(List.of(saved),
+                new Edit("API", "API", "openai", "model", saved.baseUrl, null)).apiKey);
+        assertEquals("", ProfileEdits.resolve(List.of(saved),
+                new Edit("API", "API", "anthropic", "model", "https://other.example/v1", null)).apiKey);
+        for (int tokens : List.of(0, -1, 128001)) {
+            assertThrows(ConfigException.class, () -> ProfileEdits.resolve(List.of(saved),
+                    new Edit("API", "API", "anthropic", "model", saved.baseUrl, null, null, tokens)));
+        }
+        assertThrows(ConfigException.class, () -> ProfileEdits.parseEdit("{\"maxTokens\":1.5}"));
     }
 
     @Test

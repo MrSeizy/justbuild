@@ -17,7 +17,7 @@ import java.util.Set;
 /**
  * Profile changes sent by the panel's profile editor. Keys never travel back to clients, so an edit names the profile
  * it started from and leaves {@code apiKey} null to keep that profile's saved key ("" clears it). A saved key is only
- * kept while the base URL stays the same, so an edit cannot send it to another host.
+ * kept while the provider and base URL stay the same, so an edit cannot send it to another host or protocol.
  */
 public final class ProfileEdits {
     static final int MAX_MODEL = 200;
@@ -26,7 +26,11 @@ public final class ProfileEdits {
 
     /** One profile as edited; {@code from} is its name when the editor opened (null for a new one). */
     public record Edit(String from, String name, String provider, String model, String baseUrl, String apiKey,
-            String reasoningEffort) {
+            String reasoningEffort, Integer maxTokens) {
+        public Edit(String from, String name, String provider, String model, String baseUrl, String apiKey,
+                String reasoningEffort) {
+            this(from, name, provider, model, baseUrl, apiKey, reasoningEffort, null);
+        }
         /** Without a reasoning effort, so the endpoint's default applies. */
         public Edit(String from, String name, String provider, String model, String baseUrl, String apiKey) {
             this(from, name, provider, model, baseUrl, apiKey, null);
@@ -82,11 +86,11 @@ public final class ProfileEdits {
         if (model.length() > MAX_MODEL) {
             throw new ConfigException("“" + name + "”: the model name is too long.");
         }
-        if (!provider.equals("openai") && !dev.justbuild.provider.CliModel.valid(model)) {
+        if (!JustBuildConfig.isApi(provider) && !dev.justbuild.provider.CliModel.valid(model)) {
             throw new ConfigException("“" + name + "”: choose a CLI model identifier without spaces or shell characters.");
         }
         ModelProfile p = new ModelProfile(name, provider, model);
-        if (p.isOpenAi()) {
+        if (p.isApi()) {
             String url = edit.baseUrl() == null ? "" : edit.baseUrl().strip();
             if (url.length() > MAX_URL || !httpUrl(url)) {
                 throw new ConfigException("“" + name + "”: the base URL must start with http:// or https://.");
@@ -98,18 +102,25 @@ public final class ProfileEdits {
                 Optional<ModelProfile> before = current.stream()
                         .filter(c -> edit.from() != null && c.name.equalsIgnoreCase(edit.from().strip()))
                         .findFirst();
-                p.apiKey = before.filter(c -> c.isOpenAi() && sameUrl(c.baseUrl, url))
+                p.apiKey = before.filter(c -> c.provider.equals(provider) && sameUrl(c.baseUrl, url))
                         .map(c -> c.apiKey == null ? "" : c.apiKey).orElse("");
             }
             if (p.apiKey.length() > MAX_KEY) {
                 throw new ConfigException("“" + name + "”: the API key is too long.");
             }
             String effort = edit.reasoningEffort();
-            if (effort != null && !effort.isBlank()) {
+            if (p.isOpenAi() && effort != null && !effort.isBlank()) {
                 p.reasoningEffort = ModelProfile.reasoningEffort(effort);
                 if (p.reasoningEffort == null) {
                     throw new ConfigException("“" + name + "”: reasoning must be none, low, medium, or high.");
                 }
+            }
+        }
+        if (p.isAnthropic()) {
+            p.maxTokens = edit.maxTokens() == null ? JustBuildConfig.DEFAULT_MAX_TOKENS : edit.maxTokens();
+            if (p.maxTokens < 1 || p.maxTokens > JustBuildConfig.MAX_OUTPUT_TOKENS) {
+                throw new ConfigException("“" + name + "”: max tokens must be between 1 and "
+                        + JustBuildConfig.MAX_OUTPUT_TOKENS + ".");
             }
         }
         return p;
@@ -184,12 +195,15 @@ public final class ProfileEdits {
         o.addProperty("baseUrl", e.baseUrl());
         o.addProperty("apiKey", e.apiKey());
         o.addProperty("reasoningEffort", e.reasoningEffort());
+        o.addProperty("maxTokens", e.maxTokens());
         return o;
     }
 
     private static Edit edit(JsonObject o) {
         return new Edit(string(o, "from"), string(o, "name"), string(o, "provider"), string(o, "model"),
-                string(o, "baseUrl"), string(o, "apiKey"), string(o, "reasoningEffort"));
+                string(o, "baseUrl"), string(o, "apiKey"), string(o, "reasoningEffort"),
+                o.has("maxTokens") && !o.get("maxTokens").isJsonNull()
+                        ? Integer.valueOf(o.get("maxTokens").getAsString()) : null);
     }
 
     private static String string(JsonObject o, String key) {

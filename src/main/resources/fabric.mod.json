@@ -3,7 +3,7 @@
   "id": "justbuild",
   "version": "${version}",
   "name": "JustBuild",
-  "description": "Describe a build and an AI plans it, previews it, and places it in your world. Works with Claude Code, Codex, Grok Build, or any OpenAI-compatible API, and on servers each player can use their own AI from their own game.",
+  "description": "Describe a build and an AI plans it, previews it, and places it in your world. Works with Claude Code, Codex, Grok Build, or an OpenAI-compatible or Anthropic-compatible API, and on servers each player can use their own AI from their own game.",
   "authors": ["MrSeizy"],
   "contact": {
     "homepage": "https://github.com/MrSeizy/justbuild",

@@ -3198,7 +3198,7 @@ public final class BuildSessionManager {
     /** Switches to the first profile using that provider, adding a starter profile if there is none. */
     public void setProvider(CommandSourceStack source, String id) {
         if (!JustBuildConfig.PROVIDERS.contains(id)) {
-            send(source, Chat.error("Unknown provider “" + id + "”. Use claude, codex, grok, or openai."));
+            send(source, Chat.error("Unknown provider “" + id + "”. Use " + String.join(", ", JustBuildConfig.PROVIDERS) + "."));
             return;
         }
         Optional<JustBuildConfig.ModelProfile> existing = config.profiles.stream().filter(p -> p.provider.equals(id)).findFirst();
@@ -3240,7 +3240,7 @@ public final class BuildSessionManager {
 
     public void setModel(CommandSourceStack source, String model) {
         if (!configWritable(source)) return;
-        if (!config.active().isOpenAi() && !dev.justbuild.provider.CliModel.valid(model)) {
+        if (!config.active().isApi() && !dev.justbuild.provider.CliModel.valid(model)) {
             send(source, Chat.error("Choose a CLI model identifier without spaces or shell characters."));
             return;
         }
@@ -4656,13 +4656,13 @@ public final class BuildSessionManager {
         if (!profile.model.isBlank()) {
             return profile.model;
         }
-        return profile.isOpenAi() ? "no model set" : "CLI default";
+        return profile.isApi() ? "no model set" : "CLI default";
     }
 
     /** "Claude CLI, opus" or "OpenAI-compatible, gpt-x at https://…". */
     static String profileLabel(JustBuildConfig.ModelProfile profile) {
         String label = Providers.displayName(profile.provider) + ", " + modelLabel(profile);
-        return profile.isOpenAi() ? label + " at " + profile.baseUrl : label;
+        return profile.isApi() ? label + " at " + profile.baseUrl : label;
     }
 
     /** Console and RCON sources drop late messages, so mirror them to the log. */

@@ -15,6 +15,8 @@ class StateJsonTest {
         config.activate("Codex");
         config.setModel("gpt-6-sol");
         config.profile("OpenAI-compatible").orElseThrow().apiKey = "sk-secret-123";
+        config.profile("Anthropic-compatible").orElseThrow().apiKey = "sk-secret-anthropic";
+        config.profile("Anthropic-compatible").orElseThrow().maxTokens = 24000;
         config.style = "nordic";
         return config;
     }
@@ -29,7 +31,7 @@ class StateJsonTest {
         assertEquals("gpt-6-sol", state.get("model").getAsString());
         assertEquals("detailed", state.get("detail").getAsString());
         assertEquals("nordic", state.get("style").getAsString());
-        assertEquals(4, state.getAsJsonArray("profileNames").size());
+        assertEquals(5, state.getAsJsonArray("profileNames").size());
         assertEquals(3, state.getAsJsonArray("details").size());
         assertEquals(12, state.getAsJsonArray("styles").size());
         assertEquals("e4c91fbd", state.get("latest").getAsString());
@@ -63,6 +65,12 @@ class StateJsonTest {
         assertTrue(openai.get("hasKey").getAsBoolean());
         assertFalse(profiles.get(0).getAsJsonObject().get("hasKey").getAsBoolean());
         assertFalse(openai.has("apiKey"));
+        JsonObject anthropic = profiles.get(4).getAsJsonObject();
+        assertEquals("anthropic", anthropic.get("provider").getAsString());
+        assertEquals(24000, anthropic.get("maxTokens").getAsInt());
+        assertTrue(anthropic.get("hasKey").getAsBoolean());
+        assertFalse(anthropic.has("apiKey"));
+        assertFalse(anthropic.has("reasoningEffort"));
     }
 
     @Test
@@ -73,6 +81,10 @@ class StateJsonTest {
         assertEquals("OpenAI-compatible", openai.get("name").getAsString());
         assertFalse(openai.has("baseUrl"));
         assertFalse(openai.has("hasKey"));
+        JsonObject anthropic = state.getAsJsonArray("profiles").get(4).getAsJsonObject();
+        assertFalse(anthropic.has("baseUrl"));
+        assertFalse(anthropic.has("hasKey"));
+        assertFalse(anthropic.has("maxTokens"));
     }
 
     @Test
