@@ -209,7 +209,10 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
 - **World:** equip the Zone wand, draw a polygon, clear the selection, or inspect the world without calling
   the AI. Move corners directly with the wand’s in-world handles. The white outline marks the selected footprint and any height bounds. Locked areas are outlined in blue.
 - **Settings:** the active profile, AI review, style, and model (**Pick…** lists the models the profile offers),
-  plus Doctor, Reload, and **Server AI…** to choose the player AI policy. **Auto-build** is your own choice: when on, AI results place as soon as they're ready,
+  plus Doctor, Reload, and **Server AI…** to choose the player AI policy. **Doctor** opens a scrollable results dialog
+  that updates as each server profile finishes its install, login, or endpoint check. Scroll with the mouse wheel,
+  drag the scrollbar, or focus the results and use the arrow/Page Up/Page Down keys. **Copy results** copies the report.
+  **Auto-build** is your own choice: when on, AI results place as soon as they're ready,
   without Build it (undo still works; alternatives, saved plans, and design copies still preview). **Manage profiles…** opens the profile editor:
   - the profiles on the left (★ is the one builds use) with New, Copy, and Delete;
   - name, provider, and model (**Pick…** asks the backend: Codex via `codex debug models`, Grok Build via `grok models`, OpenAI-compatible via

@@ -499,7 +499,7 @@ public final class JustBuildScreen extends FormScreen {
             run("justbuild model " + (value.isEmpty() ? "default" : value));
         }).bounds(left + w - 62, y + 72, 62, 20).build());
         int bw = (w - 4) / 3;
-        addRenderableWidget(GlassButton.builder(Component.literal("Doctor"), b -> run("justbuild doctor"))
+        addRenderableWidget(GlassButton.builder(Component.literal("Doctor"), b -> minecraft.gui.setScreen(new DoctorScreen(this)))
                 .bounds(left, y + 100, bw, 20).tooltip(Tooltip.create(Component.literal(
                         "Check that each profile's backend is installed and logged in"))).build());
         addRenderableWidget(GlassButton.builder(Component.literal("Reload config"), b -> run("justbuild reload"))
@@ -573,7 +573,7 @@ public final class JustBuildScreen extends FormScreen {
             changeLocal(c -> c.setModel(value));
         }).bounds(left + w - 62, y + 72, 62, 20).build());
         int bw = (w - 4) / 3;
-        addRenderableWidget(GlassButton.builder(Component.literal("Doctor"), b -> run("justbuild doctor"))
+        addRenderableWidget(GlassButton.builder(Component.literal("Doctor"), b -> minecraft.gui.setScreen(new DoctorScreen(this)))
                 .bounds(left, y + 100, bw, 20).tooltip(Tooltip.create(Component.literal(
                         "Check the server's profiles and which AI your builds use"))).build());
         addRenderableWidget(GlassButton.builder(Component.literal("Reload config"), b -> run("justbuild reload"))

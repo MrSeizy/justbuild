@@ -117,6 +117,8 @@ public final class JustBuildClient implements ClientModInitializer {
                 }));
         ClientPlayNetworking.registerGlobalReceiver(dev.justbuild.net.ProfileTestPayload.TYPE,
                 (payload, context) -> context.client().execute(() -> ProfileTestScreen.receive(payload)));
+        ClientPlayNetworking.registerGlobalReceiver(dev.justbuild.net.DoctorPayload.TYPE,
+                (payload, context) -> context.client().execute(() -> DoctorScreen.receive(payload)));
         ClientPlayNetworking.registerGlobalReceiver(ModelsPayload.TYPE,
                 (payload, context) -> context.client().execute(() -> ModelPickerScreen.receive(payload)));
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {

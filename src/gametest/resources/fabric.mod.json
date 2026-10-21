@@ -48,6 +48,7 @@
       "dev.justbuild.client.CommandHelpGameTest",
       "dev.justbuild.client.ConnectionPathGameTest",
       "dev.justbuild.client.ProfileDiagnosticsGameTest",
+      "dev.justbuild.client.DoctorGameTest",
       "dev.justbuild.quality.QualityGalleryGameTest"
     ]
   },

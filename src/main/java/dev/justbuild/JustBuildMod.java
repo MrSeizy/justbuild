@@ -62,6 +62,10 @@ public final class JustBuildMod implements ModInitializer {
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(ChatAnswerCapture::allow);
         PayloadTypeRegistry.clientboundPlay().registerLarge(StatePayload.TYPE, StatePayload.CODEC, StatePayload.MAX_BYTES);
         PayloadTypeRegistry.clientboundPlay().register(ModelsPayload.TYPE, ModelsPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(dev.justbuild.net.DoctorPayload.TYPE, dev.justbuild.net.DoctorPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(dev.justbuild.net.DoctorRequestPayload.TYPE, dev.justbuild.net.DoctorRequestPayload.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(dev.justbuild.net.DoctorRequestPayload.TYPE, (payload, context) ->
+                withManager(context.server(), m -> m.doctor(context.player(), payload.id())));
         PayloadTypeRegistry.clientboundPlay().register(dev.justbuild.net.ProfileTestPayload.TYPE, dev.justbuild.net.ProfileTestPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(dev.justbuild.net.ProfileTestRequestPayload.TYPE, dev.justbuild.net.ProfileTestRequestPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(dev.justbuild.net.ProfileTestRequestPayload.TYPE, (payload, context) ->

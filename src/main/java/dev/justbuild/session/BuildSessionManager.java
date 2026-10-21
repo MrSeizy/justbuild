@@ -4437,24 +4437,51 @@ public final class BuildSessionManager {
     }
 
     public void doctor(CommandSourceStack source) {
+        doctor(source, 0, result -> send(source, result.error() ? Chat.error(result.message())
+                : result.index() < 0 ? Chat.progress("Checking each profile… " + result.message()) : Chat.info(result.message())));
+    }
+
+    /** The panel gets a separate, correlated report instead of trying to collect unrelated chat messages. */
+    public void doctor(ServerPlayer player, long id) {
+        if (player.hasDisconnected() || !ServerPlayNetworking.canSend(player, dev.justbuild.net.DoctorPayload.TYPE)) return;
+        var source = player.createCommandSourceStack();
+        if (!JustBuildCommand.allowed(source)) {
+            ServerPlayNetworking.send(player, new dev.justbuild.net.DoctorPayload(id, -1, 0,
+                    "Only an operator or the world owner can check server profiles.", true));
+            return;
+        }
+        doctor(source, id, result -> {
+            if (player.hasDisconnected() || !ServerPlayNetworking.canSend(player, dev.justbuild.net.DoctorPayload.TYPE)) return;
+            ServerPlayNetworking.send(player, JustBuildCommand.allowed(player.createCommandSourceStack()) ? result
+                    : new dev.justbuild.net.DoctorPayload(id, -1, 0, "You no longer have permission to check server profiles.", true));
+        });
+    }
+
+    private void doctor(CommandSourceStack source, long requestId, java.util.function.Consumer<dev.justbuild.net.DoctorPayload> reply) {
         JustBuildConfig cfg = config;
-        send(source, Chat.progress("Checking each profile… " + aiLine(source)));
-        for (JustBuildConfig.ModelProfile profile : cfg.profiles) {
+        int total = cfg.profiles.size();
+        reply.accept(new dev.justbuild.net.DoctorPayload(requestId, -1, total, aiLine(source), false));
+        for (int i = 0; i < total; i++) {
+            int index = i;
+            JustBuildConfig.ModelProfile profile = cfg.profiles.get(i);
             BuildProvider provider = Providers.create(cfg, profile);
             String id = profile.name;
             String label = profile.name + " (" + provider.displayName() + (profile.name.equals(cfg.activeProfile) ? ", active)" : ")");
             workers.execute(() -> {
-                Component line;
+                String line;
+                boolean error = false;
                 try {
-                    line = Chat.info(label + ": OK, " + provider.check(new CancellationToken()));
+                    line = label + ": OK, " + provider.check(new CancellationToken());
                 } catch (ProviderException e) {
-                    line = Chat.error(label + ": " + e.getMessage());
+                    line = label + ": " + e.getMessage();
+                    error = true;
                 } catch (RuntimeException e) {
                     LOGGER.error("Doctor check failed for {}", id, e);
-                    line = Chat.error(label + ": " + e);
+                    line = label + ": Unexpected error. Check the server log for details.";
+                    error = true;
                 }
-                Component result = line;
-                onServer(() -> send(source, result));
+                var result = new dev.justbuild.net.DoctorPayload(requestId, index, total, line, error);
+                onServer(() -> reply.accept(result));
             });
         }
     }
