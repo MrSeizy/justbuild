@@ -1,10 +1,10 @@
 # User guide
 
-[Back to the README](../README.md)
+[Back to the README](../README.md) · [All video demos](demos/README.md)
 
-[AI setup](demos/12-ai-setup.mp4) ·
-[Reusable prompts](demos/13-reusable-prompts.mp4) · [Cancel, retry, and undo](demos/15-cancel-retry-undo.mp4) ·
-[Multiplayer](demos/22-multiplayer-ai.mp4) · [Team building](demos/23-team-building.mp4)
+[AI setup](demos/README.md#12-ai-setup) ·
+[Reusable prompts](demos/README.md#13-reusable-prompts) · [Cancel, retry, and undo](demos/README.md#15-cancel-retry-undo) ·
+[Multiplayer](demos/README.md#22-multiplayer-ai) · [Team building](demos/README.md#23-team-building)
 
 Detailed controls, commands, configuration, and multiplayer behavior for JustBuild on Minecraft Java Edition 26.3.
 See the [installation requirements](../README.md#installation) before setting up a game or server.
@@ -431,7 +431,7 @@ still affect neighboring blocks.
 
 ## Preview controls and alternatives
 
-[Watch the close-up: move, cancel, and build in the world](demos/24-in-world-controls.mp4).
+[Watch the close-up: move, cancel, and build in the world](demos/README.md#24-in-world-controls).
 
 Controls float at the base of a waiting preview, along the side nearest you: look at one and right-click it (no tool needed; the click does nothing
 else). Floating controls and labels have dark drop shadows for contrast against the world.
