@@ -10,7 +10,7 @@ final class DesignExportScreen extends ToolScreen {
         button("Litematica · .litematic", left, 56, panelWidth, () -> run("design export " + design.id() + " litematic"));
         button("Sponge schematic · .schem", left, 82, panelWidth, () -> run("design export " + design.id() + " schem"));
         button("JustBuild · .justbuild.json", left, 108, panelWidth, () -> run("design export " + design.id()));
-        button("Shared library", left, 134, panelWidth, () -> { run("design refresh"); minecraft.setScreen(new LibraryImportScreen(this)); });
+        button("Shared library", left, 134, panelWidth, () -> { run("design refresh"); minecraft.gui.setScreen(new LibraryImportScreen(this)); });
         button("Back", left, height - 28, panelWidth, this::onClose);
     }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int x, int y, float tick) {

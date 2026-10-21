@@ -21,7 +21,7 @@ public final class ConfigGuardGameTest implements FabricClientGameTest {
         try {
             Files.writeString(file, BROKEN);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 command(context, "style nordic");
                 command(context, "playerai prefer");
                 check(saw(context, "Settings weren't changed"), "a settings change was not refused");

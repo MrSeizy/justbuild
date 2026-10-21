@@ -13,16 +13,17 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.ShortTag;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 
 /**
  * Data-only Litematica 5–7 and Sponge 2–3 interchange. Litematica uses continuous packed bits (not padded
@@ -172,7 +173,7 @@ public final class SchematicCodec {
             metadata.putLong("TotalVolume", count); metadata.putLong("TotalBlocks", cells.values().stream().filter(s -> !s.isAir()).count());
             metadata.put("EnclosingSize", position(new BlockPos(x, y, z))); root.put("Metadata", metadata);
             CompoundTag region = new CompoundTag(); region.put("Position", position(box.min())); region.put("Size", position(new BlockPos(x, y, z)));
-            ListTag palette = new ListTag(); ids.keySet().forEach(s -> palette.add(NbtUtils.writeBlockState(s))); region.put("BlockStatePalette", palette);
+            ListTag palette = new ListTag(); ids.keySet().forEach(s -> palette.add(litematicState(s))); region.put("BlockStatePalette", palette);
             int bits = Math.max(2, 32 - Integer.numberOfLeadingZeros(ids.size() - 1));
             long[] packed = new long[(int) (((long) count * bits + 63) / 64)];
             for (int i = 0; i < count; i++) pack(packed, bits, i, indices[i]);
@@ -191,6 +192,24 @@ public final class SchematicCodec {
             schematic.put("Entities", new ListTag()); root.put("Schematic", schematic);
         } else throw new IOException("Choose litematic or schem.");
         return root;
+    }
+
+    /** Litematica 5–7 uses capitalized keys; vanilla's block-state NBT codec now uses lowercase keys. */
+    private static CompoundTag litematicState(BlockState state) {
+        CompoundTag tag = new CompoundTag();
+        tag.putString("Name", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+        if (!state.getProperties().isEmpty()) {
+            CompoundTag properties = new CompoundTag();
+            for (Property<?> property : state.getProperties()) {
+                properties.putString(property.getName(), propertyValue(state, property));
+            }
+            tag.put("Properties", properties);
+        }
+        return tag;
+    }
+
+    private static <T extends Comparable<T>> String propertyValue(BlockState state, Property<T> property) {
+        return property.getName(state.getValue(property));
     }
 
     private static BuildRegion box(Map<BlockPos, BlockState> cells) throws IOException {

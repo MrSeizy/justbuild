@@ -19,9 +19,9 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
         ReadmeDemo film = new ReadmeDemo(captureDirectory());
         int originalFov = c.computeOnClient(mc -> mc.options.fov().get());
         int originalScale = c.computeOnClient(mc -> mc.options.guiScale().get());
-        boolean originalHud = c.computeOnClient(mc -> mc.options.hideGui);
+        boolean originalHud = c.computeOnClient(mc -> mc.gui.hud.isHidden());
         try (DemoFixture ai = new DemoFixture(); TestSingleplayerContext world = c.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             BlockPos base = c.computeOnClient(mc -> mc.player.blockPosition());
             String player = c.computeOnClient(mc -> mc.player.getName().getString());
             prepare(c, world, player, base); zone(c, base); emptyHand(c, world);
@@ -30,7 +30,7 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
             c.waitFor(mc -> ClientState.preview() != null, 1200);
             BlockPos origin = origin(c);
             closeUp(c, world, player, base);
-            c.runOnClient(mc -> mc.getToastManager().clear());
+            c.runOnClient(mc -> mc.gui.toastManager().clear());
 
             film.begin("24-in-world-controls", "MOVE, CANCEL, AND BUILD IN THE WORLD");
             PreviewControlsGameTest.aim(c, PreviewControls.Control.BUILD);
@@ -57,16 +57,16 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
             if (!unchanged.equals(blocks(world, base))
                     || world.getServer().computeOnServer(s -> JustBuildMod.manager().savedBuildCount()) != 0)
                 throw new AssertionError("Moving or discarding the preview changed the world");
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             film.hold(c, "The preview disappears. No blocks have been placed.", null, 24);
 
             command(c, "retry"); c.waitFor(mc -> ClientState.preview() != null, 200);
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             PreviewControlsGameTest.aim(c, PreviewControls.Control.BUILD);
             film.hold(c, "Use /justbuild retry to bring the discarded preview back.", null, 24);
             film.hold(c, "To place it, aim at Build it and right-click.", null, 26);
             click(c, PreviewControls.Control.BUILD);
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             film.hold(c, "Build it places the approved preview into the world.", null, 32);
             c.waitFor(mc -> ClientState.preview() == null && ClientState.placing() == null
                     && ClientState.string("selectedBuild", null) != null, 1200);
@@ -80,7 +80,7 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
             film.finish(); ai.verify(); film.writeManifest("clips-controls.json");
         } finally {
             c.runOnClient(mc -> {
-                mc.options.fov().set(originalFov); mc.options.hideGui = originalHud;
+                mc.options.fov().set(originalFov); TestHud.hidden(mc, originalHud);
                 mc.options.guiScale().set(originalScale); mc.resizeGui();
             });
         }
@@ -96,8 +96,8 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
         world.getServer().runCommand("tp " + player + " " + (at.getX() + .5) + " " + (at.getY() + 3) + " " + (at.getZ() + 18.5) + " 180 0");
         c.waitTicks(8);
         c.runOnClient(mc -> {
-            mc.setScreen(null); mc.options.hideGui = false; mc.options.fov().set(45);
-            mc.options.guiScale().set(1); mc.resizeGui(); mc.gui.getChat().clearMessages(false);
+            mc.gui.setScreen(null); dev.justbuild.client.TestHud.hidden(mc, false); mc.options.fov().set(45);
+            mc.options.guiScale().set(1); mc.resizeGui(); mc.gui.hud.getChat().clearMessages(false);
         });
         c.waitTicks(5);
     }
@@ -111,7 +111,7 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
         c.waitFor(mc -> !ClientState.preview().position().equals(before), 200);
         c.waitTicks(5);
         if (!origin(c).equals(expected)) throw new AssertionError(control + " moved to " + origin(c) + ", expected " + expected);
-        c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+        c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
         film.hold(c, "The preview moves; the world stays unchanged until Build it.", null, 12);
     }
 

@@ -17,7 +17,7 @@ final class RepairScreen extends ToolScreen {
         var all = button("All differences", left + half + 4, 74, half, () -> { missing = false; rebuildWidgets(); });
         (missing ? missingOnly : all).current();
         button("Preview repair", left, 130, panelWidth, () -> { run("repair " + (missing ? "missing" : "all")
-                + (checkpoint == 0 ? "" : " " + snapshots.get(checkpoint))); minecraft.setScreen(null); }).primary();
+                + (checkpoint == 0 ? "" : " " + snapshots.get(checkpoint))); minecraft.gui.setScreen(null); }).primary();
         button("Back", left, height - 28, panelWidth, this::onClose);
     }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int x, int y, float tick) {

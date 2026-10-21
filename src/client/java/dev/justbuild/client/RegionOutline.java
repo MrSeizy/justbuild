@@ -31,7 +31,7 @@ final class RegionOutline {
         if (box.distanceToSqr(mc.player.position()) > 128 * 128) return;
         SelectionLines.box(box.inflate(0.008), color, 2);
         // The label would draw through an JustBuild screen's sheet; the outline stays visible around it.
-        if (Glass.covers(mc.screen)) return;
+        if (Glass.covers(mc.gui.screen())) return;
         WorldText.draw(text, new Vec3(box.getCenter().x, box.maxY + 0.3, box.getCenter().z),
                 TextGizmo.Style.forColorAndCentered(color).withScale(TextGizmo.Style.DEFAULT_SCALE * 2));
     }

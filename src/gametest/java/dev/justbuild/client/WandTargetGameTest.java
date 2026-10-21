@@ -13,20 +13,20 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Near and distant targets use the wand mode color and enclose the block selected by clicking. */
 public final class WandTargetGameTest implements FabricClientGameTest {
     @Override public void runTest(ClientGameTestContext c) {
         try (TestSingleplayerContext w = c.worldBuilder().create()) {
-            w.getClientLevel().waitForChunksRender();
+            w.getConnection().waitForChunksRender();
             String name = c.computeOnClient(mc -> mc.player.getName().getString());
             BlockPos base = c.computeOnClient(mc -> mc.player.blockPosition().above(12));
             w.getServer().runCommand("gamemode creative " + name);
             w.getServer().runOnServer(s -> {
                 for (BlockPos p : BlockPos.betweenClosed(base.offset(-4, 0, -10), base.offset(40, 5, 10)))
                     s.overworld().setBlock(p, (p.getY() != base.getY() ? Blocks.AIR
-                            : ((p.getX() + p.getZ()) & 1) == 0 ? Blocks.WHITE_CONCRETE : Blocks.GRAY_CONCRETE).defaultBlockState(),
+                            : ((p.getX() + p.getZ()) & 1) == 0 ? Blocks.CONCRETE.pick(net.minecraft.world.item.DyeColor.WHITE) : Blocks.CONCRETE.pick(net.minecraft.world.item.DyeColor.GRAY)).defaultBlockState(),
                             Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
                 for (int distance : new int[] {3, 8, 24})
                     s.overworld().setBlock(base.offset(distance, 0, 0), Blocks.LAPIS_BLOCK.defaultBlockState(), Block.UPDATE_CLIENTS);
@@ -35,7 +35,7 @@ public final class WandTargetGameTest implements FabricClientGameTest {
                     + " " + (base.getZ() + 0.5));
             c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild zone wand"));
             c.waitTicks(12);
-            w.getClientLevel().waitForChunksRender();
+            w.getConnection().waitForChunksRender();
             for (boolean part : new boolean[] {false, true}) for (int distance : new int[] {3, 8, 24}) {
                 String mode = part ? "box" : "zone";
                 command(c, mode + " wand");
@@ -47,12 +47,12 @@ public final class WandTargetGameTest implements FabricClientGameTest {
                     if (hit == null || !hit.getBlockPos().equals(target)) throw new AssertionError("Wrong wand target: " + hit);
                     if ((mc.hitResult.getType() == HitResult.Type.BLOCK) != (distance == 3))
                         throw new AssertionError("Fixture did not exercise the expected close/distant targeting path");
-                    mc.gui.getChat().clearMessages(false);
+                    mc.gui.hud.getChat().clearMessages(false);
                 });
                 int[] face = projectedTop(c, target);
                 checkHighlight(c.takeScreenshot("wand-target-" + mode + "-" + distance), face, part);
-                c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_LEFT, 3); c.waitTicks(5);
-                c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_RIGHT, 3); c.waitTicks(5);
+                c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_LEFT, 3); c.waitTicks(5);
+                c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_RIGHT, 3); c.waitTicks(5);
                 if (!c.computeOnClient(mc -> part ? ClientState.part() != null
                         && ClientState.part().min().equals(target) && ClientState.part().max().equals(target)
                         : ClientState.zone() != null && ClientState.zone().minX() == target.getX()
@@ -67,7 +67,7 @@ public final class WandTargetGameTest implements FabricClientGameTest {
     /** Project the actual visible block face, independently of the gizmo geometry/rendering. */
     private static int[] projectedTop(ClientGameTestContext c, BlockPos block) {
         return c.computeOnClient(mc -> {
-            var camera = mc.gameRenderer.getMainCamera();
+            var camera = mc.gameRenderer.mainCamera();
             var matrix = camera.getViewRotationProjectionMatrix(new Matrix4f());
             int[] bounds = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
             for (int dx : new int[] {0, 1}) for (int dz : new int[] {0, 1}) {

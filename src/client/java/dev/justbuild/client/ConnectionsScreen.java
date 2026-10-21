@@ -39,7 +39,7 @@ public final class ConnectionsScreen extends ToolScreen {
             button("Next", left + 154, height - 28, 66, () -> { page++; rebuildWidgets(); }).active = page < pages - 1;
         }
         button("Preview connection", left + 224, height - 28, panelWidth - 224,
-                () -> { run("connect " + description.strip()); minecraft.setScreen(null); })
+                () -> { run("connect " + description.strip()); minecraft.gui.setScreen(null); })
                 .primary().active = ClientState.string("connectionA", null) != null && ClientState.string("connectionB", null) != null;
     }
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float tick) {

@@ -26,7 +26,7 @@ import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.BlockHitResult;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Move previews, edit only a floor, protect a manual detail, exchange designs, connect builds, and choose options. */
 public final class AdvancedToolsGameTest implements FabricClientGameTest {
@@ -50,7 +50,7 @@ public final class AdvancedToolsGameTest implements FabricClientGameTest {
         String exported;
         try {
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 BlockPos a = context.computeOnClient(mc -> mc.player.blockPosition().offset(0, 18, 10));
                 BlockPos center = a.east(), b = a.east(20), d = a.east(40);
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
@@ -88,14 +88,14 @@ public final class AdvancedToolsGameTest implements FabricClientGameTest {
                         + " " + (center.getZ() + 0.5) + " 180 90");
                 context.waitTicks(10);
                 context.waitFor(mc -> mc.hitResult instanceof BlockHitResult hit && hit.getBlockPos().equals(center.west()));
-                context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT); context.waitTicks(5);
-                context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT); context.waitTicks(5);
+                context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT); context.waitTicks(5);
+                context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT); context.waitTicks(5);
                 context.waitFor(mc -> ClientState.part() != null);
                 check(context.computeOnClient(mc -> ClientState.part().min().equals(center.west())
                         && ClientState.part().max().equals(center.west())), "part wand lost its height boundary");
                 check(state(world, center.west()).is(Blocks.DIAMOND_BLOCK), "part wand changed a selected block");
                 openCreate(context); context.clickScreenButton("Editing tools"); context.clickScreenButton("Locked areas");
-                check(context.computeOnClient(mc -> mc.screen.children().stream()
+                check(context.computeOnClient(mc -> mc.gui.screen().children().stream()
                         .filter(w -> w instanceof net.minecraft.client.gui.components.Button b1 && b1.getMessage().getString().equals("Lock area"))
                         .map(w -> !((net.minecraft.client.gui.components.Button) w).active).findFirst().orElse(false)),
                         "a blank name enabled the lock action");
@@ -213,7 +213,7 @@ public final class AdvancedToolsGameTest implements FabricClientGameTest {
 
             // The same portable file is available in a new world, without the source record or its owner metadata.
             try (TestSingleplayerContext other = context.worldBuilder().create()) {
-                other.getClientLevel().waitForChunksRender();
+                other.getConnection().waitForChunksRender();
                 context.waitFor(mc -> ClientState.designs().isEmpty());
                 openCreate(context); context.clickScreenButton("Designs"); context.clickScreenButton("Shared library");
                 context.clickScreenButton("Import " + exported);
@@ -252,16 +252,16 @@ public final class AdvancedToolsGameTest implements FabricClientGameTest {
         context.runOnClient(mc -> mc.player.connection.sendCommand("justbuild " + text)); context.waitTicks(8);
     }
     private static void openCreate(ClientGameTestContext context) {
-        context.runOnClient(mc -> mc.setScreen(new JustBuildScreen())); context.tryClickScreenButton("Create"); context.waitTicks(5);
+        context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen())); context.tryClickScreenButton("Create"); context.waitTicks(5);
     }
-    private static void close(ClientGameTestContext context) { context.runOnClient(mc -> mc.setScreen(null)); }
+    private static void close(ClientGameTestContext context) { context.runOnClient(mc -> mc.gui.setScreen(null)); }
     private static void text(ClientGameTestContext context, String label, String value) {
-        context.runOnClient(mc -> ((EditBox) mc.screen.children().stream().filter(w -> w instanceof EditBox e
+        context.runOnClient(mc -> ((EditBox) mc.gui.screen().children().stream().filter(w -> w instanceof EditBox e
                 && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(value));
     }
     private static void screenshotWorld(ClientGameTestContext context, String name) {
-        context.runOnClient(mc -> mc.options.hideGui = true); context.waitTicks(3); context.takeScreenshot(name);
-        context.runOnClient(mc -> mc.options.hideGui = false);
+        context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true)); context.waitTicks(3); context.takeScreenshot(name);
+        context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
     }
     private void awaitCalls(ClientGameTestContext context, int count) {
         for (int i = 0; i < 150 && calls.get() < count; i++) context.waitTicks(5);

@@ -47,7 +47,7 @@ final class MaterialPickerScreen extends ToolScreen {
         visible = filtered.subList(Math.min(page * count, filtered.size()), Math.min((page + 1) * count, filtered.size()));
         for (int i = 0; i < visible.size(); i++) {
             var choice = visible.get(i); int col = i % 2, row = i / 2;
-            button("   " + font.plainSubstrByWidth(choice.label(), half - 40), left + col * (half + 4), 66 + row * 24, half, () -> { choose.accept(choice.id()); if (minecraft.screen == this) onClose(); })
+            button("   " + font.plainSubstrByWidth(choice.label(), half - 40), left + col * (half + 4), 66 + row * 24, half, () -> { choose.accept(choice.id()); if (minecraft.gui.screen() == this) onClose(); })
                     .setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(choice.id())));
         }
         int third = (panelWidth - 8) / 3;

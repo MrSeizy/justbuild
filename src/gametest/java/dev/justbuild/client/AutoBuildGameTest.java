@@ -42,7 +42,7 @@ public final class AutoBuildGameTest implements FabricClientGameTest {
             config.creativeDirection = false;
             new ConfigStore(file).save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition().above(10));
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 world.getServer().runOnServer(server -> {

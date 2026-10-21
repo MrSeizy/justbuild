@@ -24,7 +24,8 @@ final class ServerAiScreen extends ToolScreen {
             boolean selected = policy.equals(current);
             var choice = button((selected ? "★ " : "") + LABELS[i], left, 34 + i * 44, panelWidth,
                     () -> run("playerai " + policy));
-            choice.active = ClientState.manage() && !selected;
+            choice.active = ClientState.manage();
+            if (selected) choice.primary().current();
             choice.setTooltip(Tooltip.create(Component.literal(DESCRIPTIONS[i]
                     + " The singleplayer owner, LAN host, and console always use the server's profile.")));
         }

@@ -18,7 +18,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.input.KeyEvent;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Real widgets and network dispatch: multiline text, per-build drafts, reusable prompts and all request modes. */
 public final class PromptEditorGameTest implements FabricClientGameTest {
@@ -36,43 +36,43 @@ public final class PromptEditorGameTest implements FabricClientGameTest {
             config.replaceProfiles(List.of(profile), "Stub"); config.detail = "quick"; config.creativeDirection = false; config.previewAbove = 0;
             new ConfigStore(configFile).save(config);
             try (var world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 context.runOnClient(mc -> {
                     var parent = new JustBuildScreen();
-                    mc.setScreen(new PromptEditorScreen(parent, null, null, 1, () -> {}));
-                    editor(mc.screen).setValue(LONG);
-                    var widget = editor(mc.screen);
-                    widget.keyPressed(new KeyEvent(GLFW.GLFW_KEY_HOME, 0, 0));
-                    mc.screen.resize(320, 240);
-                    check(editor(mc.screen).getValue().equals(LONG) && ((dev.justbuild.mixin.client.MultiLineEditBoxAccessor) editor(mc.screen)).justbuild$textField().cursor()
+                    mc.gui.setScreen(new PromptEditorScreen(parent, null, null, 1, () -> {}));
+                    editor(mc.gui.screen()).setValue(LONG);
+                    var widget = editor(mc.gui.screen());
+                    widget.keyPressed(new KeyEvent(InputConstants.KEY_HOME, InputConstants.KEYCODE_HOME, 0));
+                    mc.gui.screen().resize(320, 240);
+                    check(editor(mc.gui.screen()).getValue().equals(LONG) && ((dev.justbuild.mixin.client.MultiLineEditBoxAccessor) editor(mc.gui.screen())).justbuild$textField().cursor()
                             == ((dev.justbuild.mixin.client.MultiLineEditBoxAccessor) widget).justbuild$textField().cursor(), "resize lost text or cursor");
                     String key = PromptDrafts.key(null, null);
                     check(PromptDrafts.get(key).equals(LONG), "new-build draft missing");
                     PromptDrafts.put(PromptDrafts.key("0123abcd", null), "A different building");
                     check(PromptDrafts.get(key).equals(LONG), "one build replaced another's draft");
                     check(!RelaySeen.snapshot().requests().contains(LONG), "typing armed a relay request");
-                    var expanded = mc.screen;
+                    var expanded = mc.gui.screen();
                     expanded.onClose();
-                    var compact = mc.screen.children().stream().filter(net.minecraft.client.gui.components.EditBox.class::isInstance)
+                    var compact = mc.gui.screen().children().stream().filter(net.minecraft.client.gui.components.EditBox.class::isInstance)
                             .map(net.minecraft.client.gui.components.EditBox.class::cast).filter(e -> e.getMessage().getString().equals("Request")).findFirst().orElseThrow();
                     compact.setFocused(true); compact.charTyped(new net.minecraft.client.input.CharacterEvent('!'));
                     check(PromptDrafts.get(key).equals(LONG), "typing in the compact field flattened a multiline draft");
-                    mc.setScreen(expanded);
-                    check(editor(mc.screen).getValue().equals(LONG), "reopening the expanded editor lost line breaks");
+                    mc.gui.setScreen(expanded);
+                    check(editor(mc.gui.screen()).getValue().equals(LONG), "reopening the expanded editor lost line breaks");
                 });
                 context.takeScreenshot("multiline-request-editor");
                 context.clickScreenButton("Save prompt"); context.clickScreenButton("Reuse prompt…");
                 context.clickScreenButton("Build a small marker.");
-                check(context.computeOnClient(mc -> editor(mc.screen).getValue().equals(LONG)), "reusing a prompt changed its text");
+                check(context.computeOnClient(mc -> editor(mc.gui.screen()).getValue().equals(LONG)), "reusing a prompt changed its text");
                 context.clickScreenButton("Send request");
                 context.waitFor(mc -> ClientState.question() != null, 800);
                 check(bodies.getFirst().contains(LONG), "multiline build request was truncated");
                 String question = context.computeOnClient(mc -> ClientState.question());
                 String answer = "Use stone.\n" + "Keep it low and rectangular. ".repeat(70).stripTrailing();
                 context.runOnClient(mc -> {
-                    mc.setScreen(new PromptEditorScreen(new JustBuildScreen(), null, question, 1, () -> {}));
-                    editor(mc.screen).setValue(answer);
-                    mc.screen.keyPressed(new KeyEvent(GLFW.GLFW_KEY_ENTER, 0, GLFW.GLFW_MOD_CONTROL));
+                    mc.gui.setScreen(new PromptEditorScreen(new JustBuildScreen(), null, question, 1, () -> {}));
+                    editor(mc.gui.screen()).setValue(answer);
+                    mc.gui.screen().keyPressed(new KeyEvent(InputConstants.KEY_RETURN, InputConstants.KEYCODE_RETURN, InputConstants.MOD_CONTROL));
                 });
                 context.waitFor(mc -> ClientState.preview() != null, 800);
                 check(bodies.get(1).contains(answer), "long answer did not reach the provider");
@@ -101,7 +101,7 @@ public final class PromptEditorGameTest implements FabricClientGameTest {
                 context.waitTicks(10);
                 check(bodies.size() == 5, "a stale answer reached the provider");
                 context.runOnClient(mc -> { RelaySeen.clear(); check(PromptDrafts.get(PromptDrafts.key("0123abcd", null)).equals("A different building"),
-                        "clearing connection consent erased an unrelated draft"); mc.setScreen(null); });
+                        "clearing connection consent erased an unrelated draft"); mc.gui.setScreen(null); });
             }
             context.runOnClient(mc -> {
                 String unavailable = "A request entered while the server is unavailable";

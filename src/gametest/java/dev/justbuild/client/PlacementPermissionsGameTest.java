@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerConnection;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
@@ -40,8 +40,8 @@ public final class PlacementPermissionsGameTest implements FabricClientGameTest 
             config.blocksPerTick = 1; config.previewAbove = 0;
             new ConfigStore(file).save(config);
             try (TestDedicatedServerContext server = context.worldBuilder().createServer();
-                    TestServerConnection connection = server.connect()) {
-                connection.getClientLevel().waitForChunksRender();
+                    TestDedicatedServerConnection connection = server.connect()) {
+                connection.waitForChunksRender();
                 String name = context.computeOnClient(mc -> mc.player.getName().getString());
                 BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition().above(10));
                 server.runCommand("op " + name);

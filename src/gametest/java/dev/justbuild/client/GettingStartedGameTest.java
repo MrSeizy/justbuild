@@ -11,14 +11,14 @@ import net.minecraft.world.level.block.Blocks;
 public final class GettingStartedGameTest implements FabricClientGameTest {
     @Override public void runTest(ClientGameTestContext c) {
         try (var w = c.worldBuilder().create()) {
-            w.getClientLevel().waitForChunksRender();
+            w.getConnection().waitForChunksRender();
             c.waitFor(mc -> ClientState.known());
-            c.runOnClient(mc -> { var panel = new JustBuildScreen(); mc.setScreen(panel); panel.showCreate(); });
+            c.runOnClient(mc -> { var panel = new JustBuildScreen(); mc.gui.setScreen(panel); panel.showCreate(); });
             c.clickScreenButton("Start your first build →");
             c.waitForScreen(GettingStartedScreen.class);
             c.runOnClient(mc -> {
-                mc.screen.resize(320, 240);
-                for (var child : mc.screen.children()) if (child instanceof AbstractWidget widget)
+                mc.gui.screen().resize(320, 240);
+                for (var child : mc.gui.screen().children()) if (child instanceof AbstractWidget widget)
                     check(widget.getX() >= 0 && widget.getRight() <= 320 && widget.getY() >= 0 && widget.getBottom() <= 240,
                             "Guide widget outside narrow screen");
             });
@@ -28,17 +28,17 @@ public final class GettingStartedGameTest implements FabricClientGameTest {
             c.clickScreenButton("Guide"); c.clickScreenButton("2 · Area");
             c.takeScreenshot("first-build-guide-area");
             c.clickScreenButton("Equip Zone wand");
-            c.waitFor(mc -> mc.screen == null);
-            c.runOnClient(mc -> mc.setScreen(new JustBuildScreen())); c.clickScreenButton("Guide");
+            c.waitFor(mc -> mc.gui.screen() == null);
+            c.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen())); c.clickScreenButton("Guide");
             c.clickScreenButton("3 · Request"); c.takeScreenshot("first-build-guide-request");
             c.clickScreenButton("Write a request");
             check(c.computeOnClient(mc -> ClientState.planning() == null && ClientState.preview() == null), "Guide submitted a request");
             command(c, "autobuild on");
             c.clickScreenButton("Guide"); c.clickScreenButton("4 · Preview");
-            check(c.computeOnClient(mc -> ((GettingStartedScreen) mc.screen).guidance().contains("Auto-build is ON")),
+            check(c.computeOnClient(mc -> ((GettingStartedScreen) mc.gui.screen()).guidance().contains("Auto-build is ON")),
                     "Guide promised a preview while auto-build was enabled");
             c.takeScreenshot("first-build-guide-autobuild");
-            c.runOnClient(mc -> mc.setScreen(null)); command(c, "autobuild off");
+            c.runOnClient(mc -> mc.gui.setScreen(null)); command(c, "autobuild off");
 
             BlockPos at = c.computeOnClient(mc -> mc.player.blockPosition().above(12));
             w.getServer().runOnServer(s -> {
@@ -61,7 +61,7 @@ public final class GettingStartedGameTest implements FabricClientGameTest {
             w.getServer().runCommand("gamemode spectator " + player);
             w.getServer().runCommand("time set day");
             w.getServer().runCommand("tp " + player + " " + (at.getX() - 9) + " " + (at.getY() + 9) + " " + (at.getZ() - 10) + " -42 25");
-            c.waitTicks(12); c.runOnClient(mc -> mc.gui.getChat().clearMessages(true));
+            c.waitTicks(12); c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(true));
             c.takeScreenshot("selected-build-part-protected");
             command(c, "select clear");
             c.waitFor(mc -> ClientState.selectedBounds() == null);

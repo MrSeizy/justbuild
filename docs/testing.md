@@ -1,6 +1,6 @@
 # Verification
 
-Use JDK 25 and the checked-in Gradle wrapper. The unit suite and scripted game tests use local fixtures or stub
+Tests target Minecraft 26.3. Use JDK 25 and the checked-in Gradle wrapper. The unit suite and scripted game tests use local fixtures or stub
 providers; they do not need paid AI accounts. The packaged mod excludes the `gametest` source set.
 
 ## Routine checks

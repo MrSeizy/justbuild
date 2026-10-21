@@ -11,7 +11,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
@@ -171,10 +171,10 @@ final class BuilderBots {
             if (camera.cullFrustum != null && !camera.cullFrustum.isVisible(bounds)) continue;
             var pose = context.poseStack(); pose.pushPose();
             pose.translate(at.x - camera.pos.x, at.y - camera.pos.y, at.z - camera.pos.z);
-            pose.mulPose(Axis.YP.rotationDegrees(bot.previousYaw + Mth.wrapDegrees(bot.yaw - bot.previousYaw) * partial));
+            pose.rotate(Axis.YP.rotationDegrees(bot.previousYaw + Mth.wrapDegrees(bot.yaw - bot.previousYaw) * partial));
             pose.scale(.05f, .05f, .05f);
             model.submit(context, bot.age + partial, bot.walking, bot.hammering,
-                    LevelRenderer.getLightCoords(mc.level, BlockPos.containing(at).above()));
+                    LightCoordsUtil.getLightCoords(mc.level, BlockPos.containing(at).above()));
             pose.popPose(); rendered++;
         }
     }

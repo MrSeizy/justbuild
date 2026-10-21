@@ -50,7 +50,7 @@ public final class RoofTest implements FabricClientGameTest {
         ConfigStore store = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         write(store, stub.getAddress().getPort());
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            singleplayer.getClientLevel().waitForChunksRender();
+            singleplayer.getConnection().waitForChunksRender();
             double[] at = context.computeOnClient(mc -> new double[] {mc.player.getX(), mc.player.getY(),
                     mc.player.getZ(), mc.player.getYRot()});
             String name = context.computeOnClient(mc -> mc.player.getName().getString());

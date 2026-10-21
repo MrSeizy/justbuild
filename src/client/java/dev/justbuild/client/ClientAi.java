@@ -254,9 +254,9 @@ final class ClientAi {
         } else if ((work.review || config.reviewAiResponses)
                 && (output != null || response.tokensIn() != 0 || response.tokensOut() != 0)) {
             Minecraft mc = Minecraft.getInstance();
-            work.screen = new ResponseReviewScreen(mc.screen, LocalProfiles.serverKey(), response,
+            work.screen = new ResponseReviewScreen(mc.gui.screen(), LocalProfiles.serverKey(), response,
                     () -> send(work, response, output), () -> cancel(work));
-            mc.setScreen(work.screen);
+            mc.gui.setScreen(work.screen);
         } else {
             send(work, response, output);
         }

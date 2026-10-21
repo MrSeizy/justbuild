@@ -20,12 +20,12 @@ final class VersionHistoryScreen extends ToolScreen {
             try { date = DateTimeFormatter.ofPattern("MMM d HH:mm").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(version.createdAt())); }
             catch (RuntimeException e) { date = ""; }
             button("v" + version.number() + " · " + date + (version.current() ? " · Current" : " · Preview restore"),
-                    left + 40, 60 + i * 48, panelWidth - 40, () -> { run("history preview " + version.id()); minecraft.setScreen(null); })
+                    left + 40, 60 + i * 48, panelWidth - 40, () -> { run("history preview " + version.id()); minecraft.gui.setScreen(null); })
                     .setTooltip(Tooltip.create(Component.literal(version.request() + "\nPreview changes against the current build. Build it confirms the restore; undo remains available.")));
         }
         int quarter = (panelWidth - 12) / 4;
         button("Back", left, height - 28, quarter, this::onClose);
-        button("Compare", left + quarter + 4, height - 28, quarter, () -> minecraft.setScreen(new FloorPreviewScreen(this)))
+        button("Compare", left + quarter + 4, height - 28, quarter, () -> minecraft.gui.setScreen(new FloorPreviewScreen(this)))
                 .active = ClientState.preview() != null;
         button("Previous", left + 2 * (quarter + 4), height - 28, quarter, () -> { page--; rebuildWidgets(); }).active = page > 0;
         button("Next", left + 3 * (quarter + 4), height - 28, quarter, () -> { page++; rebuildWidgets(); }).active = page < pages - 1;

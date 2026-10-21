@@ -48,7 +48,7 @@ final class ZoneWandInput {
                 extendedCommand = null;
             }
             drawTarget(client);
-            if (client.player == null || client.screen != null) {
+            if (client.player == null || client.gui.screen() != null) {
                 attackHandled = false;
                 useHandled = false;
             } else {
@@ -65,7 +65,7 @@ final class ZoneWandInput {
     }
 
     private static boolean available(Minecraft mc) {
-        return mc.player != null && mc.level != null && mc.screen == null && !mc.player.isSpectator()
+        return mc.player != null && mc.level != null && mc.gui.screen() == null && !mc.player.isSpectator()
                 && ClientState.preview() == null
                 && (ZoneWand.isWand(mc.player.getMainHandItem()) || ZoneWand.isWand(mc.player.getOffhandItem()));
     }

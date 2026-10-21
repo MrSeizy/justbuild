@@ -14,7 +14,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtUtils;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.StairBlock;
@@ -30,6 +29,9 @@ class SchematicCodecTest {
     private static CompoundTag pos(int x, int y, int z) {
         var t = new CompoundTag(); t.putInt("x",x); t.putInt("y",y); t.putInt("z",z); return t;
     }
+    private static CompoundTag paletteEntry(String name) {
+        var tag = new CompoundTag(); tag.putString("Name", name); return tag;
+    }
     private static Map<BlockPos, BlockState> blocks(SchematicCodec.Decoded decoded) throws Exception {
         return PlanPipeline.run(decoded.plan(), BlockPos.ZERO, Direction.NORTH, LevelHeightAccessor.create(-4096,8192),
                 p -> Blocks.AIR.defaultBlockState(), SchematicCodec.MAX_VOLUME).placements();
@@ -37,7 +39,12 @@ class SchematicCodecTest {
     @Test void independentlyPackedLitematicaFixtureSupportsCrossLongEntriesAndNegativeRegionSizes() throws Exception {
         var states = List.of(Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState(), Blocks.GOLD_BLOCK.defaultBlockState(),
                 Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.EAST), Blocks.GLASS.defaultBlockState());
-        var palette = new ListTag(); states.forEach(s -> palette.add(NbtUtils.writeBlockState(s)));
+        var palette = new ListTag();
+        for (String name : List.of("air", "stone", "gold_block", "oak_stairs", "glass")) {
+            palette.add(paletteEntry("minecraft:" + name));
+        }
+        var properties = new CompoundTag(); properties.putString("facing", "east");
+        palette.getCompoundOrEmpty(3).put("Properties", properties);
         var region = new CompoundTag(); region.put("Position", pos(3,2,3)); region.put("Size", pos(-26,1,1));
         region.put("BlockStatePalette", palette);
         // 26 successive three-bit values 0,1,2,3,4,..., packed continuously, least significant bit first.
@@ -85,7 +92,7 @@ class SchematicCodecTest {
         second.put("Position",pos(-5,2,3)); regions.put("Second",second);
         assertEquals(2,blocks(SchematicCodec.decode(root,"litematic","Test",true)).size());
         second.put("Position",pos(0,0,0)); var palette=second.getListOrEmpty("BlockStatePalette");
-        palette.set(2,NbtUtils.writeBlockState(Blocks.GOLD_BLOCK.defaultBlockState()));
+        palette.set(2,paletteEntry("minecraft:gold_block"));
         assertThrows(IOException.class, () -> SchematicCodec.decode(root,"litematic","Test",true));
     }
     @Test void malformedAndUnsupportedDataIsRejectedBeforeBecomingADesign() throws Exception {

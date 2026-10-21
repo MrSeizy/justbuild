@@ -45,8 +45,8 @@ public final class DesignPlacementScreen extends FormScreen {
             rotation = (rotation + 90) % 360;
             b.setMessage(Component.literal("Rotation: " + rotation + "°"));
         }).bounds(left, 34, half, 20).build());
-        Button swap = GlassButton.builder(Component.literal("Swap materials…"), b -> minecraft.setScreen(
-                new MaterialPickerScreen(this, "Block to swap out", false, from -> minecraft.setScreen(
+        Button swap = GlassButton.builder(Component.literal("Swap materials…"), b -> minecraft.gui.setScreen(
+                new MaterialPickerScreen(this, "Block to swap out", false, from -> minecraft.gui.setScreen(
                         new MaterialPickerScreen(this, "Replace " + name(from) + " with…", false, to -> {
                             if (!from.equals(to)) swaps.put(from, to);
                         })))))
@@ -72,10 +72,10 @@ public final class DesignPlacementScreen extends FormScreen {
         folderField.setResponder(value -> folder = value); addRenderableWidget(folderField);
         addRenderableWidget(GlassButton.builder(Component.literal("Save folder"), b -> run("design folder " + design.id()
                 + (folder.isBlank() ? "" : " " + folder.strip()))).bounds(left + panelWidth - 96, fieldY, 96, 20).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Export design"), b -> minecraft.setScreen(new DesignExportScreen(this, design)))
+        addRenderableWidget(GlassButton.builder(Component.literal("Export design"), b -> minecraft.gui.setScreen(new DesignExportScreen(this, design)))
                 .bounds(left, fieldY + 24, half, 20).build());
         addRenderableWidget(GlassButton.builder(Component.literal("Shared library"), b -> {
-            run("design refresh"); minecraft.setScreen(new LibraryImportScreen(this));
+            run("design refresh"); minecraft.gui.setScreen(new LibraryImportScreen(this));
         }).bounds(left + half + 4, fieldY + 24, half, 20).build());
         addRenderableWidget(GlassButton.builder(Component.literal("Back"), b -> onClose())
                 .bounds(left, height - 28, third, 20).build());
@@ -89,7 +89,7 @@ public final class DesignPlacementScreen extends FormScreen {
         }
         addRenderableWidget(GlassButton.builder(Component.literal("Preview copy"), b -> {
             run("design place " + design.id() + " " + rotation + (swaps.isEmpty() ? "" : " " + substitutions()));
-            minecraft.setScreen(null);
+            minecraft.gui.setScreen(null);
         }).bounds(left + panelWidth - third, height - 28, third, 20).primary().build());
     }
 
@@ -109,7 +109,7 @@ public final class DesignPlacementScreen extends FormScreen {
         return font.width(text) <= width ? text : font.plainSubstrByWidth(text, width - font.width("…")) + "…";
     }
 
-    @Override public void onClose() { minecraft.setScreen(parent); }
+    @Override public void onClose() { minecraft.gui.setScreen(parent); }
 
     private void run(String text) { if (minecraft.player != null) minecraft.player.connection.sendCommand("justbuild " + text); }
     void stateChanged() {

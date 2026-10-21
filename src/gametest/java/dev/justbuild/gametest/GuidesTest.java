@@ -37,7 +37,7 @@ public final class GuidesTest implements FabricClientGameTest {
         ConfigStore store = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         write(store, stub.getAddress().getPort());
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            singleplayer.getClientLevel().waitForChunksRender();
+            singleplayer.getConnection().waitForChunksRender();
             context.runOnClient(mc -> mc.player.connection.sendCommand("justbuild a medieval castle with towers, furnished rooms and windows"));
             for (int i = 0; i < 300 && calls.size() < 3; i++) {
                 context.waitTicks(5);

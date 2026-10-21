@@ -17,7 +17,7 @@ public final class GlassGuard implements ClientModInitializer {
     public void onInitializeClient() {
         // AFTER_INIT covers setScreen and resize, but not a screen's own rebuildWidgets() (tabs, paging, state changes).
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> check(screen));
-        ClientTickEvents.END_CLIENT_TICK.register(client -> check(client.screen));
+        ClientTickEvents.END_CLIENT_TICK.register(client -> check(client.gui.screen()));
     }
 
     private static void check(Screen screen) {

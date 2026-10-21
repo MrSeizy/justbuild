@@ -19,7 +19,7 @@ final class ConstraintsScreen extends ToolScreen {
         row("Target floor count (0 = unset)", "floors", floorsDraft, 92, 2);
         row("Allowed block IDs, comma-separated; any = unrestricted", "materials", materialsDraft, 126, 4096);
         int half = (panelWidth - 4) / 2;
-        preserve = button("Preserve selected part", left, 152, half, () -> minecraft.setScreen(new EditingToolsScreen(this, true)));
+        preserve = button("Preserve selected part", left, 152, half, () -> minecraft.gui.setScreen(new EditingToolsScreen(this, true)));
         preserve.active = ClientState.part() != null;
         button("Clear requirements", left + half + 4, 152, half, () -> {
             // Clear this draft now. Text entered after this click must survive the eventual server reply.

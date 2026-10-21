@@ -9,7 +9,7 @@ final class PolygonScreen extends ToolScreen {
     @Override protected void build() {
         int half = (panelWidth - 4) / 2;
         button("Start polygon with wand", left, 70, panelWidth, () -> {
-            run("zone adjust polygon start"); run("zone wand"); minecraft.setScreen(null);
+            run("zone adjust polygon start"); run("zone wand"); minecraft.gui.setScreen(null);
         });
         var draft = ClientState.polygonDraft();
         button("Undo last corner", left, 98, half, () -> run("zone adjust polygon undo"))

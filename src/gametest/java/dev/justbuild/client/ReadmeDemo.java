@@ -36,7 +36,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Opt-in documentation recording, intentionally absent from the normal gametest entrypoints and release JAR. */
 public final class ReadmeDemo implements FabricClientGameTest {
@@ -69,7 +69,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
         HttpServer provider = provider();
         configure(configFile, provider.getAddress().getPort());
         try (TestSingleplayerContext world = c.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             BlockPos base = c.computeOnClient(mc -> mc.player.blockPosition());
             String player = c.computeOnClient(mc -> mc.player.getName().getString());
             prepare(c, world, player, base);
@@ -81,13 +81,13 @@ public final class ReadmeDemo implements FabricClientGameTest {
             c.clickScreenButton("Wand: Zone"); c.waitTicks(8);
             lookDown(c, world, player, base.offset(-14, -1, -14));
             hold(c, "Left-click the first ground corner.", null, 12);
-            c.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT); c.waitTicks(5);
+            c.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT); c.waitTicks(5);
             hold(c, "Corner 1 is set. The block stays intact.", null, 12);
             lookDown(c, world, player, base.offset(14, -1, 14));
             hold(c, "Right-click the opposite corner.", null, 12);
-            c.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT); c.waitTicks(5);
+            c.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT); c.waitTicks(5);
             camera(c, world, player, base, 21, 18, 24);
-            c.runOnClient(mc -> mc.options.hideGui = false);
+            c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
             hold(c, "The wand HUD shows controls, dimensions, and height.", null, 22);
             snapshot(c, "wand-selection");
             PreviewControlsGameTest.runOnLook(c, c.computeOnClient(mc -> SelectionHandles.zoneCornerPosition(ClientState.zone(), 0)));
@@ -97,7 +97,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             hold(c, "Walk to a new spot. Right-click to place; left-click cancels.", null, 22);
             snapshot(c, "corner-relocation");
             PreviewControlsGameTest.click(c); c.waitFor(mc -> !SelectionHandles.moving() && ClientState.zone().minX() == base.getX() - 13);
-            camera(c, world, player, base, 21, 18, 24); c.runOnClient(mc -> mc.options.hideGui = false);
+            camera(c, world, player, base, 21, 18, 24); c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
             hold(c, "The corner moves without opening a menu.", null, 18);
             finish();
 
@@ -243,13 +243,13 @@ public final class ReadmeDemo implements FabricClientGameTest {
             c.clickScreenButton("Start polygon with wand"); c.waitTicks(8);
             for (int[] corner : new int[][]{{-14,-14},{14,-14},{14,0},{9,0},{9,14},{-14,14}}) {
                 lookDown(c, world, player, base.offset(corner[0], -1, corner[1]));
-                c.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT); c.waitTicks(4);
+                c.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT); c.waitTicks(4);
                 hold(c, "Right-click each corner in boundary order.", null, 7);
             }
             open(c, "World"); c.clickScreenButton("Polygon");
             hold(c, "Finish polygon closes the boundary; Undo removes a corner.", "Finish polygon", 20);
             c.clickScreenButton("Finish polygon"); c.waitFor(mc -> ClientState.zone() != null && ClientState.zone().polygon().size() == 6);
-            camera(c, world, player, base, 23, 22, 26); c.runOnClient(mc -> mc.options.hideGui = false);
+            camera(c, world, player, base, 23, 22, 26); c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
             hold(c, "The finished outline follows the polygon, including its notch.", null, 28);
             snapshot(c, "polygon-footprint"); finish();
 
@@ -261,7 +261,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             command(c, "box wand"); command(c, "box 1 " + pos(base.offset(-4, 5, -5)));
             command(c, "box 2 " + pos(base.offset(4, 11, 5)));
             begin("10-named-parts", "SAVE AND REUSE A NAMED PART");
-            c.runOnClient(mc -> mc.options.hideGui = false);
+            c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
             hold(c, "With the roof selected in Box mode, save it for later edits.", null, 22);
             workshop(c); c.clickScreenButton("Named parts");
             type(c, "Part name", "Roof", "Give the selected region a memorable name.");
@@ -271,7 +271,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             command(c, "box clear");
             hold(c, "Select: Roof restores the saved region for another edit.", "Select: Roof", 20);
             c.clickScreenButton("Select: Roof"); c.waitFor(mc -> ClientState.part() != null); close(c);
-            c.runOnClient(mc -> mc.options.hideGui = false);
+            c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
             hold(c, "The purple outline shows the active part boundary.", null, 24); finish();
 
             command(c, "box clear"); emptyHand(c, world);
@@ -314,7 +314,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
         System.out.println("README DEMO: " + clip + " / " + frame + " frames");
     }
     void snapshot(ClientGameTestContext c, String name) {
-        if (c.computeOnClient(mc -> mc.screen != null)) c.getInput().setCursorPos(0, 0);
+        if (c.computeOnClient(mc -> mc.gui.screen() != null)) c.getInput().setCursorPos(0, 0);
         c.waitTicks(4);
         try {
             Path stills = output.resolve("stills"); Files.createDirectories(stills);
@@ -322,10 +322,10 @@ public final class ReadmeDemo implements FabricClientGameTest {
         } catch (Exception e) { throw new AssertionError("Could not save documentation screenshot", e); }
     }
     static boolean hasButton(ClientGameTestContext c, String prefix) {
-        return c.computeOnClient(mc -> mc.screen.children().stream().anyMatch(w -> w instanceof Button b && b.getMessage().getString().startsWith(prefix)));
+        return c.computeOnClient(mc -> mc.gui.screen().children().stream().anyMatch(w -> w instanceof Button b && b.getMessage().getString().startsWith(prefix)));
     }
     static void setField(ClientGameTestContext c, String label, String value) {
-        c.runOnClient(mc -> ((EditBox) mc.screen.children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(value));
+        c.runOnClient(mc -> ((EditBox) mc.gui.screen().children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(value));
     }
     static void emptyHand(ClientGameTestContext c, TestSingleplayerContext world) {
         // Number keys control the spectator menu rather than the hotbar during camera shots.
@@ -335,12 +335,12 @@ public final class ReadmeDemo implements FabricClientGameTest {
     void hold(ClientGameTestContext c, String caption, String highlight, int frames) {
         // Clicks leave the cursor on the clicked button; the top-left corner is clear of the sheet, so nothing looks
         // hovered. Only with a screen open: in the world, moving the cursor turns the camera.
-        if (c.computeOnClient(mc -> mc.screen != null)) c.getInput().setCursorPos(0, 0);
+        if (c.computeOnClient(mc -> mc.gui.screen() != null)) c.getInput().setCursorPos(0, 0);
         for (int i = 0; i < frames; i++) {
             c.waitTicks(2);
             double[] bounds = highlight == null ? null : c.computeOnClient(mc -> {
-                if (mc.screen == null) return null;
-                for (var widget : mc.screen.children()) if (widget instanceof AbstractWidget w && w.getMessage().getString().equals(highlight)) {
+                if (mc.gui.screen() == null) return null;
+                for (var widget : mc.gui.screen().children()) if (widget instanceof AbstractWidget w && w.getMessage().getString().equals(highlight)) {
                     double scale = (double) mc.getWindow().getWidth() / mc.getWindow().getGuiScaledWidth();
                     var r = w instanceof GlassEditBox box ? box.field() : w.getRectangle();
                     return new double[]{r.left() * scale, r.top() * scale, r.width() * scale, r.height() * scale};
@@ -380,25 +380,25 @@ public final class ReadmeDemo implements FabricClientGameTest {
     void type(ClientGameTestContext c, String label, String value, String caption) {
         for (int i = 0; i < value.length(); i += 5) {
             String partial = value.substring(0, Math.min(value.length(), i + 5));
-            c.runOnClient(mc -> ((EditBox) mc.screen.children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(partial));
+            c.runOnClient(mc -> ((EditBox) mc.gui.screen().children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(partial));
             hold(c, caption, label, 1);
         }
         hold(c, caption, label, 12);
     }
     private static void search(ClientGameTestContext c, String text) {
-        c.runOnClient(mc -> ((EditBox) mc.screen.children().stream().filter(w -> w instanceof EditBox).findFirst().orElseThrow()).setValue(text)); c.waitTicks(3);
+        c.runOnClient(mc -> ((EditBox) mc.gui.screen().children().stream().filter(w -> w instanceof EditBox).findFirst().orElseThrow()).setValue(text)); c.waitTicks(3);
     }
     static void chooseMaterial(ClientGameTestContext c, String label) {
-        String actual = c.computeOnClient(mc -> mc.screen.children().stream().filter(w -> w instanceof Button b && b.getMessage().getString().strip().startsWith(label))
+        String actual = c.computeOnClient(mc -> mc.gui.screen().children().stream().filter(w -> w instanceof Button b && b.getMessage().getString().strip().startsWith(label))
                 .map(w -> ((Button) w).getMessage().getString()).findFirst().orElseThrow());
         c.clickScreenButton(actual);
     }
     static void workshop(ClientGameTestContext c) { open(c, "Create"); c.clickScreenButton("Editing tools"); c.clickScreenButton("Workshop"); }
     static void open(ClientGameTestContext c, String tab) {
-        c.runOnClient(mc -> { mc.options.hideGui = false; mc.gui.getChat().clearMessages(false); mc.setScreen(null); });
-        c.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT); c.waitForScreen(JustBuildScreen.class); c.tryClickScreenButton(tab); c.waitTicks(4);
+        c.runOnClient(mc -> { dev.justbuild.client.TestHud.hidden(mc, false); mc.gui.hud.getChat().clearMessages(false); mc.gui.setScreen(null); });
+        c.getInput().pressKey(InputConstants.KEY_RSHIFT); c.waitForScreen(JustBuildScreen.class); c.tryClickScreenButton(tab); c.waitTicks(4);
     }
-    static void close(ClientGameTestContext c) { c.runOnClient(mc -> { mc.setScreen(null); mc.options.hideGui = true; mc.gui.getChat().clearMessages(false); }); c.waitTicks(3); }
+    static void close(ClientGameTestContext c) { c.runOnClient(mc -> { mc.gui.setScreen(null); dev.justbuild.client.TestHud.hidden(mc, true); mc.gui.hud.getChat().clearMessages(false); }); c.waitTicks(3); }
     static void command(ClientGameTestContext c, String command) { c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild " + command)); c.waitTicks(8); }
     static void zone(ClientGameTestContext c, BlockPos at) {
         command(c, "zone 1 " + pos(at.offset(-13, -1, -13))); command(c, "zone 2 " + pos(at.offset(13, -1, 13)));
@@ -409,12 +409,12 @@ public final class ReadmeDemo implements FabricClientGameTest {
         world.getServer().runCommand("tp " + player + " " + (at.getX() + x + .5) + " " + (at.getY() + y) + " " + (at.getZ() + z + .5)
                 + " facing " + (at.getX() + .5) + " " + (at.getY() + 3) + " " + (at.getZ() + .5));
         close(c); c.waitTicks(8);
-        c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+        c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
     }
     private static void lookDown(ClientGameTestContext c, TestSingleplayerContext world, String player, BlockPos at) {
         world.getServer().runCommand("gamemode creative " + player);
         world.getServer().runCommand("tp " + player + " " + (at.getX() + .5) + " " + (at.getY() + 1) + " " + (at.getZ() + .5) + " 0 90");
-        c.runOnClient(mc -> { mc.options.hideGui = false; mc.gui.getChat().clearMessages(false); }); c.waitTicks(8);
+        c.runOnClient(mc -> { dev.justbuild.client.TestHud.hidden(mc, false); mc.gui.hud.getChat().clearMessages(false); }); c.waitTicks(8);
         c.waitFor(mc -> mc.hitResult instanceof BlockHitResult hit && hit.getBlockPos().equals(at));
     }
     static void prepare(ClientGameTestContext c, TestSingleplayerContext world, String player, BlockPos base) {
@@ -435,7 +435,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
                 }
             }
         }); c.waitTicks(20);
-        c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+        c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
     }
     static String cottage(boolean edited) {
         List<Operation> ops = new ArrayList<>();

@@ -7,7 +7,7 @@ import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerConnection;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -23,8 +23,8 @@ public final class ZoneWandPermissionsTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         try (TestDedicatedServerContext server = context.worldBuilder().createServer();
-                TestServerConnection connection = server.connect()) {
-            connection.getClientLevel().waitForChunksRender();
+                TestDedicatedServerConnection connection = server.connect()) {
+            connection.waitForChunksRender();
             String name = context.computeOnClient(mc -> mc.player.getName().getString());
             // Start the denial checks with a non-operator, independent of earlier tests' permission changes.
             server.runCommand("deop " + name);
@@ -61,8 +61,8 @@ public final class ZoneWandPermissionsTest implements FabricClientGameTest {
                     new Vec3(ground.getX() + 20.5, ground.getY() + 1, ground.getZ() + 0.5));
             context.waitFor(mc -> ZoneWandInput.target(mc) != null
                     && ZoneWandInput.target(mc).getLocation().distanceToSqr(mc.player.getEyePosition()) > 100);
-            context.getInput().holdMouseFor(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT, 20);
-            context.getInput().holdMouseFor(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT, 20);
+            context.getInput().holdMouseFor(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 20);
+            context.getInput().holdMouseFor(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT, 20);
             context.waitTicks(5);
             assertNoSelection(context, "a non-operator selected a distant part through the extended input path");
 
@@ -104,7 +104,7 @@ public final class ZoneWandPermissionsTest implements FabricClientGameTest {
             context.getInput().holdShift();
             try {
                 context.waitTicks(2);
-                context.getInput().holdMouseFor(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT, 20);
+                context.getInput().holdMouseFor(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 20);
             } finally { context.getInput().releaseShift(); }
             context.waitTicks(5);
             check(context.computeOnClient(mc -> selected.equals(ClientState.part())),

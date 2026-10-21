@@ -33,7 +33,7 @@ public final class PreviewTest implements FabricClientGameTest {
         ConfigStore store = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         write(store, stub.getAddress().getPort());
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            singleplayer.getClientLevel().waitForChunksRender();
+            singleplayer.getConnection().waitForChunksRender();
             context.runOnClient(mc -> mc.player.connection.sendCommand("justbuild a stone hall"));
             context.waitTicks(60);
             context.takeScreenshot("preview-box");

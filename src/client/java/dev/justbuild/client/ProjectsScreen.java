@@ -19,7 +19,7 @@ final class ProjectsScreen extends ToolScreen {
             var p = projects.get(page * rows + i);
             button((p.id().equals(ClientState.activeProject()) ? "✓ " : "") + p.name() + " · " + p.count() + " builds"
                     + (p.mine() ? "" : " · shared by " + p.ownerName()), left, 76 + i * 24, panelWidth,
-                    () -> { run("project select " + p.id()); minecraft.setScreen(new ProjectDetailsScreen(this, p.id())); });
+                    () -> { run("project select " + p.id()); minecraft.gui.setScreen(new ProjectDetailsScreen(this, p.id())); });
         }
         int quarter = (panelWidth - 12) / 4;
         button("Back", left, height - 28, quarter, this::onClose);

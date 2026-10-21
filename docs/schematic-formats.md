@@ -23,6 +23,7 @@ boundary. Negative dimensions extend from the region position toward the negativ
 using `x + z * width + y * width * length` indexing and unsigned varints. V3 nests its `Schematic` compound and
 `Blocks.Palette`/`Blocks.Data`; v2 uses root `Palette`/`BlockData`.
 
+Litematica palette entries retain their `Name` and `Properties` keys independently of Minecraft's internal NBT format.
 Block states preserve orientation and properties. Imported air is skipped by default; **Include schematic air**
 retains it for intentional clearing. `structure_void` represents unspecified gaps and is skipped. Exports include
 explicit known air and use `structure_void` for unknown cells inside the bounding region. A conflicting overlap

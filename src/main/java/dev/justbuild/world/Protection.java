@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.entity.CampfireBlockEntity;
 import net.minecraft.world.level.block.entity.LecternBlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -48,7 +49,7 @@ public final class Protection {
     /** Non-container block entities that hold something a player put there. */
     static boolean holdsPlayerData(BlockEntity entity) {
         if (entity instanceof SignBlockEntity sign) {
-            return hasText(sign.getFrontText()) || hasText(sign.getBackText());
+            return hasText(sign.getText(SignTextSlot.FRONT)) || hasText(sign.getText(SignTextSlot.BACK));
         }
         if (entity instanceof LecternBlockEntity lectern) {
             return lectern.hasBook();

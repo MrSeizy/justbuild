@@ -40,7 +40,7 @@ public final class PlanningWorkflowGameTest implements FabricClientGameTest {
             config.replaceProfiles(List.of(profile), profile.name); config.detail = "quick"; config.previewAbove = 0;
             config.creativeDirection = false; config.maxQuestions = 0; new ConfigStore(file).save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition().above(12));
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 world.getServer().runOnServer(server -> {
@@ -64,9 +64,9 @@ public final class PlanningWorkflowGameTest implements FabricClientGameTest {
                         "Review did not receive source and candidate images");
                 check(state(world, at).isAir(), "Draft was placed before confirmation");
 
-                context.runOnClient(mc -> mc.setScreen(new WorkshopScreen(new JustBuildScreen())));
+                context.runOnClient(mc -> mc.gui.setScreen(new WorkshopScreen(new JustBuildScreen())));
                 context.clickScreenButton("Materials");
-                context.runOnClient(mc -> ((net.minecraft.client.gui.components.EditBox) mc.screen.children().stream()
+                context.runOnClient(mc -> ((net.minecraft.client.gui.components.EditBox) mc.gui.screen().children().stream()
                         .filter(w -> w instanceof net.minecraft.client.gui.components.EditBox e && e.getMessage().getString().equals("Texture seed"))
                         .findFirst().orElseThrow()).setValue("17"));
                 context.takeScreenshot("planning-texture-controls"); context.clickScreenButton("Preview reroll");

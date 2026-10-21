@@ -76,7 +76,7 @@ public final class CoBuildGameTest implements FabricClientGameTest {
             config.creativeDirection = false;
             new ConfigStore(file).save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition().above(10));
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 UUID owner = context.computeOnClient(mc -> mc.player.getUUID());

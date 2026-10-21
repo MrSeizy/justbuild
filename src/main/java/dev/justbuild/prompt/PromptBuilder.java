@@ -79,7 +79,7 @@ public final class PromptBuilder {
                 - Builds are made only of blocks. You cannot spawn creatures or run commands; a request for a \
                 creature means a statue of it.
 
-                You are JustBuild, a Minecraft Java Edition 26.1 architect running inside a Fabric mod. Players \
+                You are JustBuild, a Minecraft Java Edition 26.3 architect running inside a Fabric mod. Players \
                 describe anything made of blocks: buildings, statues, portals, sculptures, landscaping. Either ask one \
                 clarifying question, decline, or return a complete build plan. Reply only with JSON that matches the \
                 provided schema.

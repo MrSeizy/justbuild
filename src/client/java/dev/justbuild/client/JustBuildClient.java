@@ -15,7 +15,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 /** Client side: the Right Shift key opens the panel; the panel reads state the server pushes and JustBuild chat lines. */
 public final class JustBuildClient implements ClientModInitializer {
@@ -32,13 +31,13 @@ public final class JustBuildClient implements ClientModInitializer {
         WandHud.register();
         BuilderBots.register();
         KeyMapping open = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.justbuild.panel", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY));
+                new KeyMapping("key.justbuild.panel", InputConstants.Type.KEYBOARD, InputConstants.KEY_RSHIFT, CATEGORY));
         panelKey = open;
         // Unbound until the player sets them: act on a waiting preview without opening the panel.
         KeyMapping build = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.justbuild.build", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+                new KeyMapping("key.justbuild.build", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY));
         KeyMapping discard = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.justbuild.discard", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+                new KeyMapping("key.justbuild.discard", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY));
         // Before vanilla handles keys, so a right-click on a floating preview control isn't also a block placement.
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
             if (client.level != null) {
@@ -58,16 +57,16 @@ public final class JustBuildClient implements ClientModInitializer {
                 return;
             }
             while (open.consumeClick()) {
-                if (client.screen == null && client.player != null) {
-                    client.setScreen(new JustBuildScreen());
+                if (client.gui.screen() == null && client.player != null) {
+                    client.gui.setScreen(new JustBuildScreen());
                 }
             }
             while (build.consumeClick()) {
-                if (client.screen == null && client.player != null && ClientState.preview() != null
+                if (client.gui.screen() == null && client.player != null && ClientState.preview() != null
                         && PreviewBox.area(client) != null) client.player.connection.sendCommand("justbuild confirm");
             }
             while (discard.consumeClick()) {
-                if (client.screen == null && client.player != null && ClientState.preview() != null
+                if (client.gui.screen() == null && client.player != null && ClientState.preview() != null
                         && PreviewBox.area(client) != null) client.player.connection.sendCommand("justbuild preview discard");
             }
             PreviewBox.tick(client);
@@ -87,13 +86,13 @@ public final class JustBuildClient implements ClientModInitializer {
         SelectionLines.register();
         ClientPlayNetworking.registerGlobalReceiver(SectionPreviewPayload.TYPE,
                 (payload, context) -> context.client().execute(() -> { FloorPreview.receive(payload);
-                    if (context.client().screen instanceof FloorPreviewScreen floor) floor.stateChanged(); }));
+                    if (context.client().gui.screen() instanceof FloorPreviewScreen floor) floor.stateChanged(); }));
         ClientPlayNetworking.registerGlobalReceiver(GhostPreviewPayload.TYPE,
                 (payload, context) -> context.client().execute(() -> GhostPreview.receive(payload)));
         // Registering these tells the server this game takes previews past GhostPreviewPayload.MAX_CELLS.
         ClientPlayNetworking.registerGlobalReceiver(dev.justbuild.net.LargeSectionPreviewPayload.TYPE,
                 (payload, context) -> context.client().execute(() -> { FloorPreview.receive(payload.section());
-                    if (context.client().screen instanceof FloorPreviewScreen floor) floor.stateChanged(); }));
+                    if (context.client().gui.screen() instanceof FloorPreviewScreen floor) floor.stateChanged(); }));
         ClientPlayNetworking.registerGlobalReceiver(dev.justbuild.net.LargeGhostPreviewPayload.TYPE,
                 (payload, context) -> context.client().execute(() -> GhostPreview.receive(payload.preview())));
         ClientPlayNetworking.registerGlobalReceiver(PreviewPayload.TYPE,
@@ -106,13 +105,13 @@ public final class JustBuildClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(StatePayload.TYPE,
                 (payload, context) -> context.client().execute(() -> {
                     ClientState.update(payload.json());
-                    if (context.client().screen instanceof JustBuildScreen panel) {
+                    if (context.client().gui.screen() instanceof JustBuildScreen panel) {
                         panel.stateChanged();
-                    } else if (context.client().screen instanceof BuildDetailsScreen details) {
+                    } else if (context.client().gui.screen() instanceof BuildDetailsScreen details) {
                         details.stateChanged();
-                    } else if (context.client().screen instanceof ToolScreen tool) {
+                    } else if (context.client().gui.screen() instanceof ToolScreen tool) {
                         tool.stateChanged();
-                    } else if (context.client().screen instanceof DesignPlacementScreen design) {
+                    } else if (context.client().gui.screen() instanceof DesignPlacementScreen design) {
                         design.stateChanged();
                     }
                 }));

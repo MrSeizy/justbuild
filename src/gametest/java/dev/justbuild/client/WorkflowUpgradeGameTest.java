@@ -37,7 +37,7 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
         HttpServer stub = stub(); var config = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         configure(config, stub.getAddress().getPort());
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             BlockPos base = context.computeOnClient(mc -> mc.player.blockPosition().offset(0,18,10));
             String player = context.computeOnClient(mc -> mc.player.getName().getString());
             world.getServer().runOnServer(server -> {
@@ -45,11 +45,11 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
                     server.overworld().setBlock(p,p.getY()==base.getY()-1?Blocks.STONE.defaultBlockState():Blocks.AIR.defaultBlockState(),Block.UPDATE_CLIENTS|Block.UPDATE_KNOWN_SHAPE);
             });
             camera(context,world,player,base); zone(context,base,4); command(context,"zone wand");
-            context.runOnClient(mc -> mc.gui.getChat().clearMessages(false)); context.takeScreenshot("upgrade-wand-hud");
+            context.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false)); context.takeScreenshot("upgrade-wand-hud");
             // Corner relocation stays in-world; height bounds remain available through commands.
             PreviewControlsGameTest.runOnLook(context,context.computeOnClient(mc -> SelectionHandles.zoneCornerPosition(ClientState.zone(),0)));
             PreviewControlsGameTest.click(context); context.waitFor(mc -> SelectionHandles.moving());
-            context.getInput().holdMouseFor(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT, 3);
+            context.getInput().holdMouseFor(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 3);
             context.waitFor(mc -> !SelectionHandles.moving());
             command(context,"zone adjust height " + (base.getY()-1) + " " + (base.getY()+4));
             context.waitFor(mc -> ClientState.zone().maxY()!=null);
@@ -58,7 +58,7 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
             check(context.computeOnClient(mc -> ClientState.constraints().materials().equals(List.of("minecraft:iron_chain"))),
                     "a legacy material ID was not canonicalized");
             command(context,"constraints materials stone,oak_door");
-            context.runOnClient(mc -> mc.setScreen(new ConstraintsScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-build-requirements"); close(context);
+            context.runOnClient(mc -> mc.gui.setScreen(new ConstraintsScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-build-requirements"); close(context);
             // Each flagged draft below also gets one review call, which counts toward the limit: room for two builds.
             command(context,"usage 4 500");
             replies.add(plan("Workflow House",Operation.fill("stone",new Cell(-2,0,-2),new Cell(2,0,2),false),
@@ -72,9 +72,9 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
             check(!context.computeOnClient(mc -> ClientState.flag("qualityUndo")),"repair bypassed a new container");
             check(state(world,obstruction).is(Blocks.BARREL),"repair changed a live container");
             world.getServer().runOnServer(server -> server.overworld().setBlock(obstruction,Blocks.AIR.defaultBlockState(),Block.UPDATE_CLIENTS|Block.UPDATE_KNOWN_SHAPE));
-            context.runOnClient(mc -> mc.setScreen(new QualityScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-actionable-quality-check");
+            context.runOnClient(mc -> mc.gui.setScreen(new QualityScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-actionable-quality-check");
             context.clickScreenButton("Highlight location"); context.waitTicks(3);
-            context.runOnClient(mc -> mc.gui.getChat().clearMessages(false)); context.takeScreenshot("upgrade-quality-location");
+            context.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false)); context.takeScreenshot("upgrade-quality-location");
             command(context,"quality repair "+issue); context.waitFor(mc -> ClientState.flag("qualityUndo"));
             check(state(world,base).isAir(),"repair suggestion placed without confirmation");
             check(context.computeOnClient(mc -> !FloorPreview.blocks().containsKey(obstruction)),"doorway suggestion did not remove the obstruction from the model");
@@ -96,7 +96,7 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
             check(record(world,id).zone().equals(savedZone) && context.computeOnClient(mc -> ClientState.zone().equals(savedZone)),
                     "cancelling a polygon changed the saved area");
             command(context,"box 1 "+pos(base)); command(context,"box 2 "+pos(base.offset(1,2,1)));
-            context.runOnClient(mc -> mc.setScreen(new NamedPartsScreen(new JustBuildScreen())));
+            context.runOnClient(mc -> mc.gui.setScreen(new NamedPartsScreen(new JustBuildScreen())));
             text(context,"Part name","Kitchen"); context.clickScreenButton("Save part"); context.waitFor(mc -> ClientState.namedParts().size()==1);
             context.takeScreenshot("upgrade-named-parts"); close(context); command(context,"box clear"); command(context,"box select Kitchen");
             check(context.computeOnClient(mc -> ClientState.part().max().equals(base.offset(1,2,1))),"saved part did not restore its box");
@@ -105,19 +105,19 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
             command(context,"box clear"); command(context,"materials replace minecraft:stone minecraft:gold_block");
             check(context.computeOnClient(mc -> ClientState.preview()==null),"local edit bypassed the allowed-material limit");
             command(context,"constraints materials any"); command(context,"materials replace minecraft:stone minecraft:gold_block"); preview(context);
-            context.runOnClient(mc -> mc.setScreen(new FloorPreviewScreen(new JustBuildScreen()))); context.clickScreenButton("Before");
+            context.runOnClient(mc -> mc.gui.setScreen(new FloorPreviewScreen(new JustBuildScreen()))); context.clickScreenButton("Before");
             check(context.computeOnClient(mc -> FloorPreview.blocks().get(base).is(Blocks.STONE)),"before view is not the current world");
             context.takeScreenshot("upgrade-comparison-before"); context.clickScreenButton("After");
             check(context.computeOnClient(mc -> FloorPreview.blocks().get(base).is(Blocks.GOLD_BLOCK)),"after view is not the proposed result");
             context.clickScreenButton("Filter: all"); context.clickScreenButton("Filter: added");
             check(context.computeOnClient(mc -> GhostPreview.filter()==GhostPreview.Filter.REPLACED),"change filter did not cycle");
             context.takeScreenshot("upgrade-comparison-replacements"); close(context); command(context,"confirm"); awaitBlock(context,world,base,Blocks.GOLD_BLOCK);
-            context.runOnClient(mc -> mc.setScreen(new VersionHistoryScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-version-history"); close(context);
+            context.runOnClient(mc -> mc.gui.setScreen(new VersionHistoryScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-version-history"); close(context);
             String original=record(world,id).versions().getFirst().id(); command(context,"history preview "+original); preview(context);
             check(state(world,base).is(Blocks.GOLD_BLOCK),"version restore bypassed preview");
             command(context,"confirm"); awaitBlock(context,world,base,Blocks.STONE); command(context,"undo"); command(context,"undo confirm"); awaitBlock(context,world,base,Blocks.GOLD_BLOCK);
             command(context,"design save Workflow House"); context.waitFor(mc -> ClientState.designs().size()==1);
-            context.runOnClient(mc -> mc.setScreen(new DesignExportScreen(new JustBuildScreen(),ClientState.designs().getFirst())));
+            context.runOnClient(mc -> mc.gui.setScreen(new DesignExportScreen(new JustBuildScreen(),ClientState.designs().getFirst())));
             context.takeScreenshot("upgrade-schematic-export"); context.clickScreenButton("Litematica · .litematic"); context.clickScreenButton("Sponge schematic · .schem");
             context.waitFor(mc -> ClientState.list("libraryFiles").stream().anyMatch(f->f.startsWith("workflow-house-")&&f.endsWith(".schem")));
             var files=context.computeOnClient(mc -> ClientState.list("libraryFiles").stream().filter(f->f.startsWith("workflow-house-")).toList());
@@ -125,7 +125,7 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
             for(String file:files) command(context,"design import "+file+" air");
             check(context.computeOnClient(mc -> ClientState.designs().size())==3,"schematics did not import into the design library");
             check(calls.get()==1,"local tools unexpectedly called AI");
-            context.runOnClient(mc -> mc.setScreen(new WorkshopScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-workshop");
+            context.runOnClient(mc -> mc.gui.setScreen(new WorkshopScreen(new JustBuildScreen()))); context.takeScreenshot("upgrade-workshop");
             context.clickScreenButton("AI usage"); context.waitTicks(25); context.takeScreenshot("upgrade-ai-usage");
             // The blocked doorway made AI review "When needed" send one review call after the draft.
             check(context.computeOnClient(mc -> ClientState.usage().calls()==2 && ClientState.usage().reviews()==1
@@ -140,9 +140,9 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
             command(context,"build an unfinished polygon marker");
             check(calls.get()==2, "an empty polygon allowed a provider call");
             BlockPos corner=base.east(20).offset(-3,-1,-3); command(context,"zone 1 "+pos(corner)); command(context,"zone 2 "+pos(corner.east(6))); command(context,"zone 2 "+pos(corner.south(6)));
-            context.runOnClient(mc -> mc.setScreen(new PolygonScreen(new JustBuildScreen())));
+            context.runOnClient(mc -> mc.gui.setScreen(new PolygonScreen(new JustBuildScreen())));
             context.takeScreenshot("upgrade-polygon-controls"); context.clickScreenButton("Finish polygon"); context.waitFor(mc -> ClientState.zone()!=null && ClientState.zone().polygon().size()==3); close(context);
-            camera(context,world,player,base.east(20)); command(context,"zone wand"); context.runOnClient(mc -> mc.gui.getChat().clearMessages(false)); context.takeScreenshot("upgrade-polygon-outline");
+            camera(context,world,player,base.east(20)); command(context,"zone wand"); context.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false)); context.takeScreenshot("upgrade-polygon-outline");
             command(context,"build a polygon notch test marker"); context.waitTicks(30);
             check(calls.get()==3 && context.computeOnClient(mc -> ClientState.preview()==null),"polygon boundary did not reject an outside block");
             check(state(world,base.east(22).south(2)).isAir(),"rejected polygon plan touched the world");
@@ -157,8 +157,8 @@ public final class WorkflowUpgradeGameTest implements FabricClientGameTest {
     private static String pos(BlockPos p) { return p.getX()+" "+p.getY()+" "+p.getZ(); }
     private static void zone(ClientGameTestContext c,BlockPos p,int r) { command(c,"zone 1 "+pos(p.offset(-r,-1,-r))); command(c,"zone 2 "+pos(p.offset(r,-1,r))); }
     private static void command(ClientGameTestContext c,String command) { c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild "+command)); c.waitTicks(8); }
-    private static void close(ClientGameTestContext c) { c.runOnClient(mc -> mc.setScreen(null)); }
-    private static void text(ClientGameTestContext c,String label,String value) { c.runOnClient(mc -> ((EditBox)mc.screen.children().stream().filter(w->w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(value)); }
+    private static void close(ClientGameTestContext c) { c.runOnClient(mc -> mc.gui.setScreen(null)); }
+    private static void text(ClientGameTestContext c,String label,String value) { c.runOnClient(mc -> ((EditBox)mc.gui.screen().children().stream().filter(w->w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(value)); }
     private static void preview(ClientGameTestContext c) { c.waitFor(mc -> ClientState.preview()!=null,1200); c.waitTicks(5); }
     private static BlockState state(TestSingleplayerContext w,BlockPos p) { return w.getServer().computeOnServer(s->s.overworld().getBlockState(p)); }
     private static void awaitBlock(ClientGameTestContext c,TestSingleplayerContext w,BlockPos p,Block b) { for(int i=0;i<100&&!state(w,p).is(b);i++) c.waitTicks(5); check(state(w,p).is(b),"wrong block at "+p+": "+state(w,p)); c.waitTicks(10); }

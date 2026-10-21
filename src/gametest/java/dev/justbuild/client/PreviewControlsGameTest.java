@@ -23,7 +23,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFW;
+
 
 /** The controls floating at a preview: right-click one to switch options, move, rotate, and build, without a tool. */
 public final class PreviewControlsGameTest implements FabricClientGameTest {
@@ -52,7 +52,7 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
             config.creativeDirection = false;
             new ConfigStore(file).save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition().above(10));
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 world.getServer().runOnServer(server -> {
@@ -74,7 +74,7 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
                 checkBaseLayout(context);
                 context.takeScreenshot("preview-world-controls");
                 // The panel offers Checks and Floors while a preview waits (Preview tools is gone).
-                context.runOnClient(mc -> mc.setScreen(new JustBuildScreen()));
+                context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
                 context.tryClickScreenButton("Create");
                 context.waitTicks(5);
                 context.takeScreenshot("glass-create-preview-waiting");
@@ -90,33 +90,33 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
                 context.tryClickScreenButton("1 · Marker");
                 context.waitFor(mc -> ClientState.preview().option() == 0, 200);
                 context.runOnClient(mc -> {
-                    mc.screen.resize(320, 240);
-                    for (var child : mc.screen.children()) if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget)
+                    mc.gui.screen().resize(320, 240);
+                    for (var child : mc.gui.screen().children()) if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget)
                         check(widget.getX() >= 0 && widget.getRight() <= 320 && widget.getY() >= 0 && widget.getBottom() <= 240,
                                 "preview control outside narrow screen: " + widget.getMessage().getString());
-                    var before = mc.screen.children().stream().filter(c -> c instanceof GlassButton b && b.getMessage().getString().equals("Before"))
+                    var before = mc.gui.screen().children().stream().filter(c -> c instanceof GlassButton b && b.getMessage().getString().equals("Before"))
                             .findFirst().orElseThrow();
-                    mc.screen.setFocused(before);
-                    mc.screen.keyPressed(new net.minecraft.client.input.KeyEvent(GLFW.GLFW_KEY_ENTER, 0, 0));
+                    mc.gui.screen().setFocused(before);
+                    mc.gui.screen().keyPressed(new net.minecraft.client.input.KeyEvent(InputConstants.KEY_RETURN, InputConstants.KEYCODE_RETURN, 0));
                     check(GhostPreview.before(), "keyboard could not activate Before");
                     GhostPreview.before(false); GhostPreview.filter(GhostPreview.Filter.ALL);
                 });
                 context.takeScreenshot("preview-summary-narrow");
-                check(context.computeOnClient(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof GlassButton b
+                check(context.computeOnClient(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof GlassButton b
                         && b.getMessage().getString().equals("Floors"))), "the Create tab has no Floors button while a preview waits");
-                check(context.computeOnClient(mc -> mc.screen.children().stream().noneMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
+                check(context.computeOnClient(mc -> mc.gui.screen().children().stream().noneMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
                         && b.getMessage().getString().equals("Preview tools"))), "the Create tab still has Preview tools");
-                context.runOnClient(mc -> mc.setScreen(null));
+                context.runOnClient(mc -> mc.gui.setScreen(null));
                 context.waitTicks(3);
                 // The whole layout from a few steps back, without chat in the way.
                 world.getServer().runCommand("tp " + player + " " + (at.getX() + 0.5) + " " + at.getY() + " "
                         + (at.getZ() + 7.5) + " 180 0");
                 context.waitTicks(5);
                 runOnLook(context, Vec3.atCenterOf(at).add(0, 1.5, 0));
-                context.runOnClient(mc -> mc.options.hideGui = true);
+                context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
                 context.waitTicks(3);
                 context.takeScreenshot("preview-world-controls-overview");
-                context.runOnClient(mc -> mc.options.hideGui = false);
+                context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
                 world.getServer().runCommand("tp " + player + " " + (at.getX() + 0.5) + " " + at.getY() + " "
                         + (at.getZ() + 3.0) + " 180 10");
                 context.waitTicks(5);
@@ -127,7 +127,7 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
                 context.runOnClient(mc -> {
                     ClientState.update("{\"preview\":{\"title\":\"Replacement\",\"movable\":true,\"quality\":[],"
                             + "\"options\":[],\"option\":0,\"position\":\"replacement\"}}");
-                    KeyMapping.click(InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_RIGHT));
+                    KeyMapping.click(InputConstants.Type.MOUSE.getOrCreate(InputConstants.MOUSE_BUTTON_RIGHT));
                     PreviewControls.beforeTick(mc);
                     check(!mc.options.keyUse.consumeClick(), "the stale arrow did not consume its click");
                 });
@@ -259,7 +259,7 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
             context.waitFor(mc -> PreviewControls.hovered() == control, 100);
         } catch (AssertionError e) {
             String seen = context.computeOnClient(mc -> {
-                var camera = mc.gameRenderer.getMainCamera();
+                var camera = mc.gameRenderer.mainCamera();
                 return "camera " + camera.position() + " forward " + camera.forwardVector() + " up " + camera.upVector()
                         + " player look " + mc.player.getViewVector(1f) + " target " + target + " hovered " + PreviewControls.hovered();
             });
@@ -281,7 +281,7 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
 
     /** A right-click as a player makes one: the button stays down for a few ticks, not just a press event. */
     static void click(ClientGameTestContext context) {
-        context.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_RIGHT, 3);
+        context.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_RIGHT, 3);
     }
 
     static void runOnLook(ClientGameTestContext context, Vec3 target) {

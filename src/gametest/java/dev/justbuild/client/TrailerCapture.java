@@ -32,7 +32,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * Opt-in trailer footage, selected by {@code trailer/capture.py} and absent from the normal gametest entrypoints. Every
@@ -158,7 +158,7 @@ public final class TrailerCapture implements FabricClientGameTest {
         }
         // The real Undo takes the robo-chicken back off the hill, slowly enough to watch; the castle stays.
         configure(200); command("reload");
-        c.runOnClient(mc -> { mc.options.hideGui = true; mc.gui.getChat().clearMessages(false); });
+        c.runOnClient(mc -> { dev.justbuild.client.TestHud.hidden(mc, true); mc.gui.hud.getChat().clearMessages(false); });
         shot("a6-robo-undo", 105, REAL, (i, u) -> {
             if (i == 15) c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild undo"));
             if (i == 21) c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild undo confirm"));
@@ -179,7 +179,7 @@ public final class TrailerCapture implements FabricClientGameTest {
         ai.answer(plan("keyboard"));
         command("build build the forgotten giant keyboard");
         c.waitFor(mc -> ClientState.preview() != null, 2400);
-        c.runOnClient(mc -> { mc.options.hideGui = true; mc.gui.getChat().clearMessages(false); });
+        c.runOnClient(mc -> { dev.justbuild.client.TestHud.hidden(mc, true); mc.gui.hud.getChat().clearMessages(false); });
         frozenTime = 2500L;
         shot("a6-keyboard-preview", 120, REAL, (i, u) -> dolly(keyboard.offset(0, 3, 6), keyboard.offset(0, 30, 14),
                 keyboard.offset(0, 1, -12), keyboard.offset(0, 0, -16), u));
@@ -201,7 +201,7 @@ public final class TrailerCapture implements FabricClientGameTest {
         teleport(Vec3.atBottomCenterOf(stand), 180, 25);
         world.getServer().runCommand("time set 23200");
         c.waitTicks(20);
-        c.runOnClient(mc -> { mc.options.hideGui = false; mc.gui.getChat().clearMessages(false); });
+        c.runOnClient(mc -> { dev.justbuild.client.TestHud.hidden(mc, false); mc.gui.hud.getChat().clearMessages(false); });
         // Ground blocks to the north-west, placed in a slow little row.
         // Within creative reach (5 blocks), with a wide lens so the racing sky fills the top of the frame.
         BlockPos[] targets = {stand.offset(-2, -1, -4), stand.offset(-1, -1, -4), stand.offset(0, -1, -4), stand.offset(1, -1, -4), stand.offset(2, -1, -4)};
@@ -217,7 +217,7 @@ public final class TrailerCapture implements FabricClientGameTest {
             if (k == 22) {
                 applyPose(pose, false); c.waitTick();
                 if (c.computeOnClient(mc -> mc.hitResult instanceof BlockHitResult hit && hit.getBlockPos().equals(targets[n])))
-                    c.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+                    c.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT);
             }
             return new Pose(null, pose.yaw(), pose.pitch());
         });
@@ -227,23 +227,23 @@ public final class TrailerCapture implements FabricClientGameTest {
     // Act 2: the panel, the request and the press of Build, then Cobble hammering while the plan is held.
     private void panel(BlockPos chicken) throws Exception {
         command("zone 1 " + pos(chicken.offset(-24, -1, -24))); command("zone 2 " + pos(chicken.offset(24, -1, 24)));
-        c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+        c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
         frozenTime = 11600L;
         var answer = ai.answer(plan("cluckotron"), true);
         Vec3 eye = c.computeOnClient(mc -> mc.player.getEyePosition());
         Pose view = look(eye, Vec3.atCenterOf(chicken.offset(0, 6, 0)));
         int typeFrom = 18, typeTo = typeFrom + CHICKEN_PROMPT.length() * 2 / 3, click = typeTo + 22;
         shot("a2-panel", click + 16, REAL, (i, u) -> {
-            if (i == 6) { c.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT); c.waitForScreen(JustBuildScreen.class); c.tryClickScreenButton("Create"); }
+            if (i == 6) { c.getInput().pressKey(InputConstants.KEY_RSHIFT); c.waitForScreen(JustBuildScreen.class); c.tryClickScreenButton("Create"); }
             if (i >= typeFrom && i <= typeTo) {
                 String partial = CHICKEN_PROMPT.substring(0, Math.min(CHICKEN_PROMPT.length(), (int) Math.ceil((i - typeFrom + 1) * 1.5)));
                 c.runOnClient(mc -> field(mc, "Request").setValue(partial));
             }
             if (i == click) c.clickScreenButton("Build");
-            if (i == click + 12) c.runOnClient(mc -> mc.setScreen(null));
+            if (i == click + 12) c.runOnClient(mc -> mc.gui.setScreen(null));
             return view;
         });
-        c.runOnClient(mc -> mc.options.hideGui = true);
+        c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
         world.getServer().runCommand("gamemode spectator " + player);
         if (!answer.started().await(30, java.util.concurrent.TimeUnit.SECONDS)) throw new AssertionError("planning did not start");
         c.waitFor(mc -> BuilderBots.hammering(id) && BuilderBots.position(id) != null, 600);
@@ -293,10 +293,10 @@ public final class TrailerCapture implements FabricClientGameTest {
         applyPose(wide, true);
         int[] stage = {0};
         shot("a5-undo", 165, REAL, (i, u) -> {
-            if (i == 24) { c.runOnClient(mc -> mc.options.hideGui = false); c.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+            if (i == 24) { c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false)); c.getInput().pressKey(InputConstants.KEY_RSHIFT);
                 c.waitForScreen(JustBuildScreen.class); c.tryClickScreenButton("Create"); }
             if (i == 44) { ReadmeDemo.chooseMaterial(c, "Undo"); c.waitFor(mc -> ClientState.undoWaiting() != null, 200); }
-            if (i == 66) { c.clickScreenButton("Confirm undo"); c.runOnClient(mc -> { mc.setScreen(null); mc.options.hideGui = true; }); stage[0] = 1; }
+            if (i == 66) { c.clickScreenButton("Confirm undo"); c.runOnClient(mc -> { mc.gui.setScreen(null); dev.justbuild.client.TestHud.hidden(mc, true); }); stage[0] = 1; }
             return wide;
         });
         c.waitFor(mc -> ClientState.placing() == null, 2400);
@@ -311,11 +311,11 @@ public final class TrailerCapture implements FabricClientGameTest {
         shot("a6-score-before", 60, REAL, (i, u) -> look(board.add(5 - 2 * u, -2, 26 - 3 * u), board));
         command("box wand");
         command("box 1 " + pos(stadium.offset(-10, 6, -47))); command("box 2 " + pos(stadium.offset(9, 14, -45)));
-        c.runOnClient(mc -> mc.options.hideGui = true);
+        c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
         ai.answer(plan("scoreboard"));
         int typeTo = 10 + SCORE_PROMPT.length(), click = typeTo + 14;
         shot("a6-score-type", click + 10, REAL, (i, u) -> {
-            if (i == 2) { c.runOnClient(mc -> mc.options.hideGui = false); c.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+            if (i == 2) { c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false)); c.getInput().pressKey(InputConstants.KEY_RSHIFT);
                 c.waitForScreen(JustBuildScreen.class); c.tryClickScreenButton("Create"); }
             if (i >= 10 && i <= typeTo) {
                 String partial = SCORE_PROMPT.substring(0, Math.min(SCORE_PROMPT.length(), i - 9));
@@ -324,7 +324,7 @@ public final class TrailerCapture implements FabricClientGameTest {
             if (i == click) c.clickScreenButton("Apply");
             return close;
         });
-        c.runOnClient(mc -> { mc.setScreen(null); mc.options.hideGui = true; });
+        c.runOnClient(mc -> { mc.gui.setScreen(null); dev.justbuild.client.TestHud.hidden(mc, true); });
         c.waitFor(mc -> ClientState.preview() != null, 1200);
         command("confirm");
         shot("a6-score-after", 90, REAL, (i, u) -> look(board.add(3 - 2 * u, -2, 23 - 3 * u), board));
@@ -449,7 +449,7 @@ public final class TrailerCapture implements FabricClientGameTest {
 
     /** Waits for chunk meshes after teleports and terrain edits; Sodium can take a while after a big flatten. */
     private void settle() {
-        try { world.getClientLevel().waitForChunksRender(false, 2400); }
+        try { world.getConnection().waitForChunksRender(false, 2400); }
         catch (AssertionError e) { System.out.println("TRAILER: chunks still rendering; continuing"); }
     }
 
@@ -500,11 +500,11 @@ public final class TrailerCapture implements FabricClientGameTest {
 
     private void command(String command) {
         c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild " + command)); c.waitTicks(8);
-        c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+        c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
     }
 
     private static EditBox field(net.minecraft.client.Minecraft mc, String label) {
-        return (EditBox) mc.screen.children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label))
+        return (EditBox) mc.gui.screen().children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label))
                 .findFirst().orElseThrow(() -> new AssertionError("No field " + label));
     }
 

@@ -35,7 +35,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         film = new ReadmeDemo(captureDirectory());
         try (DemoFixture fixture = new DemoFixture(); TestSingleplayerContext scene = c.worldBuilder().create()) {
             ai = fixture; world = scene;
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             base = c.computeOnClient(mc -> mc.player.blockPosition());
             player = c.computeOnClient(mc -> mc.player.getName().getString());
             prepare(c, world, player, base); camera(c, world, player, base, 10, 8, 14);
@@ -63,10 +63,10 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         c.clickScreenButton("Manage profiles…");
         setField(c, "Model (required)", "missing-model");
         hold(c, "Test the unsaved draft before using it for a build.", "Test connection", 18);
-        c.clickScreenButton("Test connection"); c.waitFor(mc -> hasResult(mc.screen), 600);
+        c.clickScreenButton("Test connection"); c.waitFor(mc -> hasResult(mc.gui.screen()), 600);
         hold(c, "A failed model check explains what to fix.", "Back to profiles", 25);
         c.clickScreenButton("Back to profiles"); setField(c, "Model (required)", "example-plan");
-        c.clickScreenButton("Test connection"); c.waitFor(mc -> hasResult(mc.screen), 600);
+        c.clickScreenButton("Test connection"); c.waitFor(mc -> hasResult(mc.gui.screen()), 600);
         hold(c, "The corrected model returns valid JSON. No blocks change.", "Back to profiles", 22);
         film.snapshot(c, "profile-test"); c.clickScreenButton("Back to profiles"); c.clickScreenButton("Save");
         c.waitForScreen(JustBuildScreen.class);
@@ -82,19 +82,19 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         c.clickScreenButton("↗");
         String request = "Build a cozy village cottage.\nUse stone walls and a steep spruce roof.\nFace the entrance toward the path.\nLeave room for a bed, desk, and warm lighting.";
         for (String line : request.split("\n")) {
-            c.runOnClient(mc -> { var edit = editor(mc.screen); edit.setValue(edit.getValue().isEmpty() ? line : edit.getValue() + "\n" + line); });
+            c.runOnClient(mc -> { var edit = editor(mc.gui.screen()); edit.setValue(edit.getValue().isEmpty() ? line : edit.getValue() + "\n" + line); });
             hold(c, "Enter adds a line. Ctrl+Enter sends when you are ready.", null, 8);
         }
         film.snapshot(c, "prompt-editor"); hold(c, "Save prompt keeps this text for another build.", "Save prompt", 20);
-        c.clickScreenButton("Save prompt"); c.runOnClient(mc -> editor(mc.screen).setValue(""));
+        c.clickScreenButton("Save prompt"); c.runOnClient(mc -> editor(mc.gui.screen()).setValue(""));
         c.clickScreenButton("Reuse prompt…"); hold(c, "Choose saved text, then change it before sending.", request.lines().findFirst().orElseThrow(), 20);
         c.clickScreenButton(request.lines().findFirst().orElseThrow());
-        check(c.computeOnClient(mc -> editor(mc.screen).getValue().equals(request)), "Saved prompt did not return");
+        check(c.computeOnClient(mc -> editor(mc.gui.screen()).getValue().equals(request)), "Saved prompt did not return");
         hold(c, "Reusing a prompt does not send an AI request.", "Send request", 18);
         c.clickScreenButton("Back"); close(c); open(c, "Create"); c.clickScreenButton("↗");
-        check(c.computeOnClient(mc -> editor(mc.screen).getValue().equals(request)), "Draft was not retained");
+        check(c.computeOnClient(mc -> editor(mc.gui.screen()).getValue().equals(request)), "Draft was not retained");
         hold(c, "Your draft remains when you close and reopen the panel.", "Back", 22);
-        c.runOnClient(mc -> editor(mc.screen).setValue("")); c.clickScreenButton("Back"); close(c); finish();
+        c.runOnClient(mc -> editor(mc.gui.screen()).setValue("")); c.clickScreenButton("Back"); close(c); finish();
     }
 
     private String alternatives(ClientGameTestContext c) {
@@ -160,7 +160,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         camera(c, world, player, at, 10, 7, 14);
         film.begin("16-adopt-and-furnish", "ADD AN EXISTING BUILD AND FURNISH IT");
         command(c, "box wand"); command(c, "box 1 " + pos(at.offset(-3,0,-4))); command(c, "box 2 " + pos(at.offset(3,5,4)));
-        c.runOnClient(mc -> mc.options.hideGui = false);
+        c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
         hold(c, "Use Box mode to surround an existing building, including its roof.", null, 24);
         workshopHere(c); c.clickScreenButton("Add existing build"); setField(c, "Building name", "Village Workshop");
         hold(c, "Add build saves the original without changing its blocks.", "Add build and save original", 22);
@@ -197,7 +197,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         c.clickScreenButton("Preserve selected part"); setField(c,"Locked area name","Workshop roof");
         hold(c,"Give this selected roof a name, then lock it.","Lock area",22);
         c.clickScreenButton("Lock area"); c.waitFor(mc -> !ClientState.locks().isEmpty()); close(c);
-        c.runOnClient(mc -> mc.options.hideGui=false);
+        c.runOnClient(mc -> TestHud.hidden(mc, false));
         hold(c,"The blue outline marks blocks protected from later edits.",null,26); film.snapshot(c,"protected-roof");
         open(c,"Create"); c.clickScreenButton("Editing tools"); c.clickScreenButton("Locked areas");
         hold(c,"Unlock the named area when you want to change it again.","Unlock: Workshop roof",22);
@@ -215,11 +215,11 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         c.clickScreenButton("View markers");
         hold(c,"Inspect the highlighted doorway and any route warnings.",null,20);
         open(c,"Create"); chooseMaterial(c,"Checks (");
-        for(int i=0;i<30 && !c.computeOnClient(mc -> buttonEnabled(mc.screen,"Preview repair"));i++) c.clickScreenButton("Next");
+        for(int i=0;i<30 && !c.computeOnClient(mc -> buttonEnabled(mc.gui.screen(),"Preview repair"));i++) c.clickScreenButton("Next");
         hold(c,"Checks explains a possible obstruction and offers a local repair.","Highlight location",26);
         c.clickScreenButton("Highlight location"); hold(c,"Highlight location marks the exact place to inspect.",null,22);
         open(c,"Create"); chooseMaterial(c,"Checks (");
-        for(int i=0;i<30 && !c.computeOnClient(mc -> buttonEnabled(mc.screen,"Preview repair"));i++) c.clickScreenButton("Next");
+        for(int i=0;i<30 && !c.computeOnClient(mc -> buttonEnabled(mc.gui.screen(),"Preview repair"));i++) c.clickScreenButton("Next");
         c.clickScreenButton("Preview repair"); c.waitFor(mc -> ClientState.flag("qualityUndo"));
         hold(c,"The repair changes only the proposal. Revert is available.","Revert repair suggestion",22);
         film.snapshot(c,"quality-repair"); close(c); open(c,"Create"); c.clickScreenButton("Build it"); close(c); idle(c);
@@ -302,7 +302,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
     private static MultiLineEditBox editor(net.minecraft.client.gui.screens.Screen s) { return s.children().stream().filter(MultiLineEditBox.class::isInstance).map(MultiLineEditBox.class::cast).findFirst().orElseThrow(); }
     private static boolean hasResult(net.minecraft.client.gui.screens.Screen s) { return s != null && s.children().stream().anyMatch(w -> w instanceof Button b && b.getMessage().getString().equals("Back to profiles")); }
     private static boolean buttonEnabled(net.minecraft.client.gui.screens.Screen s,String label) { return s.children().stream().anyMatch(w -> w instanceof Button b && b.active && b.getMessage().getString().equals(label)); }
-    static void clickNth(ClientGameTestContext c,String label,int n) { c.runOnClient(mc -> mc.screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).filter(b -> b.getMessage().getString().equals(label)).skip(n).findFirst().orElseThrow().onPress(null)); c.waitTicks(4); }
+    static void clickNth(ClientGameTestContext c,String label,int n) { c.runOnClient(mc -> mc.gui.screen().children().stream().filter(Button.class::isInstance).map(Button.class::cast).filter(b -> b.getMessage().getString().equals(label)).skip(n).findFirst().orElseThrow().onPress(null)); c.waitTicks(4); }
     private static void check(boolean condition,String text) { if(!condition) throw new AssertionError(text); }
     private void faceBot(ClientGameTestContext c,String id) {
         Vec3 bot=c.computeOnClient(mc -> BuilderBots.position(id)); Vec3 forward=Vec3.atCenterOf(base).subtract(bot).multiply(1,0,1).normalize();

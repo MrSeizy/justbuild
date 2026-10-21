@@ -21,9 +21,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerConnection;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
 import net.fabricmc.loader.api.FabricLoader;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * A player on a real dedicated server plans a build with their own AI. The server runs with playerAi "require", so a
@@ -60,8 +60,8 @@ public final class RelayTest implements FabricClientGameTest {
         java.util.Properties properties = new java.util.Properties();
         properties.setProperty("accepts-transfers", "true");
         try (TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
-                TestServerConnection connection = server.connect()) {
-            connection.getClientLevel().waitForChunksRender();
+                TestDedicatedServerConnection connection = server.connect()) {
+            connection.waitForChunksRender();
             String name = context.computeOnClient(mc -> mc.player.getName().getString());
             server.runOnServer(s -> {
                 var source = s.getPlayerList().getPlayerByName(name).createCommandSourceStack();
@@ -71,15 +71,15 @@ public final class RelayTest implements FabricClientGameTest {
                 JustBuildMod.manager().setPlayerAi(source, "off");
             });
             check(savedPlayerAi(store).equals("require"), "a non-operator changed the server AI policy");
-            context.runOnClient(mc -> mc.setScreen(new JustBuildScreen()));
+            context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
             context.clickScreenButton("Settings");
             context.clickScreenButton("Server AI…");
-            context.waitFor(mc -> mc.screen != null && mc.screen.getTitle().getString().equals("Server AI policy"));
-            check(context.computeOnClient(mc -> mc.screen.children().stream()
+            context.waitFor(mc -> mc.gui.screen() != null && mc.gui.screen().getTitle().getString().equals("Server AI policy"));
+            check(context.computeOnClient(mc -> mc.gui.screen().children().stream()
                     .filter(c -> c instanceof net.minecraft.client.gui.components.Button b && !b.getMessage().getString().equals("Back"))
                     .allMatch(c -> !((net.minecraft.client.gui.components.Button) c).active)),
                     "a non-operator could use the server AI policy controls");
-            context.runOnClient(mc -> mc.setScreen(null));
+            context.runOnClient(mc -> mc.gui.setScreen(null));
             server.runCommand("op " + name);
             context.waitTicks(40);
             server.runOnServer(s -> {
@@ -102,35 +102,35 @@ public final class RelayTest implements FabricClientGameTest {
             check(buildCount(server) == 0, "a build was placed before the player turned on Use my AI here");
             check(auth.isEmpty(), "the player's AI was called before they turned on Use my AI here");
 
-            context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+            context.getInput().pressKey(InputConstants.KEY_RSHIFT);
             context.waitForScreen(JustBuildScreen.class);
             context.clickScreenButton("Settings");
             context.waitTicks(5);
             context.clickScreenButton("Server AI…");
             context.clickScreenButton("Prefer players' AI");
-            context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
+            context.waitFor(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
                     && b.getMessage().getString().equals("★ Prefer players' AI")));
             check(savedPlayerAi(store).equals("prefer"), "the remote operator's UI policy change did not save");
             context.takeScreenshot("relay-server-ai-policy");
             context.clickScreenButton("Require players' AI");
-            context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
+            context.waitFor(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Button b
                     && b.getMessage().getString().equals("★ Require players' AI")));
             check(savedPlayerAi(store).equals("require"), "the remote operator could not restore Require");
             context.clickScreenButton("Back");
             context.takeScreenshot("relay-settings-off");
             context.clickScreenButton("Use my AI here: Off");
             context.waitTicks(20);
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             context.waitTicks(10);
 
             context.runOnClient(mc -> {
-                mc.setScreen(new JustBuildScreen());
-                mc.screen.children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.EditBox box
+                mc.gui.setScreen(new JustBuildScreen());
+                mc.gui.screen().children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.EditBox box
                         && box.getMessage().getString().equals("Request")).map(c -> (net.minecraft.client.gui.components.EditBox) c)
                         .findFirst().orElseThrow().setValue(EDITOR_REQUEST);
             });
             context.clickScreenButton("Build");
-            context.runOnClient(mc -> mc.setScreen(null));
+            context.runOnClient(mc -> mc.gui.setScreen(null));
             int builds = 0;
             for (int i = 0; i < 60 && builds == 0; i++) {
                 context.waitTicks(20);
@@ -197,7 +197,7 @@ public final class RelayTest implements FabricClientGameTest {
             check(auth.size() == 5 && !bodies.get(4).contains("poem") && bodies.get(4).contains("unknown_block"),
                     "the edit's plan carried the server's text to the AI");
 
-            context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+            context.getInput().pressKey(InputConstants.KEY_RSHIFT);
             context.waitForScreen(JustBuildScreen.class);
             context.waitTicks(20);
             context.takeScreenshot("relay-create");
@@ -207,13 +207,13 @@ public final class RelayTest implements FabricClientGameTest {
             context.clickScreenButton("My profiles…");
             context.waitTicks(10);
             context.takeScreenshot("relay-my-profiles");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             context.waitTicks(5);
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             context.waitTicks(5);
 
             // The optional local gate holds every round, and changing it survives a config reload.
-            context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+            context.getInput().pressKey(InputConstants.KEY_RSHIFT);
             context.waitForScreen(JustBuildScreen.class);
             context.clickScreenButton("Settings");
             context.clickScreenButton("Review before sending: Off");
@@ -221,7 +221,7 @@ public final class RelayTest implements FabricClientGameTest {
                 check(store.load().reviewAiResponses, "the review preference was not saved");
             } catch (Exception e) { throw new AssertionError(e); }
             context.takeScreenshot("relay-settings-review-on");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             overrideReply = PLAN.replace("Relay Test Platform", "Approved Review Platform");
             context.runOnClient(mc -> mc.player.connection.sendCommand("jb build a tiny stone platform with an alias"));
             context.waitForScreen(ResponseReviewScreen.class);
@@ -267,7 +267,7 @@ public final class RelayTest implements FabricClientGameTest {
             overrideReply = "{\"kind\":\"question\",\"question\":\"Unsent question?\",\"options\":[\"Yes\",\"No\"]}";
             held = startRelay(manager, player, started);
             context.waitForScreen(ResponseReviewScreen.class);
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             check(await(context, held).contains("cancelled sending"), "Escape sent the question");
             overrideReply = "{\"kind\":\"decline\",\"summary\":\"PRIVATE-DIAGNOSTIC\"}";
             held = startRelay(manager, player, started);
@@ -282,10 +282,10 @@ public final class RelayTest implements FabricClientGameTest {
             overrideReply = PLAN;
             context.runOnClient(mc -> mc.player.connection.sendCommand("justbuild build a tiny stone platform"));
             context.waitForScreen(ResponseReviewScreen.class);
-            net.minecraft.client.gui.screens.Screen stale = context.computeOnClient(mc -> mc.screen);
+            net.minecraft.client.gui.screens.Screen stale = context.computeOnClient(mc -> mc.gui.screen());
             context.runOnClient(mc -> mc.player.connection.sendCommand("jb cancel"));
             context.waitTicks(30);
-            check(context.computeOnClient(mc -> mc.screen != stale), "server cancellation left approval open");
+            check(context.computeOnClient(mc -> mc.gui.screen() != stale), "server cancellation left approval open");
             context.runOnClient(mc -> pressStaleSend(stale));
             context.waitTicks(10);
             check(buildCount(server) == 2, "server cancellation placed the withheld plan");
@@ -296,7 +296,7 @@ public final class RelayTest implements FabricClientGameTest {
             // Leave an approval open during transfer. It must close, and the next connection must not receive it.
             context.runOnClient(mc -> mc.player.connection.sendCommand("jb a tiny stone platform"));
             context.waitForScreen(ResponseReviewScreen.class);
-            net.minecraft.client.gui.screens.Screen transferReview = context.computeOnClient(mc -> mc.screen);
+            net.minecraft.client.gui.screens.Screen transferReview = context.computeOnClient(mc -> mc.gui.screen());
             int callsBeforeTransfer = auth.size();
 
             // A server that transfers the player elsewhere doesn't take "Use my AI here" along.
@@ -315,7 +315,7 @@ public final class RelayTest implements FabricClientGameTest {
             check(auth.size() == callsBeforeTransfer, "a transferred connection reached the player's AI");
             check(context.computeOnClient(mc -> dev.justbuild.client.ResponseReviewChecks.usage().calls()) == 0,
                     "local usage survived a new connection");
-            check(context.computeOnClient(mc -> !(mc.screen instanceof ResponseReviewScreen)),
+            check(context.computeOnClient(mc -> !(mc.gui.screen() instanceof ResponseReviewScreen)),
                     "an old approval survived the transfer");
             context.runOnClient(mc -> pressStaleSend(transferReview));
             context.waitTicks(10);

@@ -30,7 +30,7 @@ final class GettingStartedScreen extends ToolScreen {
         };
         button(action, left, height - 100, panelWidth, () -> {
             if (step == 0) panel.showSettings();
-            else if (step == 1) { run("zone wand"); minecraft.setScreen(null); }
+            else if (step == 1) { run("zone wand"); minecraft.gui.setScreen(null); }
             else panel.showCreate();
         });
         int third = (panelWidth - 8) / 3;

@@ -39,7 +39,7 @@ public final class BuilderBotGameTest implements FabricClientGameTest {
         catch (Exception e) { throw new AssertionError(e); }
         Semaphore answers = new Semaphore(0);
         HttpServer stub = stub(answers);
-        boolean originalHideGui = context.computeOnClient(mc -> mc.options.hideGui);
+        boolean originalHideGui = context.computeOnClient(mc -> mc.gui.hud.isHidden());
         try {
             var config = JustBuildConfig.defaults();
             var profile = new JustBuildConfig.ModelProfile("Stub", "openai", "stub");
@@ -48,7 +48,7 @@ public final class BuilderBotGameTest implements FabricClientGameTest {
             config.detail = "quick"; config.creativeDirection = false; config.previewAbove = 0; config.blocksPerTick = 1;
             new ConfigStore(file).save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 String id = context.computeOnClient(mc -> mc.player.getUUID().toString());
                 world.getServer().runOnServer(server -> {
@@ -60,7 +60,7 @@ public final class BuilderBotGameTest implements FabricClientGameTest {
                 world.getServer().runCommand("gamemode spectator " + player);
                 world.getServer().runCommand("time set day");
                 world.getServer().runCommand("tp " + player + " 5 103 -7 35 20");
-                context.runOnClient(mc -> mc.options.hideGui = true);
+                context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
                 context.waitTicks(15);
                 command(context, "zone 1 -3 99 -3"); command(context, "zone 2 3 99 3");
                 command(context, "build a small platform");
@@ -108,7 +108,7 @@ public final class BuilderBotGameTest implements FabricClientGameTest {
             check(context.computeOnClient(mc -> BuilderBots.count() == 0), "disconnect retained a worker");
         } catch (Exception e) { throw new AssertionError("Could not exercise the builder bot", e); }
         finally {
-            context.runOnClient(mc -> mc.options.hideGui = originalHideGui);
+            context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, originalHideGui));
             answers.release(100); stub.stop(0);
             try { if (original == null) Files.deleteIfExists(file); else Files.write(file, original); }
             catch (Exception e) { throw new AssertionError("Could not restore bot test config", e); }

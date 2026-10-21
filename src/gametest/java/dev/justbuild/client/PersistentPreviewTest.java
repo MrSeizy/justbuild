@@ -49,7 +49,7 @@ public final class PersistentPreviewTest implements FabricClientGameTest {
             config.creativeDirection = false;
             store.save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition().above(10));
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 world.getServer().runOnServer(server -> {
@@ -68,10 +68,10 @@ public final class PersistentPreviewTest implements FabricClientGameTest {
 
                 // Default exceeds the old timeout; shorten only when rerunning the other lifecycle checks.
                 Instant deadline = Instant.now().plusSeconds(Integer.getInteger("justbuild.testPreviewWaitSeconds", 125));
-                context.runOnClient(mc -> mc.setScreen(new PauseScreen(true)));
+                context.runOnClient(mc -> mc.gui.setScreen(new PauseScreen(true)));
                 context.waitTicks(100);
                 check(context.computeOnClient(mc -> mc.isPaused()), "the preview pause test did not pause the game");
-                context.runOnClient(mc -> mc.setScreen(null));
+                context.runOnClient(mc -> mc.gui.setScreen(null));
                 context.waitTicks(30);
                 check(context.computeOnClient(mc -> FloorPreview.blocks().size() == 3), "pausing lost the ghost model");
                 while (Instant.now().isBefore(deadline)) {

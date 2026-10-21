@@ -44,9 +44,7 @@ public final class ResponseReviewScreen extends Screen {
         previousButton = button("Previous", left, height - 52, 80, () -> changePage(-1));
         nextButton = button("Next", left + panelWidth - 80, height - 52, 80, () -> changePage(1));
         int third = (panelWidth - 8) / 3;
-        button("Copy response", left, height - 28, third,
-                () -> minecraft.keyboardHandler.setClipboard(new GsonBuilder().disableHtmlEscaping().setPrettyPrinting()
-                        .create().toJson(response)));
+        button("Copy response", left, height - 28, third, this::copyResponse);
         GlassButton cancelButton = button("Cancel", left + third + 4, height - 28, third, this::onClose);
         button("Send to server", left + 2 * (third + 4), height - 28, third, () -> {
             if (resolved) return;
@@ -55,6 +53,10 @@ public final class ResponseReviewScreen extends Screen {
         // Enter arriving from the previous screen must never approve a response.
         setInitialFocus(cancelButton);
         layoutPage();
+    }
+
+    private void copyResponse() {
+        ClientClipboard.set(new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create().toJson(response));
     }
 
     private GlassButton button(String label, int x, int y, int width, Runnable action) {
@@ -110,7 +112,7 @@ public final class ResponseReviewScreen extends Screen {
     void dismiss(boolean restoreParent) {
         if (resolved) return;
         resolved = true;
-        if (minecraft != null && minecraft.screen == this) minecraft.setScreen(restoreParent ? parent : null);
+        if (minecraft != null && minecraft.gui.screen() == this) minecraft.gui.setScreen(restoreParent ? parent : null);
     }
 
     @Override public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {

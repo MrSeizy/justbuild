@@ -48,7 +48,7 @@ final class PreviewControls {
             hovered = null;
             return;
         }
-        if (mc.screen != null || mc.player == null) return;
+        if (mc.gui.screen() != null || mc.player == null) return;
         hovered = find(mc);
         if (hovered == null) return;
         boolean clicked = false;
@@ -63,12 +63,12 @@ final class PreviewControls {
         ClientState.Preview preview = ClientState.preview();
         AABB box = PreviewBox.area(mc);
         if (preview == null || box == null || mc.player == null
-                || mc.gameRenderer.getMainCamera().position().distanceTo(box.getCenter()) > REACH + box.getSize()) {
+                || mc.gameRenderer.mainCamera().position().distanceTo(box.getCenter()) > REACH + box.getSize()) {
             placed = List.of();
             hovered = null;
             return;
         }
-        Vec3 eye = mc.gameRenderer.getMainCamera().position();
+        Vec3 eye = mc.gameRenderer.mainCamera().position();
         Vec3 right = right(eye, box.getCenter());
         List<Placed> next = new ArrayList<>();
         double cx = box.getCenter().x, cz = box.getCenter().z;
@@ -117,7 +117,7 @@ final class PreviewControls {
         hovered = find(mc);
         // Behind an JustBuild screen the controls would draw through its sheet. The layout stays, so a right-click
         // just after the screen closes still lands on a control.
-        if (Glass.covers(mc.screen)) return;
+        if (Glass.covers(mc.gui.screen())) return;
         try (var collecting = mc.collectPerTickGizmos()) {
             for (Placed p : placed) {
                 int color = p.control() != null && p.control() == hovered ? 0xFFFFDD55 : p.color();
@@ -174,7 +174,7 @@ final class PreviewControls {
     /** The control under the crosshair: billboards face the camera, so compare in the camera's plane. */
     private static Control find(Minecraft mc) {
         if (placed.isEmpty()) return null;
-        var camera = mc.gameRenderer.getMainCamera();
+        var camera = mc.gameRenderer.mainCamera();
         Vec3 eye = camera.position();
         Vec3 look = new Vec3(camera.forwardVector());
         Vec3 up = new Vec3(camera.upVector());

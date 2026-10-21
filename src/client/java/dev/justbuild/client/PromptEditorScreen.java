@@ -5,7 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.network.chat.Component;
 
 /** A full-height editor. Its original target is retained even if server selection changes while typing. */
@@ -48,7 +48,7 @@ final class PromptEditorScreen extends Screen {
             try { SavedPrompts.add(editor.getValue()); message = "Prompt saved on this computer."; }
             catch (java.io.IOException e) { message = e.getMessage(); }
         });
-        button("Reuse prompt…", left + half + 4, height - 76, half, () -> minecraft.setScreen(new SavedPromptsScreen(this, editor::setValue)));
+        button("Reuse prompt…", left + half + 4, height - 76, half, () -> minecraft.gui.setScreen(new SavedPromptsScreen(this, editor::setValue)));
         button("Back", left, height - 28, half, this::onClose);
         button(question != null ? "Send answer" : options > 1 ? "Send ×" + options : "Send request", left + half + 4, height - 28, half, this::submit).primary();
         setInitialFocus(editor);
@@ -63,10 +63,10 @@ final class PromptEditorScreen extends Screen {
         PromptDrafts.put(draftKey, ""); sent.run(); onClose();
     }
     @Override public boolean keyPressed(KeyEvent e) {
-        if (e.hasControlDown() && (e.key() == GLFW.GLFW_KEY_ENTER || e.key() == GLFW.GLFW_KEY_KP_ENTER)) { submit(); return true; }
+        if (e.hasControlDown() && (e.key() == InputConstants.KEY_RETURN || e.key() == InputConstants.KEY_NUMPADENTER)) { submit(); return true; }
         return super.keyPressed(e);
     }
-    @Override public void onClose() { minecraft.setScreen(parent); }
+    @Override public void onClose() { minecraft.gui.setScreen(parent); }
     @Override public void extractBackground(GuiGraphicsExtractor g, int x, int y, float tick) {
         Glass.sheet(g, left, panelWidth, height);
         if (editor != null) Glass.pill(g, editor.getX(), editor.getY(), editor.getWidth(), editor.getHeight(), 0x14FFFFFF,

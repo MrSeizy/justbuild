@@ -10,13 +10,13 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Actual mouse presses relocate corners without freezing movement or sending ordinary wand actions. */
 public final class CornerRelocationGameTest implements FabricClientGameTest {
     @Override public void runTest(ClientGameTestContext c) {
         try (TestSingleplayerContext w = c.worldBuilder().create()) {
-            w.getClientLevel().waitForChunksRender();
+            w.getConnection().waitForChunksRender();
             String name = c.computeOnClient(mc -> mc.player.getName().getString());
             BlockPos base = c.computeOnClient(mc -> mc.player.blockPosition().above(12));
             w.getServer().runCommand("gamemode creative " + name);
@@ -35,11 +35,11 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             command(c, "zone wand");
             var original = c.computeOnClient(mc -> ClientState.zone());
             pick(c, w, name, base, false, 0);
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             c.takeScreenshot("zone-corner-pickup-stays-put");
             Vec3 before = c.computeOnClient(mc -> mc.player.position());
-            c.getInput().holdKeyFor(GLFW.GLFW_KEY_W, 10);
-            check(c.computeOnClient(mc -> SelectionHandles.moving() && mc.screen == null && mc.player.position().distanceTo(before) > 0.5),
+            c.getInput().holdKeyFor(InputConstants.KEY_W, 10);
+            check(c.computeOnClient(mc -> SelectionHandles.moving() && mc.gui.screen() == null && mc.player.position().distanceTo(before) > 0.5),
                     "walking did not remain available while holding a corner");
             lookDown(c, w, name, base.offset(-6, 0, -6));
             check(c.computeOnClient(mc -> SelectionHandles.targetHint(mc).equals("New corner: "
@@ -47,11 +47,11 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             check(c.computeOnClient(mc -> original.equals(ClientState.zone())
                     && SelectionHandles.displayedZone(mc, ClientState.zone()).equals(original.corner(0, base.getX() - 6, base.getZ() - 6))),
                     "the zone outline did not move independently of the committed selection");
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             c.takeScreenshot("corner-relocation-preview");
             right(c);
             c.waitFor(mc -> ClientState.zone().minX() == base.getX() - 6);
-            check(c.computeOnClient(mc -> !SelectionHandles.moving() && mc.screen == null
+            check(c.computeOnClient(mc -> !SelectionHandles.moving() && mc.gui.screen() == null
                     && ClientState.zone().equals(original.corner(0, base.getX() - 6, base.getZ() - 6))),
                     "relocation changed another corner/height, repeated, or opened the chest");
 
@@ -67,15 +67,15 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             c.runOnClient(mc -> mc.player.setXRot(-90)); c.waitTicks(3); right(c);
             check(c.computeOnClient(mc -> SelectionHandles.moving() && moved.equals(ClientState.zone())), "air click placed a corner");
             lookDown(c, w, name, base.offset(-7, 0, -7));
-            c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_LEFT, 20); c.waitTicks(3);
+            c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_LEFT, 20); c.waitTicks(3);
             check(c.computeOnClient(mc -> !SelectionHandles.moving() && moved.equals(ClientState.zone())
                     && moved.equals(SelectionHandles.displayedZone(mc, ClientState.zone()))), "cancel did not restore the original zone outline");
 
             // Cancel on Esc, mode/selection changes, or putting the wand away.
             pick(c, w, name, base, false, 0);
-            c.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE); c.waitTicks(3);
+            c.getInput().pressKey(InputConstants.KEY_ESCAPE); c.waitTicks(3);
             check(c.computeOnClient(mc -> !SelectionHandles.moving()), "Esc kept a corner picked up");
-            c.runOnClient(mc -> mc.setScreen(null));
+            c.runOnClient(mc -> mc.gui.setScreen(null));
             pick(c, w, name, base, false, 0);
             command(c, "box wand");
             check(c.computeOnClient(mc -> !SelectionHandles.moving()), "mode change kept a corner picked up");
@@ -83,7 +83,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             command(c, "zone adjust move 1 0 0");
             check(c.computeOnClient(mc -> !SelectionHandles.moving()), "selection change kept a stale corner picked up");
             pick(c, w, name, base, false, 0);
-            c.getInput().pressKey(GLFW.GLFW_KEY_2); c.waitTicks(3);
+            c.getInput().pressKey(InputConstants.KEY_2); c.waitTicks(3);
             check(c.computeOnClient(mc -> !SelectionHandles.moving()), "putting away the wand kept a corner picked up");
 
             // All eight part corners can be picked independently, including mixed minimum/maximum axes.
@@ -93,7 +93,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             var originalPart = c.computeOnClient(mc -> ClientState.part());
             for (int i = 0; i < 8; i++) {
                 pick(c, w, name, base, true, i);
-                c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_LEFT, 3); c.waitTicks(3);
+                c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_LEFT, 3); c.waitTicks(3);
                 check(c.computeOnClient(mc -> !SelectionHandles.moving() && originalPart.equals(ClientState.part())),
                         "cancelling a part corner move changed the selection");
             }
@@ -104,9 +104,9 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
                     && SelectionHandles.displayedPart(mc, ClientState.partOutline()).min().equals(base.offset(-2, 0, -2))
                     && SelectionHandles.displayedPart(mc, ClientState.partOutline()).max().equals(beforePartMove.max())),
                     "the purple outline did not follow the part corner before placement");
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             c.takeScreenshot("part-single-outline-preview");
-            c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_LEFT, 3); c.waitTicks(3);
+            c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_LEFT, 3); c.waitTicks(3);
             check(c.computeOnClient(mc -> !SelectionHandles.moving() && beforePartMove.equals(ClientState.part())
                     && beforePartMove.equals(SelectionHandles.displayedPart(mc, ClientState.partOutline()))),
                     "cancel did not restore the original part outline");
@@ -124,7 +124,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
                     && ClientState.part().max().equals(base.offset(6, 4, 5)));
             pick(c, w, name, base, true, 1);
             lookDown(c, w, name, base.offset(5, 1, -3));
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             c.takeScreenshot("part-corner-relocation-preview");
             right(c);
             c.waitFor(mc -> ClientState.part().min().equals(base.offset(-4, 1, -3))
@@ -134,7 +134,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             lookDown(c, w, name, base.offset(9, 0, 9)); right(c);
             check(c.computeOnClient(mc -> SelectionHandles.moving() && resizedPart.equals(ClientState.part())),
                     "an invalid mixed part corner changed the selection");
-            c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_LEFT, 3); c.waitTicks(3);
+            c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_LEFT, 3); c.waitTicks(3);
             command(c, "box adjust corner 6 " + pos(base.offset(9, 0, 9)));
             command(c, "box adjust corner 8 " + pos(base));
             check(c.computeOnClient(mc -> resizedPart.equals(ClientState.part())), "invalid corner command changed the part");
@@ -151,7 +151,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             w.getServer().runCommand("tp " + name + " " + (base.getX() + 10.5) + " " + (base.getY() + 9)
                     + " " + (base.getZ() + 12.5) + " 140 28");
             c.waitTicks(8);
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             c.takeScreenshot("part-eight-corner-handles");
 
             command(c, "zone wand"); command(c, "zone adjust polygon start");
@@ -166,7 +166,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
             check(c.computeOnClient(mc -> polygon.equals(ClientState.zone())
                     && polygon.corner(1, base.getX() + 6, base.getZ() - 5).equals(SelectionHandles.displayedZone(mc, ClientState.zone()))),
                     "polygon outline did not follow its moving vertex");
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             c.takeScreenshot("polygon-single-outline-preview");
             right(c);
             c.waitFor(mc -> polygon.corner(1, base.getX() + 6, base.getZ() - 5).equals(ClientState.zone()));
@@ -189,7 +189,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
         c.waitFor(mc -> SelectionHandles.moving());
         check(c.computeOnClient(mc -> SelectionHandles.title().equals("Moving " + (part ? "box" : "zone") + " corner " + (corner + 1))),
                 "picked a different corner than the one aimed at");
-        check(c.computeOnClient(mc -> mc.screen == null), "picking up a corner opened a screen");
+        check(c.computeOnClient(mc -> mc.gui.screen() == null), "picking up a corner opened a screen");
         check(c.computeOnClient(mc -> part
                 ? ClientState.part().equals(SelectionHandles.displayedPart(mc, ClientState.partOutline()))
                 : ClientState.zone().equals(SelectionHandles.displayedZone(mc, ClientState.zone()))),
@@ -204,7 +204,7 @@ public final class CornerRelocationGameTest implements FabricClientGameTest {
         c.waitTicks(8);
         c.waitFor(mc -> mc.hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK && hit.getBlockPos().equals(p));
     }
-    private static void right(ClientGameTestContext c) { c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_RIGHT, 20); c.waitTicks(3); }
+    private static void right(ClientGameTestContext c) { c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_RIGHT, 20); c.waitTicks(3); }
     private static void command(ClientGameTestContext c, String command) { c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild " + command)); c.waitTicks(8); }
     private static String pos(BlockPos p) { return p.getX() + " " + p.getY() + " " + p.getZ(); }
     private static void check(boolean condition, String message) { if (!condition) throw new AssertionError(message); }

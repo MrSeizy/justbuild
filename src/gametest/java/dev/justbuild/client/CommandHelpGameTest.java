@@ -19,8 +19,8 @@ public final class CommandHelpGameTest implements FabricClientGameTest {
                     .resolve("justbuild.json")).save(dev.justbuild.config.JustBuildConfig.defaults());
         } catch (dev.justbuild.config.ConfigException e) { throw new AssertionError("Could not prepare command help test", e); }
         try (TestSingleplayerContext w = c.worldBuilder().create()) {
-            w.getClientLevel().waitForChunksRender();
-            c.runOnClient(mc -> mc.setScreen(new ChatScreen("", false)));
+            w.getConnection().waitForChunksRender();
+            c.runOnClient(mc -> mc.gui.setScreen(new ChatScreen("", false)));
             Component first = command(c, "justbuild", "Commands · all · page 1/");
             check(first.getString().contains("/justbuild new") && first.getString().contains("/justbuild build <description>"),
                     "help did not explain how to start a new build");
@@ -63,7 +63,7 @@ public final class CommandHelpGameTest implements FabricClientGameTest {
     private static Component command(ClientGameTestContext c, String command, String expected) {
         long mark = c.computeOnClient(mc -> ClientState.lineCount());
         c.runOnClient(mc -> {
-            mc.gui.getChat().clearMessages(false);
+            mc.gui.hud.getChat().clearMessages(false);
             mc.player.connection.sendCommand(command);
         });
         c.waitFor(mc -> ClientState.lastLineSince(mark) != null

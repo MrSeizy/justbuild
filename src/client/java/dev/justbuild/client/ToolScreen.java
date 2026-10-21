@@ -22,7 +22,7 @@ abstract class ToolScreen extends FormScreen {
         if (minecraft.player != null) minecraft.player.connection.sendCommand("justbuild " + command);
     }
     void stateChanged() { rebuildWidgets(); }
-    @Override public void onClose() { minecraft.setScreen(parent); }
+    @Override public void onClose() { minecraft.gui.setScreen(parent); }
     /** The glass sheet instead of the vanilla blur: the world stays visible around the panel. */
     @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Glass.sheet(graphics, left, panelWidth, height);

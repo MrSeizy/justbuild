@@ -131,7 +131,7 @@ public final class ProfilesScreen extends FormScreen {
                 .bounds(formX, y, bw, 20).tooltip(Tooltip.create(Component.literal(
                         "Save all profiles; builds keep using the ★ profile"))).confirmation().build());
         var test = addRenderableWidget(GlassButton.builder(Component.literal("Test connection"), b ->
-                minecraft.setScreen(new ProfileTestScreen(this, drafts.get(selected).toEdit(), local)))
+                minecraft.gui.setScreen(new ProfileTestScreen(this, drafts.get(selected).toEdit(), local)))
                 .bounds(formX + bw + 2, y, bw, 20).tooltip(Tooltip.create(Component.literal(
                         "Test this unsaved draft with a tiny request. It may use paid tokens; no build is created."))).build());
         test.active = local || ClientPlayNetworking.canSend(dev.justbuild.net.ProfileTestRequestPayload.TYPE);
@@ -256,7 +256,7 @@ public final class ProfilesScreen extends FormScreen {
                 message = problem;
                 return;
             }
-            minecraft.setScreen(new ModelPickerScreen(this, d.name, d.provider, d.toEdit(), value -> d.model = value, local));
+            minecraft.gui.setScreen(new ModelPickerScreen(this, d.name, d.provider, d.toEdit(), value -> d.model = value, local));
         }).bounds(fieldX + fieldWidth - 62, y, 62, 20).tooltip(Tooltip.create(Component.literal(
                 local ? "Ask this computer's CLI or endpoint which models this profile offers"
                         : "Ask the server which models this profile offers"))).build();
@@ -402,7 +402,7 @@ public final class ProfilesScreen extends FormScreen {
                 return;
             }
             ClientAi.sendHello();
-            minecraft.setScreen(parent);
+            minecraft.gui.setScreen(parent);
             return;
         }
         if (json.length() > ProfilesPayload.MAX_LENGTH) {
@@ -414,7 +414,7 @@ public final class ProfilesScreen extends FormScreen {
             return;
         }
         ClientPlayNetworking.send(new ProfilesPayload(json));
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     private static String urlProblem(ProfileDraft d) {
@@ -443,7 +443,7 @@ public final class ProfilesScreen extends FormScreen {
             message = "Unsaved changes: press Cancel or Esc again to discard them.";
             return;
         }
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     /** The glass sheet instead of the vanilla blur: the world stays visible around the panel. */

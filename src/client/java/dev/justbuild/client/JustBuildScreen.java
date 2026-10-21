@@ -16,7 +16,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * The JustBuild panel. Every action is an ordinary /justbuild command, so permissions and feedback stay on the
@@ -90,7 +90,7 @@ public final class JustBuildScreen extends FormScreen {
         if (multiline) request.setTooltip(Tooltip.create(Component.literal("Multiline draft: use ↗ to edit while keeping its line breaks.")));
         request.setResponder(value -> { if (!multiline) { draft = value; PromptDrafts.put(key, value); } });
         addRenderableWidget(request);
-        addRenderableWidget(GlassButton.builder(Component.literal("↗"), b -> minecraft.setScreen(new PromptEditorScreen(this,
+        addRenderableWidget(GlassButton.builder(Component.literal("↗"), b -> minecraft.gui.setScreen(new PromptEditorScreen(this,
                 ClientState.string("selectedBuild", null), ClientState.question(), optionCount, () -> { optionCount = 1; tab = Tab.CREATE; })))
                 .bounds(left + panelWidth - 90, top, 24, 20).tooltip(Tooltip.create(Component.literal(
                         "Expand request editor · multiple lines, character count, and reusable prompts"))).build());
@@ -103,7 +103,7 @@ public final class JustBuildScreen extends FormScreen {
         addRenderableWidget(go);
         addRenderableWidget(GlassButton.builder(Component.literal("×"), b -> onClose())
                 .bounds(left + panelWidth - 14, 5, 14, 14).ghost().tooltip(Tooltip.create(Component.literal("Close (Esc)"))).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Guide"), b -> minecraft.setScreen(new GettingStartedScreen(this)))
+        addRenderableWidget(GlassButton.builder(Component.literal("Guide"), b -> minecraft.gui.setScreen(new GettingStartedScreen(this)))
                 .bounds(left, 5, 48, 14).ghost().tooltip(Tooltip.create(Component.literal("From AI setup to your first confirmed build"))).build());
 
         int tabWidth = panelWidth / Tab.values().length;
@@ -169,7 +169,7 @@ public final class JustBuildScreen extends FormScreen {
                 "Stop editing the selected build; the next request makes a new one"))).build());
         String selectedId = ClientState.string("selectedBuild", null);
         Button manage = GlassButton.builder(Component.literal("Manage build"), b ->
-                minecraft.setScreen(new BuildDetailsScreen(this, selectedId)))
+                minecraft.gui.setScreen(new BuildDetailsScreen(this, selectedId)))
                 .bounds(left + half + 4, rows, half, 20).tooltip(Tooltip.create(Component.literal(selectedId == null
                         ? "Select a build first: History, or sneak-right-click it with the Builder Wand" : "Rename, checkpoints, designs, and more"))).build();
         manage.active = selectedId != null;
@@ -190,16 +190,16 @@ public final class JustBuildScreen extends FormScreen {
                 rebuildWidgets();
             }).bounds(left, rows + 24, third, 20).tooltip(Tooltip.create(Component.literal(
                     "Plan one, two, or three alternatives for your next request (each uses its own AI calls). Goes back to 1 after you send it."))).build());
-            addRenderableWidget(GlassButton.builder(Component.literal("Editing tools"), b -> minecraft.setScreen(new EditingToolsScreen(this)))
+            addRenderableWidget(GlassButton.builder(Component.literal("Editing tools"), b -> minecraft.gui.setScreen(new EditingToolsScreen(this)))
                     .bounds(left + third + 4, rows + 24, third, 20).tooltip(Tooltip.create(Component.literal(
                             "Parts, locked areas, and connections"))).build());
-            addRenderableWidget(GlassButton.builder(Component.literal("Workshop"), b -> minecraft.setScreen(new WorkshopScreen(this)))
+            addRenderableWidget(GlassButton.builder(Component.literal("Workshop"), b -> minecraft.gui.setScreen(new WorkshopScreen(this)))
                     .bounds(left + 2 * (third + 4), rows + 24, third, 20).tooltip(Tooltip.create(Component.literal(
                             "Add a building you made by hand, swap materials, repair, plan interiors, and village projects"))).build());
         }
         int extra = rows + 48;
         if (firstBuildHelp()) addRenderableWidget(GlassButton.builder(Component.literal("Start your first build →"),
-                b -> minecraft.setScreen(new GettingStartedScreen(this))).bounds(left, extra, panelWidth, 20).build());
+                b -> minecraft.gui.setScreen(new GettingStartedScreen(this))).bounds(left, extra, panelWidth, 20).build());
         List<String> options = ClientState.question() == null ? List.of() : ClientState.questionOptions();
         if (!options.isEmpty()) {
             int count = Math.min(options.size(), 4);
@@ -245,18 +245,18 @@ public final class JustBuildScreen extends FormScreen {
                 && ClientState.string("selectedBuild", null) == null;
     }
 
-    void showSettings() { tab = Tab.SETTINGS; minecraft.setScreen(this); }
-    void showCreate() { tab = Tab.CREATE; minecraft.setScreen(this); }
+    void showSettings() { tab = Tab.SETTINGS; minecraft.gui.setScreen(this); }
+    void showCreate() { tab = Tab.CREATE; minecraft.gui.setScreen(this); }
 
     private void initPreview(ClientState.Preview preview) {
         int third = (panelWidth - 8) / 3, y = contentTop + 40;
         addRenderableWidget(GlassButton.builder(Component.literal("Checks (" + preview.quality().size() + ")"),
-                b -> minecraft.setScreen(new QualityScreen(this))).bounds(left, y, third, 20)
+                b -> minecraft.gui.setScreen(new QualityScreen(this))).bounds(left, y, third, 20)
                 .tooltip(Tooltip.create(Component.literal(preview.quality().isEmpty() ? "No warnings found"
                         : String.join("\n", preview.quality())))).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Floors"), b -> minecraft.setScreen(new FloorPreviewScreen(this)))
+        addRenderableWidget(GlassButton.builder(Component.literal("Floors"), b -> minecraft.gui.setScreen(new FloorPreviewScreen(this)))
                 .bounds(left + third + 4, y, third, 20).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Workshop"), b -> minecraft.setScreen(new WorkshopScreen(this)))
+        addRenderableWidget(GlassButton.builder(Component.literal("Workshop"), b -> minecraft.gui.setScreen(new WorkshopScreen(this)))
                 .bounds(left + 2 * (third + 4), y, third, 20).build());
         GlassButton before = GlassButton.builder(Component.literal("Before"), b -> { GhostPreview.before(true); rebuildWidgets(); })
                 .bounds(left, y + 24, third, 20).build();
@@ -287,7 +287,7 @@ public final class JustBuildScreen extends FormScreen {
             onClose();
         }).bounds(left, contentTop, half, 20).tooltip(Tooltip.create(Component.literal(
                 "Equip the Builder Wand in gold Zone mode. Left-click corner 1; right-click corner 2. Sneak-right-click in the air to switch modes."))).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Polygon"), b -> minecraft.setScreen(new PolygonScreen(this)))
+        addRenderableWidget(GlassButton.builder(Component.literal("Polygon"), b -> minecraft.gui.setScreen(new PolygonScreen(this)))
                 .bounds(left + half + 4, contentTop, half, 20).build());
         addRenderableWidget(GlassButton.builder(Component.literal("Clear zone"), b -> run("justbuild zone clear"))
                 .bounds(left, contentTop + 24, half, 20).build());
@@ -297,7 +297,7 @@ public final class JustBuildScreen extends FormScreen {
             rebuildWidgets();
         }).bounds(left + half + 4, contentTop + 24, half, 20)
                 .tooltip(Tooltip.create(Component.literal("Read nearby blocks without changing them or calling the AI"))).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Editing tools · parts, locks, connections"), b -> minecraft.setScreen(new EditingToolsScreen(this)))
+        addRenderableWidget(GlassButton.builder(Component.literal("Editing tools · parts, locks, connections"), b -> minecraft.gui.setScreen(new EditingToolsScreen(this)))
                 .bounds(left, contentTop + 48, panelWidth, 20).build());
     }
 
@@ -386,7 +386,7 @@ public final class JustBuildScreen extends FormScreen {
                             : "\nIn " + b.elsewhere() + ". Travel there to select or edit it.")))).build());
             addRenderableWidget(GlassButton.builder(Component.literal("Manage"), x -> {
                 run("justbuild select " + b.id());
-                minecraft.setScreen(new BuildDetailsScreen(this, b.id()));
+                minecraft.gui.setScreen(new BuildDetailsScreen(this, b.id()));
             })
                     .bounds(left + panelWidth - actions, y, 54, 20).build());
             addRenderableWidget(GlassButton.builder(Component.literal("Edit"), x -> {
@@ -424,12 +424,12 @@ public final class JustBuildScreen extends FormScreen {
         for (int i = 0; i < designRows && page * designRows + i < shownDesigns.size(); i++) {
             ClientState.Design design = shownDesigns.get(page * designRows + i);
             addRenderableWidget(GlassButton.builder(Component.literal(design.name()), b ->
-                    minecraft.setScreen(new DesignPlacementScreen(this, design)))
+                    minecraft.gui.setScreen(new DesignPlacementScreen(this, design)))
                     .bounds(left + 38, contentTop + 26 + i * 34, panelWidth - 38, 20)
                     .tooltip(Tooltip.create(Component.literal("Top-view thumbnail · place, rotate, organize, or export this design"))).build());
         }
         addRenderableWidget(GlassButton.builder(Component.literal("Shared library"), b -> {
-            run("justbuild design refresh"); minecraft.setScreen(new LibraryImportScreen(this));
+            run("justbuild design refresh"); minecraft.gui.setScreen(new LibraryImportScreen(this));
         }).bounds(left + (panelWidth - 144) / 2, contentBottom - 20, 144, 20).build());
         if (pages > 1) {
             addRenderableWidget(GlassButton.builder(Component.literal("Previous"), b -> { page = Math.max(0, page - 1); rebuildWidgets(); })
@@ -464,7 +464,7 @@ public final class JustBuildScreen extends FormScreen {
                         model.setValue(p.model());
                     });
         }));
-        Button profiles = GlassButton.builder(Component.literal("Manage profiles…"), b -> minecraft.setScreen(new ProfilesScreen(this, false)))
+        Button profiles = GlassButton.builder(Component.literal("Manage profiles…"), b -> minecraft.gui.setScreen(new ProfilesScreen(this, false)))
                 .bounds(left + w - 128, y, 128, 20).tooltip(Tooltip.create(Component.literal(manage
                         ? "Add, copy, remove, and edit model profiles (provider, model, endpoint, API key)"
                         : "Only operators or the singleplayer world owner can edit profiles"))).build();
@@ -483,7 +483,7 @@ public final class JustBuildScreen extends FormScreen {
             ClientState.profiles().stream().filter(p -> p.name().equals(ClientState.string("profile", ""))).findFirst()
                     .ifPresent(p -> {
                         ProfileDraft d = ProfileDraft.of(p);
-                        minecraft.setScreen(new ModelPickerScreen(this, p.name(), p.provider(), d.toEdit(), value -> {
+                        minecraft.gui.setScreen(new ModelPickerScreen(this, p.name(), p.provider(), d.toEdit(), value -> {
                             ClientState.set("model", value);
                             modelDraft.replace(value);
                             run("justbuild model " + (value.isEmpty() ? "default" : value));
@@ -533,7 +533,7 @@ public final class JustBuildScreen extends FormScreen {
             changeLocal(c -> c.activate(next));
         }).bounds(left, y, w - 132, 20).tooltip(Tooltip.create(Component.literal(
                 "The profile on this computer that plans your builds here"))).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("My profiles…"), b -> minecraft.setScreen(new ProfilesScreen(this, true)))
+        addRenderableWidget(GlassButton.builder(Component.literal("My profiles…"), b -> minecraft.gui.setScreen(new ProfilesScreen(this, true)))
                 .bounds(left + w - 128, y, 128, 20).tooltip(Tooltip.create(Component.literal(
                         "Add and edit the profiles on this computer; keys never leave it"))).build());
         int half = (w - 4) / 2;
@@ -564,7 +564,7 @@ public final class JustBuildScreen extends FormScreen {
         addRenderableWidget(GlassButton.builder(Component.literal("Pick…"), b -> {
             ProfileDraft d = new ProfileDraft(mine.name, mine.name, mine.provider, mine.model, mine.baseUrl, mine.hasKey(),
                     mine.reasoningEffort);
-            minecraft.setScreen(new ModelPickerScreen(this, mine.name, mine.provider, d.toEdit(),
+            minecraft.gui.setScreen(new ModelPickerScreen(this, mine.name, mine.provider, d.toEdit(),
                     value -> { modelDraft.replace(value); changeLocal(c -> c.setModel(value)); }, true));
         }).bounds(left + w - 128, y + 72, 62, 20).tooltip(Tooltip.create(Component.literal(
                 "List the models your profile offers, from this computer"))).build());
@@ -587,7 +587,7 @@ public final class JustBuildScreen extends FormScreen {
     }
 
     private Button serverAiSettings(int x, int y, int w) {
-        return GlassButton.builder(Component.literal("Server AI…"), b -> minecraft.setScreen(new ServerAiScreen(this)))
+        return GlassButton.builder(Component.literal("Server AI…"), b -> minecraft.gui.setScreen(new ServerAiScreen(this)))
                 .bounds(x, y, w, 20).tooltip(Tooltip.create(Component.literal(
                         "Choose whether remote players must use their own AI or may use the server's profile"))).build();
     }
@@ -687,7 +687,7 @@ public final class JustBuildScreen extends FormScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (request.isFocused() && (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER)) {
+        if (request.isFocused() && (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER)) {
             submit();
             return true;
         }

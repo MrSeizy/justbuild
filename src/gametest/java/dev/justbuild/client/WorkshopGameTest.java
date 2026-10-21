@@ -1,5 +1,6 @@
 package dev.justbuild.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpServer;
@@ -42,7 +43,7 @@ public final class WorkshopGameTest implements FabricClientGameTest {
     @Override public void runTest(ClientGameTestContext context) {
         HttpServer stub = stub(); var config = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json")); configure(config, stub.getAddress().getPort());
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             BlockPos base = context.computeOnClient(mc -> mc.player.blockPosition().offset(4, 16, 10));
             String player = context.computeOnClient(mc -> mc.player.getName().getString());
             BlockPos missing = base.offset(0, 2, 3), manual = base.offset(6, 2, 3), stair = base.offset(2, 1, 2), chest = base.offset(4, 1, 4);
@@ -62,7 +63,8 @@ public final class WorkshopGameTest implements FabricClientGameTest {
             });
             camera(context, world, player, base);
             command(context, "box 1 " + pos(base)); command(context, "box 2 " + pos(base.offset(6, 5, 6)));
-            context.runOnClient(mc -> mc.setScreen(new WorkshopScreen(new JustBuildScreen()))); context.clickScreenButton("Add existing build");
+            context.runOnClient(mc -> mc.gui.setScreen(new WorkshopScreen(new JustBuildScreen())));
+            context.getInput().pressKey(InputConstants.KEY_A); context.waitForScreen(AddExistingScreen.class);
             text(context, "Building name", "Handbuilt House"); context.takeScreenshot("workshop-adopt-controls"); context.clickScreenButton("Add build and save original");
             context.waitFor(mc -> ClientState.string("selectedTitle", "").equals("Handbuilt House"));
             String id = context.computeOnClient(mc -> ClientState.string("selectedBuild", null));
@@ -76,15 +78,15 @@ public final class WorkshopGameTest implements FabricClientGameTest {
 
             context.runOnClient(mc -> {
                 ClientState.update("{\"workshop\":{\"palette\":{\"not an id!\":1,\"missing:block\":2}}}");
-                mc.setScreen(new MaterialPickerScreen(new JustBuildScreen(), true, ignored -> { }));
+                mc.gui.setScreen(new MaterialPickerScreen(new JustBuildScreen(), true, ignored -> { }));
             });
-            close(context); command(context, "materials"); context.runOnClient(mc -> mc.setScreen(new MaterialsScreen(new JustBuildScreen())));
+            close(context); command(context, "materials"); context.runOnClient(mc -> mc.gui.setScreen(new MaterialsScreen(new JustBuildScreen())));
             context.clickScreenButton("Choose from building"); context.waitForScreen(MaterialPickerScreen.class); context.takeScreenshot("workshop-building-palette");
             context.clickScreenButton("   Oak Stairs × 1"); context.clickScreenButton("Choose replacement"); text(context, "Search blocks", "stairs"); context.takeScreenshot("workshop-block-picker");
             text(context, "Search blocks", "stone brick stairs"); context.clickScreenButton("   Stone Brick Stairs");
             context.clickScreenButton("Preview replacement"); awaitPreview(context);
             check(state(world, stair).is(Blocks.OAK_STAIRS), "material swap skipped preview");
-            context.runOnClient(mc -> mc.setScreen(new JustBuildScreen())); context.tryClickScreenButton("Create");
+            context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen())); context.tryClickScreenButton("Create");
             context.clickScreenButton("Floors");
             context.waitForScreen(FloorPreviewScreen.class); context.waitFor(mc -> !FloorPreview.blocks().isEmpty());
             context.clickScreenButton("Lower layer"); context.clickScreenButton("Lower layer"); context.clickScreenButton("Lower layer");
@@ -104,7 +106,7 @@ public final class WorkshopGameTest implements FabricClientGameTest {
             command(context, "box 1 " + pos(missing)); command(context, "repair all");
             check(context.computeOnClient(mc -> ClientState.preview() == null), "incomplete part selection allowed a whole-building repair");
             command(context, "box clear");
-            context.runOnClient(mc -> mc.setScreen(new RepairScreen(new JustBuildScreen()))); context.takeScreenshot("workshop-repair-controls"); context.clickScreenButton("Preview repair");
+            context.runOnClient(mc -> mc.gui.setScreen(new RepairScreen(new JustBuildScreen()))); context.takeScreenshot("workshop-repair-controls"); context.clickScreenButton("Preview repair");
             awaitPreview(context); command(context, "confirm"); awaitBlock(context, world, missing, Blocks.OAK_PLANKS);
             check(state(world, manual).is(Blocks.DIAMOND_BLOCK), "missing-only repair changed a manual replacement");
             undo(context); awaitBlock(context, world, missing, Blocks.AIR); check(state(world, manual).is(Blocks.DIAMOND_BLOCK), "undo lost manual material");
@@ -114,10 +116,10 @@ public final class WorkshopGameTest implements FabricClientGameTest {
             command(context, "repair all"); awaitPreview(context); command(context, "confirm"); awaitBlock(context, world, missing, Blocks.OAK_PLANKS);
             check(state(world, manual).is(Blocks.DIAMOND_BLOCK) && state(world, chest).is(Blocks.CHEST), "repair bypassed protected positions");
 
-            context.runOnClient(mc -> mc.setScreen(new ProjectsScreen(new JustBuildScreen()))); text(context, "Project name", "Riverside"); context.clickScreenButton("Create");
+            context.runOnClient(mc -> mc.gui.setScreen(new ProjectsScreen(new JustBuildScreen()))); text(context, "Project name", "Riverside"); context.clickScreenButton("Create");
             context.waitFor(mc -> ClientState.projects().size() == 1); String projectId = context.computeOnClient(mc -> ClientState.activeProject());
             command(context, "project add"); command(context, "project style medieval"); command(context, "project palette oak_planks,stone_bricks");
-            context.runOnClient(mc -> mc.setScreen(new ProjectDetailsScreen(new JustBuildScreen(), projectId))); context.takeScreenshot("workshop-project-controls");
+            context.runOnClient(mc -> mc.gui.setScreen(new ProjectDetailsScreen(new JustBuildScreen(), projectId))); context.takeScreenshot("workshop-project-controls");
             // Each project screen, opened from its button (so GlassGuard checks them too).
             context.clickScreenButton("Buildings"); context.waitForScreen(ProjectMembersScreen.class); context.takeScreenshot("workshop-project-buildings");
             check(active(context, "Handbuilt House · v"), "project buildings do not list the adopted build");
@@ -132,7 +134,7 @@ public final class WorkshopGameTest implements FabricClientGameTest {
 
             replies.add(PlanWriter.write(new BuildPlan("Interior", "", List.of(Operation.set("emerald_block", new Cell(2, 1, 3)),
                     Operation.set("gold_block", new Cell(0, 2, 2)), Operation.set("chest", new Cell(4, 1, 4))))));
-            RelaySeen.clear(); context.runOnClient(mc -> mc.setScreen(new InteriorScreen(new JustBuildScreen()))); context.takeScreenshot("workshop-interior-controls");
+            RelaySeen.clear(); context.runOnClient(mc -> mc.gui.setScreen(new InteriorScreen(new JustBuildScreen()))); context.takeScreenshot("workshop-interior-controls");
             context.clickScreenButton("Preview interior"); awaitCalls(context, 1); awaitPreview(context);
             check(prompts.peek().contains("Shared village project") && prompts.peek().contains("Focused edit"), "interior omitted shared theme or shell boundary");
             check(RelaySeen.snapshot().requests().contains(dev.justbuild.prompt.InteriorRequests.request("home", "complete", "")), "relay did not recognize the chosen interior template");
@@ -145,7 +147,7 @@ public final class WorkshopGameTest implements FabricClientGameTest {
             check(state(world, chest).is(Blocks.CHEST), "original container was not preserved across versions");
             check(context.computeOnClient(mc -> ClientState.part() == null), "interior work left a permanent part restriction");
             command(context, "walkability"); context.waitFor(mc -> ClientState.route() != null);
-            context.runOnClient(mc -> mc.setScreen(new WalkabilityScreen(new JustBuildScreen()))); context.takeScreenshot("workshop-walkability-controls");
+            context.runOnClient(mc -> mc.gui.setScreen(new WalkabilityScreen(new JustBuildScreen()))); context.takeScreenshot("workshop-walkability-controls");
             close(context); check(calls.get() == 1, "a local workshop tool used AI");
 
             BlockPos marker = base.east(16);
@@ -240,15 +242,15 @@ public final class WorkshopGameTest implements FabricClientGameTest {
     private static String pos(BlockPos p) { return p.getX() + " " + p.getY() + " " + p.getZ(); }
     private static void command(ClientGameTestContext context, String text) { context.runOnClient(mc -> mc.player.connection.sendCommand("justbuild " + text)); context.waitTicks(8); }
     private static void undo(ClientGameTestContext context) { command(context, "undo"); command(context, "undo confirm"); }
-    private static void close(ClientGameTestContext context) { context.runOnClient(mc -> mc.setScreen(null)); }
+    private static void close(ClientGameTestContext context) { context.runOnClient(mc -> mc.gui.setScreen(null)); }
     private static void text(ClientGameTestContext context, String label, String value) {
-        context.runOnClient(mc -> ((EditBox) mc.screen.children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(value));
+        context.runOnClient(mc -> ((EditBox) mc.gui.screen().children().stream().filter(w -> w instanceof EditBox e && e.getMessage().getString().equals(label)).findFirst().orElseThrow()).setValue(value));
     }
     /** Whether the button whose label starts with {@code prefix} can be pressed; fails when there is none. */
     private static boolean active(ClientGameTestContext context, String prefix) {
-        return context.computeOnClient(mc -> mc.screen.children().stream()
+        return context.computeOnClient(mc -> mc.gui.screen().children().stream()
                 .filter(w -> w instanceof Button b && b.getMessage().getString().startsWith(prefix)).map(w -> ((Button) w).active)
-                .findFirst().orElseThrow(() -> new AssertionError("No button labelled " + prefix + " on " + mc.screen.getClass().getSimpleName())));
+                .findFirst().orElseThrow(() -> new AssertionError("No button labelled " + prefix + " on " + mc.gui.screen().getClass().getSimpleName())));
     }
     private static BlockState state(TestSingleplayerContext world, BlockPos p) { return world.getServer().computeOnServer(server -> server.overworld().getBlockState(p)); }
     private static void awaitBlock(ClientGameTestContext context, TestSingleplayerContext world, BlockPos p, Block block) {

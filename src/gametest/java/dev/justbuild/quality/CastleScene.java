@@ -76,8 +76,8 @@ final class CastleScene {
         double yaw = Math.toDegrees(Math.atan2(-dx, dz)), pitch = -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
         world.getServer().runCommand("time set day"); world.getServer().runCommand("weather clear");
         world.getServer().runCommand("tp " + player + " " + (at.getX() + x) + " " + (at.getY() + y) + " " + (at.getZ() + z) + " " + yaw + " " + pitch);
-        c.runOnClient(mc -> { mc.setScreen(null); mc.options.hideGui = true; }); c.waitTicks(20);
-        world.getClientLevel().waitForChunksRender();
+        c.runOnClient(mc -> { mc.gui.setScreen(null); dev.justbuild.client.TestHud.hidden(mc, true); }); c.waitTicks(20);
+        world.getConnection().waitForChunksRender();
     }
 
     static void capture(ClientGameTestContext c, TestSingleplayerContext world, String player, BlockPos at,

@@ -1,10 +1,10 @@
 package dev.justbuild.client;
 
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.renderpearl.api.pipeline.BlendFunction;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import dev.justbuild.world.ZoneWand;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -24,18 +24,21 @@ import org.joml.Matrix4fc;
 
 /** Selection strokes with constant pixel width and an alpha-smoothed edge, visible through terrain. */
 final class SelectionLines {
-    private static final RenderPipeline PIPELINE = RenderPipelines.register(RenderPipeline.builder(
-                    RenderPipelines.MATRICES_PROJECTION_SNIPPET, RenderPipelines.GLOBALS_SNIPPET)
+    private static final RenderPipeline PIPELINE = RenderPipeline.builder()
+            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
+            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
             .withLocation(Identifier.fromNamespaceAndPath("justbuild", "pipeline/selection_lines"))
             .withVertexShader(Identifier.fromNamespaceAndPath("justbuild", "core/selection_lines"))
             .withFragmentShader(Identifier.fromNamespaceAndPath("justbuild", "core/selection_lines"))
-            .withVertexFormat(DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH, VertexFormat.Mode.LINES)
+            .withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH)
+            .withPrimitiveTopology(PrimitiveTopology.LINES)
             .withCull(false)
             .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
             .withDepthStencilState(Optional.empty())
-            .build());
-    private static final RenderType TYPE = RenderType.create("justbuild_selection_lines", RenderSetup.builder(PIPELINE)
-            .bufferSize(RenderType.SMALL_BUFFER_SIZE).createRenderSetup());
+            .build();
+    private static final RenderType TYPE = RenderType.create("justbuild_selection_lines",
+            RenderSetup.builder(PIPELINE).createRenderSetup());
     private record Line(Vec3 start, Vec3 end, int color, float width) { }
     private static final List<Line> pending = new ArrayList<>();
     private static List<Line> current = List.of();
@@ -73,8 +76,7 @@ final class SelectionLines {
         if (mc.level == null || mc.level != level || mc.player == null || current.isEmpty()
                 || !ZoneWand.isWand(mc.player.getMainHandItem()) && !ZoneWand.isWand(mc.player.getOffhandItem())) return;
         var camera = context.levelState().cameraRenderState;
-        var pose = context.poseStack().last();
-        var buffer = context.bufferSource().getBuffer(TYPE);
+        List<Line> visible = new ArrayList<>(current.size());
         for (Line line : current) {
             // Keep positions camera-relative before converting to floats, including far from the world origin.
             Vec3 a = line.start().subtract(camera.pos), b = line.end().subtract(camera.pos);
@@ -86,13 +88,18 @@ final class SelectionLines {
                 if (az > near) a = clipped; else b = clipped;
             }
             if (a.distanceToSqr(b) < 1.0e-12) continue;
-            Vec3 direction = b.subtract(a).normalize();
-            buffer.addVertex(pose, (float) a.x, (float) a.y, (float) a.z).setColor(line.color())
-                    .setNormal(pose, (float) direction.x, (float) direction.y, (float) direction.z).setLineWidth(line.width());
-            buffer.addVertex(pose, (float) b.x, (float) b.y, (float) b.z).setColor(line.color())
-                    .setNormal(pose, (float) direction.x, (float) direction.y, (float) direction.z).setLineWidth(line.width());
+            visible.add(new Line(a, b, line.color(), line.width()));
         }
-        context.bufferSource().endBatch(TYPE);
+        if (visible.isEmpty()) return;
+        context.submitNodeCollector().submitCustomGeometry(context.poseStack(), TYPE, (pose, buffer) -> {
+            for (Line line : visible) {
+                Vec3 a = line.start(), b = line.end(), direction = b.subtract(a).normalize();
+                buffer.addVertex(pose, (float) a.x, (float) a.y, (float) a.z).setColor(line.color())
+                        .setNormal(pose, (float) direction.x, (float) direction.y, (float) direction.z).setLineWidth(line.width());
+                buffer.addVertex(pose, (float) b.x, (float) b.y, (float) b.z).setColor(line.color())
+                        .setNormal(pose, (float) direction.x, (float) direction.y, (float) direction.z).setLineWidth(line.width());
+            }
+        });
     }
 
     private static double viewZ(Matrix4fc view, Vec3 p) {

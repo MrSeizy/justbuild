@@ -20,7 +20,7 @@ public final class PreviewBenchmarkGameTest implements FabricClientGameTest {
         report.addProperty("os", System.getProperty("os.name") + " " + System.getProperty("os.arch"));
         report.addProperty("recorded", java.time.Instant.now().toString()); JsonArray cases = new JsonArray(); report.add("cases", cases);
         try (var world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             String player = context.computeOnClient(mc -> mc.player.getName().getString());
             BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition());
             String dimension = context.computeOnClient(mc -> mc.level.dimension().identifier().toString());

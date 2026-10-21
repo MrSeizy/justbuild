@@ -1,12 +1,13 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
-#moj_import <minecraft:dynamictransforms.glsl>
+#include <minecraft:dynamictransforms.glsl>
 
-in vec4 vertexColor;
-noperspective in float edgeDistance;
-flat in float halfWidth;
+layout(location = 0) in vec4 vertexColor;
+layout(location = 1) noperspective in float edgeDistance;
+layout(location = 2) flat in float halfWidth;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 void main() {
     // Screen-space interpolation keeps the feather about one pixel wide at any distance or angle.

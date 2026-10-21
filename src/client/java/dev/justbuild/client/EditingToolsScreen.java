@@ -18,13 +18,13 @@ public final class EditingToolsScreen extends ToolScreen {
         var parts = button("Parts", left, 34, third, () -> { locks = false; rebuildWidgets(); });
         var lockedAreas = button("Locked areas", left + third + 4, 34, third, () -> { locks = true; rebuildWidgets(); });
         (locks ? lockedAreas : parts).current();
-        button("Connections", left + 2 * (third + 4), 34, third, () -> minecraft.setScreen(new ConnectionsScreen(this)));
+        button("Connections", left + 2 * (third + 4), 34, third, () -> minecraft.gui.setScreen(new ConnectionsScreen(this)));
         if (!locks) {
-            button("Wand: Box", left, 66, third, () -> { run("box wand"); minecraft.setScreen(null); })
+            button("Wand: Box", left, 66, third, () -> { run("box wand"); minecraft.gui.setScreen(null); })
                     .setTooltip(Tooltip.create(Component.literal("Equips the Builder Wand in purple Box mode. Sneak-left-click clears the box. Sneak-right-click in the air switches modes. Left-click starts again; each right-click grows the box to include that block. Select the footprint, then the roof.")));
-            button("Start box", left + third + 4, 66, third, () -> { run("box 1"); minecraft.setScreen(null); })
+            button("Start box", left + third + 4, 66, third, () -> { run("box 1"); minecraft.gui.setScreen(null); })
                     .setTooltip(Tooltip.create(Component.literal("Start a new selection at the block under your crosshair, or underfoot.")));
-            button("Include point", left + 2 * (third + 4), 66, third, () -> { run("box 2"); minecraft.setScreen(null); })
+            button("Include point", left + 2 * (third + 4), 66, third, () -> { run("box 2"); minecraft.gui.setScreen(null); })
                     .setTooltip(Tooltip.create(Component.literal("Grow the box to include the block under your crosshair, or underfoot. Repeat to include more points.")));
             String[] labels = {"Select roof", "Select wall", "Select room"};
             String[] kinds = {"roof", "wall", "room"};
@@ -33,12 +33,12 @@ public final class EditingToolsScreen extends ToolScreen {
                     "Stand inside a room and point at its surface. Selects the enclosed space and a one-block shell. For open or large rooms, use the wand in Part mode."};
             for (int i = 0; i < 3; i++) {
                 int index = i;
-                var select = button(labels[i], left + i * (third + 4), 90, third, () -> { run("box " + kinds[index]); minecraft.setScreen(null); });
+                var select = button(labels[i], left + i * (third + 4), 90, third, () -> { run("box " + kinds[index]); minecraft.gui.setScreen(null); });
                 select.active = ClientState.string("selectedBuild", null) != null;
                 select.setTooltip(Tooltip.create(Component.literal(help[i])));
             }
             int half = (panelWidth - 4) / 2;
-            button("Named parts", left, 114, half, () -> minecraft.setScreen(new NamedPartsScreen(this)));
+            button("Named parts", left, 114, half, () -> minecraft.gui.setScreen(new NamedPartsScreen(this)));
             button("Clear box", left + half + 4, 114, half, () -> run("box clear"));
         } else {
             EditBox name = new GlassEditBox(font, left, 66, panelWidth - 94, 20, Component.literal("Locked area name"));
@@ -63,7 +63,7 @@ public final class EditingToolsScreen extends ToolScreen {
             }
         }
         button("Back", left, height - 28, third, this::onClose);
-        if (!locks) button("Workshop", left + third + 4, height - 28, panelWidth - third - 4, () -> minecraft.setScreen(new WorkshopScreen(this)));
+        if (!locks) button("Workshop", left + third + 4, height - 28, panelWidth - third - 4, () -> minecraft.gui.setScreen(new WorkshopScreen(this)));
     }
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float tick) {
         super.extractRenderState(graphics, mouseX, mouseY, tick);

@@ -20,7 +20,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Building and undoing while the player travels between dimensions, and Nether builds under the bedrock roof. */
 public final class DimensionGameTest implements FabricClientGameTest {
@@ -52,7 +52,7 @@ public final class DimensionGameTest implements FabricClientGameTest {
             config.creativeDirection = false;
             new ConfigStore(file).save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 world.getServer().runCommand("gamemode creative " + player);
                 prepare(world);
@@ -138,12 +138,12 @@ public final class DimensionGameTest implements FabricClientGameTest {
                 travel(context, world, player, "the_nether", CAVERN.above());
                 check(context.computeOnClient(mc -> "minecraft:overworld".equals(ClientState.builds().getFirst().elsewhere())),
                         "the panel did not mark the Overworld build after travelling");
-                context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+                context.getInput().pressKey(InputConstants.KEY_RSHIFT);
                 context.waitForScreen(JustBuildScreen.class);
                 context.clickScreenButton("History");
                 context.waitTicks(5);
                 context.takeScreenshot("history-build-elsewhere");
-                context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+                context.getInput().pressKey(InputConstants.KEY_ESCAPE);
                 context.waitTicks(10);
 
                 // Undo from another dimension says where the build is, even with a zone selected here.
@@ -198,7 +198,7 @@ public final class DimensionGameTest implements FabricClientGameTest {
         world.getServer().runCommand("execute in minecraft:" + dimension + " run tp " + player + " " + (to.getX() + 0.5)
                 + " " + to.getY() + " " + (to.getZ() + 4.5) + " 180 30");
         context.waitFor(mc -> mc.level != null && mc.level.dimension().identifier().getPath().equals(dimension), 1200);
-        world.getClientLevel().waitForChunksRender();
+        world.getConnection().waitForChunksRender();
         context.waitTicks(20);
     }
 

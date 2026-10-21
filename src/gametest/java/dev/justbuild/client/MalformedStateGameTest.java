@@ -17,7 +17,7 @@ public final class MalformedStateGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             show(context, "CREATE", () -> new JustBuildScreen());
             check(context.computeOnClient(mc -> ClientState.questionOptions()).equals(java.util.List.of("north")),
                     "only the plain option should be kept");
@@ -36,7 +36,7 @@ public final class MalformedStateGameTest implements FabricClientGameTest {
                 check(ClientState.string("provider", "").equals("new") && ClientState.route() == null, "malformed optional route prevented the new state");
                 ClientState.update(STATE);
                 check(ClientState.builds() != builds && ClientState.builds().equals(builds), "new documents did not install a fresh snapshot");
-                mc.setScreen(null);
+                mc.gui.setScreen(null);
             });
         }
     }
@@ -46,7 +46,7 @@ public final class MalformedStateGameTest implements FabricClientGameTest {
         context.runOnClient(mc -> {
             ClientState.update(STATE);
             selectTab(tab);
-            mc.setScreen(screen.get());
+            mc.gui.setScreen(screen.get());
         });
         context.waitTicks(5);
         // The server's own state could replace the injected one; the check would then pass without testing anything.

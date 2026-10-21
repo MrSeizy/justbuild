@@ -13,14 +13,14 @@ final class TextureScreen extends ToolScreen {
         seedField.setMaxLength(11); seedField.setValue(seed); seedField.setHint(Component.literal("Seed (blank: next)"));
         addRenderableWidget(seedField);
         var reroll = button("Preview reroll", left + panelWidth - 124, 38, 124,
-                () -> { run("materials reroll" + (seed.isBlank() ? "" : " " + seed)); minecraft.setScreen(null); });
+                () -> { run("materials reroll" + (seed.isBlank() ? "" : " " + seed)); minecraft.gui.setScreen(null); });
         seedField.setResponder(value -> { seed = value; reroll.active = value.isBlank() || integer(value, Integer.MIN_VALUE, Integer.MAX_VALUE); });
         reroll.active = seed.isBlank() || integer(seed, Integer.MIN_VALUE, Integer.MAX_VALUE);
-        button("Choose mix material", left, 76, panelWidth, () -> minecraft.setScreen(new MaterialPickerScreen(this, false, id -> material = id)));
+        button("Choose mix material", left, 76, panelWidth, () -> minecraft.gui.setScreen(new MaterialPickerScreen(this, false, id -> material = id)));
         var weightField = new GlassEditBox(font, left, 126, panelWidth - 130, 20, Component.literal("Relative weight, 0 to 100"));
         weightField.setMaxLength(3); weightField.setValue(weight); addRenderableWidget(weightField);
         var apply = button("Preview weight", left + panelWidth - 124, 126, 124,
-                () -> { run("materials weight " + material + " " + weight); minecraft.setScreen(null); });
+                () -> { run("materials weight " + material + " " + weight); minecraft.gui.setScreen(null); });
         weightField.setResponder(value -> { weight = value; apply.active = material != null && integer(value, 0, 100); });
         apply.active = material != null && integer(weight, 0, 100);
         button("Back", left, height - 28, panelWidth, this::onClose);

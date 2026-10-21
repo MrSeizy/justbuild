@@ -84,7 +84,7 @@ final class BuilderBotModel {
         }
         pose.pushPose();
         pose.translate(node.pivot().x, node.pivot().y, node.pivot().z);
-        pose.mulPose(Axis.ZP.rotationDegrees(r.z)); pose.mulPose(Axis.YP.rotationDegrees(r.y)); pose.mulPose(Axis.XP.rotationDegrees(r.x));
+        pose.rotate(Axis.ZP.rotationDegrees(r.z)); pose.rotate(Axis.YP.rotationDegrees(r.y)); pose.rotate(Axis.XP.rotationDegrees(r.x));
         pose.translate(-node.pivot().x, -node.pivot().y, -node.pivot().z);
         if (!node.faces().isEmpty()) out.add(new Geometry(pose.last().copy(), node.faces()));
         for (Node child : node.children()) animate(child, pose, age, walking, hammering, out);

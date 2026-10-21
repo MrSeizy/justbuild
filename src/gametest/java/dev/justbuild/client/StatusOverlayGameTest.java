@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.Hud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
@@ -23,14 +23,14 @@ public final class StatusOverlayGameTest implements FabricClientGameTest {
 
     @Override public void runTest(ClientGameTestContext context) {
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             int previousScale = context.computeOnClient(mc -> mc.options.guiScale().get());
             try {
                 for (int scale : List.of(1, 2, 3)) {
                     context.runOnClient(mc -> {
                         mc.options.guiScale().set(scale);
                         mc.resizeGui();
-                        mc.gui.getChat().clearMessages(false);
+                        mc.gui.hud.getChat().clearMessages(false);
                         var message = Component.literal(STATUS).withStyle(ChatFormatting.GRAY);
                         List<GuiTextRenderState> rows = render(mc, message);
                         checkRows(mc, rows);
@@ -63,7 +63,7 @@ public final class StatusOverlayGameTest implements FabricClientGameTest {
                 context.takeScreenshot("status-wrapped-ellipsis");
             } finally {
                 context.runOnClient(mc -> {
-                    mc.gui.setOverlayMessage(Component.empty(), false);
+                    mc.gui.hud.setOverlayMessage(Component.empty(), false);
                     mc.options.guiScale().set(previousScale);
                     mc.resizeGui();
                 });
@@ -72,12 +72,12 @@ public final class StatusOverlayGameTest implements FabricClientGameTest {
     }
 
     private static List<GuiTextRenderState> render(Minecraft mc, Component message) {
-        mc.gui.setOverlayMessage(message, false);
+        mc.gui.hud.setOverlayMessage(message, false);
         GuiRenderState state = new GuiRenderState();
         try {
-            var extract = Gui.class.getDeclaredMethod("extractOverlayMessage", GuiGraphicsExtractor.class, DeltaTracker.class);
+            var extract = Hud.class.getDeclaredMethod("extractOverlayMessage", GuiGraphicsExtractor.class, DeltaTracker.class);
             extract.setAccessible(true);
-            extract.invoke(mc.gui, new GuiGraphicsExtractor(mc, state, 0, 0), DeltaTracker.ZERO);
+            extract.invoke(mc.gui.hud, new GuiGraphicsExtractor(mc, state, 0, 0), DeltaTracker.ZERO);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Could not extract the action bar", e);
         }
@@ -115,7 +115,14 @@ public final class StatusOverlayGameTest implements FabricClientGameTest {
         List<String> lines = new ArrayList<>();
         for (var row : rows) {
             StringBuilder text = new StringBuilder();
-            row.text.accept((index, style, codePoint) -> { text.appendCodePoint(codePoint); return true; });
+            try {
+                var contents = GuiTextRenderState.class.getDeclaredField("text");
+                contents.setAccessible(true);
+                ((net.minecraft.util.FormattedCharSequence) contents.get(row))
+                        .accept((index, style, codePoint) -> { text.appendCodePoint(codePoint); return true; });
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError("Could not inspect the action-bar text", e);
+            }
             lines.add(text.toString().strip());
         }
         return String.join(" ", lines);

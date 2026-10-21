@@ -68,7 +68,7 @@ public final class BlockSpecs {
 
     /** Woods whose stairs are made from planks. */
     private static final java.util.Set<String> WOODS = java.util.Set.of("oak", "spruce", "birch", "jungle", "acacia",
-            "dark_oak", "mangrove", "cherry", "pale_oak", "bamboo", "crimson", "warped");
+            "dark_oak", "mangrove", "cherry", "pale_oak", "poplar", "bamboo", "crimson", "warped");
 
     /** The full block a stairs block is cut from (spruce_stairs → spruce_planks, brick_stairs → bricks). */
     public static String fullFor(String stairsSpec) {

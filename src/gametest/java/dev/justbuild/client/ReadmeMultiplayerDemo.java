@@ -31,7 +31,7 @@ public final class ReadmeMultiplayerDemo implements FabricClientGameTest {
         film = new ReadmeDemo(captureDirectory());
         try (var ai = new DemoFixture(); TestDedicatedServerContext server = c.worldBuilder().createServer();
                 var connection = server.connect()) {
-            connection.getClientLevel().waitForChunksRender();
+            connection.waitForChunksRender();
             base = c.computeOnClient(mc -> mc.player.blockPosition());
             player = c.computeOnClient(mc -> mc.player.getName().getString());
             server.runCommand("op " + player); server.runCommand("time set noon"); server.runCommand("weather clear");
@@ -42,7 +42,7 @@ public final class ReadmeMultiplayerDemo implements FabricClientGameTest {
             c.waitTicks(25); camera(c,server);
             command(c,"zone 1 "+pos(base.offset(-9,-1,-9))); command(c,"zone 2 "+pos(base.offset(9,-1,9)));
             // Dismiss this disposable server's login/tutorial notifications before recording the controls.
-            c.runOnClient(mc -> mc.getToastManager().clear()); c.waitTicks(4);
+            c.runOnClient(mc -> mc.gui.toastManager().clear()); c.waitTicks(4);
             film.begin("22-multiplayer-ai","USE YOUR OWN AI ON A SERVER");
             open(c,"Settings");
             film.hold(c,"Install matching JustBuild versions on the client and server.",null,22);
@@ -60,7 +60,7 @@ public final class ReadmeMultiplayerDemo implements FabricClientGameTest {
             film.hold(c,"This response is still local. Inspect it before sending.","Send to server",28);
             film.snapshot(c,"multiplayer-response-review"); c.clickScreenButton("Send to server");
             for(int round=0;round<6;round++) {
-                c.waitFor(mc -> ClientState.preview()!=null || mc.screen instanceof ResponseReviewScreen,1200);
+                c.waitFor(mc -> ClientState.preview()!=null || mc.gui.screen() instanceof ResponseReviewScreen,1200);
                 if(c.computeOnClient(mc -> ClientState.preview()!=null)) break;
                 film.hold(c,"Additional AI rounds wait for approval separately.","Send to server",18);
                 c.clickScreenButton("Send to server");

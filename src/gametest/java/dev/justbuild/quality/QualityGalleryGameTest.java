@@ -64,7 +64,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         report.addProperty("format", 1); report.addProperty("label", label); report.addProperty("mode", mode);
         report.addProperty("provider", providerId); report.addProperty("model", model.isEmpty() ? "CLI default / fixture" : model);
         report.addProperty("createdAt", Instant.now().toString()); report.addProperty("revision", System.getProperty("justbuild.galleryRevision", "unknown"));
-        report.addProperty("minecraft", "26.1.2"); report.addProperty("detail", detail.id()); report.addProperty("reviewRounds", detail.reviewRounds());
+        report.addProperty("minecraft", "26.3"); report.addProperty("detail", detail.id()); report.addProperty("reviewRounds", detail.reviewRounds());
         report.addProperty("repeats", repeats);
         int timeoutSeconds = Integer.parseInt(System.getenv().getOrDefault("JUSTBUILD_GALLERY_TIMEOUT_SECONDS",
                 String.valueOf(new JustBuildConfig().timeout().toSeconds())));
@@ -81,7 +81,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                 report.addProperty("harnessHash", hashBytes(Objects.requireNonNull(bytecode).readAllBytes()));
             }
             try (var world = context.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 String player = context.computeOnClient(mc -> mc.player.getName().getString());
                 BlockPos origin = context.computeOnClient(mc -> mc.player.blockPosition().above(12));
                 world.getServer().runCommand("gamemode spectator " + player);
@@ -218,7 +218,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                     Files.writeString(output.resolve("results.json"), JSON.toJson(report));
                     System.out.println("Gallery " + key + ": " + (ok ? "PASS" : "NEEDS ATTENTION") + "; " + elapsedMillis(started) / 1000 + " s");
                 }
-            } finally { context.runOnClient(mc -> mc.options.hideGui = false); }
+            } finally { context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false)); }
             System.out.println("Quality gallery: " + output.toAbsolutePath());
             if (failed) throw new AssertionError("Quality acceptance failed; inspect " + output.resolve("results.json"));
         } catch (java.io.IOException e) { throw new AssertionError("Could not write quality gallery", e); }
@@ -378,7 +378,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         }
         if (!scenario.id().equals("castle")) check(row, "Requested materials", switch (scenario.id()) {
             case "cottage" -> count(result.placements(), Blocks.OAK_PLANKS) >= 40 && count(result.placements(), Blocks.SPRUCE_STAIRS) >= 20;
-            case "interior" -> count(result.placements(), Blocks.RED_BED) >= 2 && count(result.placements(), Blocks.CRAFTING_TABLE) >= 1 && count(result.placements(), Blocks.BOOKSHELF) >= 2;
+            case "interior" -> count(result.placements(), Blocks.BED.pick(net.minecraft.world.item.DyeColor.RED)) >= 2 && count(result.placements(), Blocks.CRAFTING_TABLE) >= 1 && count(result.placements(), Blocks.BOOKSHELF) >= 2;
             case "editing" -> count(result.placements(), Blocks.BRICKS) >= 40 && count(result.placements(), Blocks.OAK_PLANKS) == 0;
             case "bridge" -> count(result.placements(), Blocks.OAK_PLANKS) >= 39 && count(result.placements(), Blocks.OAK_FENCE) >= 20;
             default -> count(result.placements(), Blocks.STONE_BRICKS) >= 63;
@@ -435,8 +435,8 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         double x = at.getX() + (inside ? 6.5 : -8), y = at.getY() + (inside ? 1.1 : 11), z = at.getZ() + (inside ? 1.5 : -10);
         world.getServer().runCommand("time set day"); world.getServer().runCommand("weather clear");
         world.getServer().runCommand("tp " + player + " " + x + " " + y + " " + z + (inside ? " 40 14" : " -42 30"));
-        c.runOnClient(mc -> { mc.setScreen(null); mc.options.hideGui = true; }); c.waitTicks(12);
-        world.getClientLevel().waitForChunksRender();
+        c.runOnClient(mc -> { mc.gui.setScreen(null); dev.justbuild.client.TestHud.hidden(mc, true); }); c.waitTicks(12);
+        world.getConnection().waitForChunksRender();
     }
     private static String sourceHash(net.minecraft.server.level.ServerLevel level, Scenario scenario, BlockPos at) {
         StringBuilder source = new StringBuilder();

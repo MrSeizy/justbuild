@@ -12,9 +12,12 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.world.level.block.state.BlockState;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class ProtectionTest {
     @BeforeAll
@@ -28,18 +31,19 @@ class ProtectionTest {
     static final BlockPos LOOT_CHEST = new BlockPos(3, 0, 0);
     static final BlockPos PLAIN = new BlockPos(4, 0, 0);
 
-    @Test
-    void protectsWrittenSignsAndAllowsShapeChangesOfOurOwnBlocks() {
+    @ParameterizedTest
+    @EnumSource(SignTextSlot.class)
+    void protectsWrittenSignsAndAllowsShapeChangesOfOurOwnBlocks(SignTextSlot writtenSide) {
         BlockPos signPos = new BlockPos(0, 0, 0);
         BlockPos chestPos = new BlockPos(1, 0, 0);
         BlockState sign = Blocks.OAK_SIGN.defaultBlockState();
         // setText() notifies the level, which a unit test doesn't have; a sign that reports written text stands in.
-        var text = new net.minecraft.world.level.block.entity.SignText()
-                .setMessage(0, net.minecraft.network.chat.Component.literal("Home"));
+        var text = net.minecraft.world.level.block.entity.SignText.EMPTY.asMutable()
+                .setLine(0, net.minecraft.network.chat.Component.literal("Home")).asImmutable();
         var written = new net.minecraft.world.level.block.entity.SignBlockEntity(signPos, sign) {
             @Override
-            public net.minecraft.world.level.block.entity.SignText getFrontText() {
-                return text;
+            public net.minecraft.world.level.block.entity.SignText getText(SignTextSlot slot) {
+                return slot == writtenSide ? text : super.getText(slot);
             }
         };
         BlockState single = Blocks.CHEST.defaultBlockState();

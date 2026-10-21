@@ -6,7 +6,8 @@
 [Reusable prompts](demos/13-reusable-prompts.mp4) · [Cancel, retry, and undo](demos/15-cancel-retry-undo.mp4) ·
 [Multiplayer](demos/22-multiplayer-ai.mp4) · [Team building](demos/23-team-building.mp4)
 
-Detailed controls, commands, configuration, and multiplayer behavior for JustBuild.
+Detailed controls, commands, configuration, and multiplayer behavior for JustBuild on Minecraft Java Edition 26.3.
+See the [installation requirements](../README.md#installation) before setting up a game or server.
 
 - [AI providers](#backends)
 - [Test and activate a profile](#testing-a-profile-before-saving)

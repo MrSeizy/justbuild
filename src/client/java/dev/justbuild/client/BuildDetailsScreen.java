@@ -44,12 +44,12 @@ public final class BuildDetailsScreen extends FormScreen {
             String checkpoint = checkpoints.get(page * rows + i);
             addRenderableWidget(GlassButton.builder(Component.literal("Restore: " + checkpoint), b -> {
                 run("checkpoint restore " + checkpoint);
-                minecraft.setScreen(null);
+                minecraft.gui.setScreen(null);
             }).bounds(left, 130 + i * 22, panelWidth, 20).build());
         }
         int bottom = height - 26;
         addRenderableWidget(GlassButton.builder(Component.literal("Back"), b -> onClose()).bounds(left, bottom, 80, 20).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Workshop"), b -> minecraft.setScreen(new WorkshopScreen(this)))
+        addRenderableWidget(GlassButton.builder(Component.literal("Workshop"), b -> minecraft.gui.setScreen(new WorkshopScreen(this)))
                 .bounds(left + 84, bottom, Math.min(120, panelWidth - 254), 20).build());
         if (pages > 1) {
             Button previous = GlassButton.builder(Component.literal("Previous"), b -> { page--; rebuildWidgets(); })
@@ -84,7 +84,7 @@ public final class BuildDetailsScreen extends FormScreen {
 
     void stateChanged() { rebuildWidgets(); }
 
-    @Override public void onClose() { minecraft.setScreen(parent); }
+    @Override public void onClose() { minecraft.gui.setScreen(parent); }
 
     /** The glass sheet instead of the vanilla blur: the world stays visible around the panel. */
     @Override

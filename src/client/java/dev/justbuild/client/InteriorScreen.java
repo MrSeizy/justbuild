@@ -18,7 +18,7 @@ final class InteriorScreen extends ToolScreen {
         var field = new GlassEditBox(font, left, 88, panelWidth, 20, Component.literal("Interior details"));
         field.setMaxLength(180); field.setHint(Component.literal("Optional: rooms, occupants, furniture…")); field.setValue(detail); field.setResponder(value -> detail = value); addRenderableWidget(field);
         button("Preview interior", left, 122, panelWidth, () -> { run("interior " + InteriorRequests.PURPOSES.get(purpose)
-                + " " + InteriorRequests.STAGES.get(stage) + (detail.isBlank() ? "" : " " + detail.strip())); minecraft.setScreen(null); }).primary();
+                + " " + InteriorRequests.STAGES.get(stage) + (detail.isBlank() ? "" : " " + detail.strip())); minecraft.gui.setScreen(null); }).primary();
         button("Back", left, height - 28, panelWidth, this::onClose);
     }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int x, int y, float tick) {

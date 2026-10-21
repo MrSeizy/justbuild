@@ -54,7 +54,7 @@ public final class ModelPickerScreen extends FormScreen {
     /** Called on the client thread when the server answers. */
     static void receive(ModelsPayload payload) {
         // A picker for this computer's own profiles never takes a list from the server.
-        if (Minecraft.getInstance().screen instanceof ModelPickerScreen picker && !picker.local
+        if (Minecraft.getInstance().gui.screen() instanceof ModelPickerScreen picker && !picker.local
                 && picker.requestId == payload.id()) {
             picker.error = payload.error();
             picker.models = payload.error().isEmpty() ? payload.models() : List.of();
@@ -135,7 +135,7 @@ public final class ModelPickerScreen extends FormScreen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     /** The glass sheet instead of the vanilla blur: the world stays visible around the panel. */

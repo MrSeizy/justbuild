@@ -45,43 +45,43 @@ public final class ProfileDiagnosticsGameTest implements FabricClientGameTest {
             try (var world = context.worldBuilder().create()) {
                 context.waitFor(mc -> !ClientState.profiles().isEmpty());
                 context.runOnClient(mc -> {
-                    mc.setScreen(new ProfilesScreen(new JustBuildScreen(), false));
-                    field(mc.screen, "Model (required)").setValue("unsaved-model");
+                    mc.gui.setScreen(new ProfilesScreen(new JustBuildScreen(), false));
+                    field(mc.gui.screen(), "Model (required)").setValue("unsaved-model");
                 });
                 context.clickScreenButton("Test connection");
-                context.waitFor(mc -> result(mc.screen) != null, 500);
+                context.waitFor(mc -> result(mc.gui.screen()) != null, 500);
                 check(models.equals(List.of("unsaved-model")), "server tested saved model instead of draft");
                 check(auth.equals(List.of("Bearer sk-diagnostic-fixture")), "server did not resolve saved key");
                 check(java.util.Arrays.equals(saved, read(file)), "test saved profile edits");
-                context.runOnClient(mc -> { check(result(mc.screen).stream().allMatch(c -> c.status() == ProfileDiagnostics.Status.PASS), "connection test failed"); mc.screen.resize(320, 240); });
+                context.runOnClient(mc -> { check(result(mc.gui.screen()).stream().allMatch(c -> c.status() == ProfileDiagnostics.Status.PASS), "connection test failed"); mc.gui.screen().resize(320, 240); });
                 context.takeScreenshot("profile-connection-results");
                 context.clickScreenButton("Previous check"); context.clickScreenButton("Previous check");
                 context.clickScreenButton("Back to profiles");
-                context.runOnClient(mc -> check(field(mc.screen, "Model (required)").getValue().equals("unsaved-model"), "returning erased draft"));
+                context.runOnClient(mc -> check(field(mc.gui.screen(), "Model (required)").getValue().equals("unsaved-model"), "returning erased draft"));
                 block.set(true);
                 context.clickScreenButton("Test connection");
                 context.waitFor(mc -> models.size() == 2, 400);
                 context.runOnClient(mc -> {
-                    var screen = mc.screen;
+                    var screen = mc.gui.screen();
                     ProfileTestScreen.receive(new ProfileTestPayload(id(screen) + 1, List.of(ProfileDiagnostics.unexpected())));
                     check(result(screen) == null, "stale response accepted");
                 });
                 context.clickScreenButton("Cancel test");
                 context.runOnClient(mc -> {
-                    mc.setScreen(new ProfilesScreen(new JustBuildScreen(), true));
-                    field(mc.screen, "Model (required)").setValue("local-unsaved");
+                    mc.gui.setScreen(new ProfilesScreen(new JustBuildScreen(), true));
+                    field(mc.gui.screen(), "Model (required)").setValue("local-unsaved");
                 });
                 context.clickScreenButton("Test connection");
                 context.waitFor(mc -> models.size() == 3, 400);
                 context.runOnClient(mc -> {
-                    ProfileTestScreen.receive(new ProfileTestPayload(id(mc.screen), List.of(ProfileDiagnostics.unexpected())));
-                    check(result(mc.screen) == null, "server reply entered local test");
+                    ProfileTestScreen.receive(new ProfileTestPayload(id(mc.gui.screen()), List.of(ProfileDiagnostics.unexpected())));
+                    check(result(mc.gui.screen()) == null, "server reply entered local test");
                 });
                 release.countDown();
-                context.waitFor(mc -> result(mc.screen) != null, 400);
+                context.waitFor(mc -> result(mc.gui.screen()) != null, 400);
                 check(models.getLast().equals("local-unsaved"), "local test ignored draft");
                 check(java.util.Arrays.equals(saved, read(file)), "local test saved draft");
-                context.clickScreenButton("Back to profiles"); context.runOnClient(mc -> mc.setScreen(null));
+                context.clickScreenButton("Back to profiles"); context.runOnClient(mc -> mc.gui.setScreen(null));
             }
         } catch (Exception e) { throw new AssertionError(e); }
         finally { release.countDown(); if (stub != null) stub.stop(0); restore(file, before); }

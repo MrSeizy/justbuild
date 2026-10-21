@@ -10,11 +10,11 @@ final class AddExistingScreen extends ToolScreen {
     AddExistingScreen(Screen parent) { super("Add existing build", parent); }
     @Override protected void build() {
         int third = (panelWidth - 8) / 3;
-        button("Wand: Box", left, 36, third, () -> { run("box wand"); minecraft.setScreen(null); })
+        button("Wand: Box", left, 36, third, () -> { run("box wand"); minecraft.gui.setScreen(null); })
                 .setTooltip(Tooltip.create(Component.literal("Equips the Builder Wand in purple Box mode. Sneak-right-click in the air to switch modes. Left-click to start a new selection; each right-click grows its box to include that block. Select the footprint, then the roof. Blocks stay intact.")));
-        button("Start box", left + third + 4, 36, third, () -> { run("box 1"); minecraft.setScreen(null); })
+        button("Start box", left + third + 4, 36, third, () -> { run("box 1"); minecraft.gui.setScreen(null); })
                 .setTooltip(Tooltip.create(Component.literal("Start again at the block under your crosshair, or underfoot. Same as left-clicking with the wand in Part mode.")));
-        button("Include point", left + 2 * (third + 4), 36, third, () -> { run("box 2"); minecraft.setScreen(null); })
+        button("Include point", left + 2 * (third + 4), 36, third, () -> { run("box 2"); minecraft.gui.setScreen(null); })
                 .setTooltip(Tooltip.create(Component.literal("Grow the selection to include the block under your crosshair, or underfoot. Repeat for the footprint, roof, and any missed edges.")));
         var field = new GlassEditBox(font, left, 94, panelWidth, 20, Component.literal("Building name"));
         field.setMaxLength(60); field.setHint(Component.literal("Name this building")); field.setValue(name); addRenderableWidget(field);

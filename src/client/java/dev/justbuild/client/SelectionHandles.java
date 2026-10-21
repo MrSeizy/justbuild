@@ -71,7 +71,7 @@ final class SelectionHandles {
         if (moving.part()) displayedPart = moving.regionAt(p); else displayedZone = moving.zoneAt(p);
     }
     private static boolean available(Minecraft mc) {
-        return mc.level != null && mc.player != null && mc.screen == null && ClientState.preview() == null
+        return mc.level != null && mc.player != null && mc.gui.screen() == null && ClientState.preview() == null
                 && (ZoneWand.isWand(mc.player.getMainHandItem()) || ZoneWand.isWand(mc.player.getOffhandItem()));
     }
     private static boolean partMode(Minecraft mc) {
@@ -171,7 +171,7 @@ final class SelectionHandles {
         }
     }
     private static Handle find(Minecraft mc) {
-        var camera = mc.gameRenderer.getMainCamera(); Vec3 eye = camera.position();
+        var camera = mc.gameRenderer.mainCamera(); Vec3 eye = camera.position();
         Vec3 end = eye.add(new Vec3(camera.forwardVector()).scale(ZoneWand.REACH));
         Handle best = null; double distance = Double.MAX_VALUE;
         for (Handle h : handles) {

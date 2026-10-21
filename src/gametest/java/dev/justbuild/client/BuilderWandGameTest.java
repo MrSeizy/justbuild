@@ -14,7 +14,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Automatic delivery, legacy inventory conversion, and real held-input mode changes. */
 public final class BuilderWandGameTest implements FabricClientGameTest {
@@ -26,7 +26,7 @@ public final class BuilderWandGameTest implements FabricClientGameTest {
             if (recording.get() && overlay) messages.add(message.getString());
         });
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             context.waitFor(mc -> mc.player.getInventory().getNonEquipmentItems().stream().filter(ZoneWand::isWand).count() == 1);
             check(count(world) == 1, "joining did not automatically give exactly one Builder Wand");
             world.getServer().runOnServer(server -> {
@@ -94,7 +94,7 @@ public final class BuilderWandGameTest implements FabricClientGameTest {
                 context.getInput().releaseShift();
                 context.waitTicks(3);
             }
-            context.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            context.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             context.takeScreenshot("builder-wand-zone-gold");
             context.getInput().holdShift();
             context.waitTicks(2);
@@ -116,7 +116,7 @@ public final class BuilderWandGameTest implements FabricClientGameTest {
 
     private static void switchOnce(ClientGameTestContext context, List<String> messages, boolean part, String mode) {
         long before = context.computeOnClient(mc -> messages.stream().filter(s -> s.startsWith("Builder Wand ·")).count());
-        context.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_RIGHT, 20);
+        context.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_RIGHT, 20);
         context.waitTicks(3);
         long after = context.computeOnClient(mc -> messages.stream().filter(s -> s.startsWith("Builder Wand ·")).count());
         check(after - before == 1, mode + ": one held click switched modes " + (after - before) + " times");

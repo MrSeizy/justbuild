@@ -38,7 +38,7 @@ final class ProjectPaletteScreen extends ToolScreen {
             chip.setTooltip(Tooltip.create(Component.literal("Remove " + name(block) + " (" + block + ")")));
         }
         int below = 40 + rows * 22 + 6;
-        Button add = button("Add block…", left, below, third, () -> minecraft.setScreen(new MaterialPickerScreen(this,
+        Button add = button("Add block…", left, below, third, () -> minecraft.gui.setScreen(new MaterialPickerScreen(this,
                 "Add to the shared palette", false, block -> {
                     List<String> next = new ArrayList<>(palette());
                     if (!next.contains(block) && next.size() < MAX) next.add(block);

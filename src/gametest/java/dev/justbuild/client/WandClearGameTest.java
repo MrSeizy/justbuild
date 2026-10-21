@@ -15,7 +15,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.HitResult;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Real sneak/attack input clears completed, incomplete, and moving selections without starting another. */
 public final class WandClearGameTest implements FabricClientGameTest {
@@ -26,7 +26,7 @@ public final class WandClearGameTest implements FabricClientGameTest {
             if (recording.get()) messages.add(message.getString());
         });
         try (TestSingleplayerContext w = c.worldBuilder().create()) {
-            w.getClientLevel().waitForChunksRender();
+            w.getConnection().waitForChunksRender();
             String name = c.computeOnClient(mc -> mc.player.getName().getString());
             BlockPos base = c.computeOnClient(mc -> mc.player.blockPosition().below());
             w.getServer().runOnServer(s -> s.overworld().setBlock(base, Blocks.BARREL.defaultBlockState(), Block.UPDATE_CLIENTS));
@@ -40,7 +40,7 @@ public final class WandClearGameTest implements FabricClientGameTest {
                     select(c, base, true);
                     stand(c, w, name, base);
                     if (aim.equals("far")) {
-                        PreviewControlsGameTest.runOnLook(c, base.east(24).getCenter().add(0, 0.5, 0));
+                        PreviewControlsGameTest.runOnLook(c, net.minecraft.world.phys.Vec3.atCenterOf(base.east(24)).add(0, 0.5, 0));
                         check(c.computeOnClient(mc -> mc.hitResult.getType() == HitResult.Type.MISS && ZoneWandInput.target(mc) != null),
                                 "far fixture was not outside normal reach");
                     } else if (aim.equals("air")) {
@@ -64,7 +64,7 @@ public final class WandClearGameTest implements FabricClientGameTest {
                     + " " + (base.getZ() + 8.5) + " 180 20");
             c.waitTicks(8);
             PreviewControlsGameTest.runOnLook(c, c.computeOnClient(mc -> SelectionHandles.partCornerPosition(ClientState.part(), 0)));
-            c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_RIGHT, 20);
+            c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_RIGHT, 20);
             c.waitFor(mc -> SelectionHandles.moving());
             clearOnce(c, messages, "moving corner");
             check(c.computeOnClient(mc -> !SelectionHandles.moving()), "clearing left a corner picked up");
@@ -99,10 +99,10 @@ public final class WandClearGameTest implements FabricClientGameTest {
                     "clear shortcut broke the targeted block");
 
             command(c, "box wand"); select(c, base, true); stand(c, w, name, base);
-            c.runOnClient(mc -> { mc.gui.getChat().clearMessages(false); mc.player.setXRot(20); });
+            c.runOnClient(mc -> { mc.gui.hud.getChat().clearMessages(false); mc.player.setXRot(20); });
             c.waitTicks(3); c.takeScreenshot("wand-clear-shortcut-hud");
             clearOnce(c, messages, "HUD example");
-            c.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             c.waitTicks(3); c.takeScreenshot("wand-cleared-part-hud");
         } finally { recording.set(false); }
     }
@@ -119,7 +119,7 @@ public final class WandClearGameTest implements FabricClientGameTest {
     }
     private static void gesture(ClientGameTestContext c) {
         c.getInput().holdShift();
-        try { c.waitTicks(2); c.getInput().holdMouseFor(GLFW.GLFW_MOUSE_BUTTON_LEFT, 20); }
+        try { c.waitTicks(2); c.getInput().holdMouseFor(InputConstants.MOUSE_BUTTON_LEFT, 20); }
         finally { c.getInput().releaseShift(); }
         c.waitTicks(5);
     }
@@ -127,7 +127,7 @@ public final class WandClearGameTest implements FabricClientGameTest {
         long before = count(c, messages);
         gesture(c);
         check(c.computeOnClient(mc -> ClientState.part() == null && ClientState.partOutline() == null
-                && !ClientState.flag("selectingPart") && mc.screen == null), scenario + ": selection was not cleared");
+                && !ClientState.flag("selectingPart") && mc.gui.screen() == null), scenario + ": selection was not cleared");
         check(count(c, messages) - before == 1, scenario + ": one held press did not clear exactly once");
     }
     private static long count(ClientGameTestContext c, List<String> messages) {

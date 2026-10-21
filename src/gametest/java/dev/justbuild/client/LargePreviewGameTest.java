@@ -16,7 +16,7 @@ public final class LargePreviewGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             String player = context.computeOnClient(mc -> mc.player.getName().getString());
             BlockPos at = context.computeOnClient(mc -> mc.player.blockPosition());
             // Above the box's near edge, looking down into it, so it is on screen and within marker range.

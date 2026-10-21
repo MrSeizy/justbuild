@@ -14,7 +14,7 @@ final class WorldText {
     static void draw(String text, Vec3 position, TextGizmo.Style style) {
         Gizmos.addGizmo((primitives, opacity) -> {
             // Calculate the offset during extraction, so the shadow follows the billboard between client ticks.
-            var camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+            var camera = Minecraft.getInstance().gameRenderer.mainCamera();
             Vec3 forward = new Vec3(camera.forwardVector());
             Vec3 up = new Vec3(camera.upVector());
             Vec3 right = forward.cross(up);

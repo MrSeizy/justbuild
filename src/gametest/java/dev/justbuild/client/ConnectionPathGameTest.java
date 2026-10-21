@@ -50,7 +50,7 @@ public final class ConnectionPathGameTest implements FabricClientGameTest {
             config.creativeDirection = false; config.previewAbove = 0; config.maxQuestions = 2;
             store.save(config);
             try (TestSingleplayerContext world = c.worldBuilder().create()) {
-                world.getClientLevel().waitForChunksRender();
+                world.getConnection().waitForChunksRender();
                 BlockPos center = c.computeOnClient(mc -> mc.player.blockPosition().above(18));
                 BlockPos a = center.offset(-14, 0, -5), b = center.offset(14, 0, 5);
                 String player = c.computeOnClient(mc -> mc.player.getName().getString());
@@ -197,8 +197,8 @@ public final class ConnectionPathGameTest implements FabricClientGameTest {
         c.runOnClient(mc -> mc.player.connection.sendCommand("justbuild " + text)); c.waitTicks(8);
     }
     private static void screenshot(ClientGameTestContext c, String name) {
-        c.runOnClient(mc -> mc.options.hideGui = true); c.waitTicks(3); c.takeScreenshot(name);
-        c.runOnClient(mc -> mc.options.hideGui = false);
+        c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true)); c.waitTicks(3); c.takeScreenshot(name);
+        c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
     }
     private static void check(boolean condition, String text) { if (!condition) throw new AssertionError(text); }
 

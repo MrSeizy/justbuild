@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.BlockHitResult;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Switch between houses, preserve a rejected edit, restore checkpoints, and copy a rotated design through the UI. */
 public final class BuildWorkspaceGameTest implements FabricClientGameTest {
@@ -46,7 +46,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
         ConfigStore config = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         configure(config, stub.getAddress().getPort());
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             BlockPos a = context.computeOnClient(mc -> mc.player.blockPosition().offset(0, 18, 10));
             BlockPos b = a.east(20), c = a.east(40);
             String player = context.computeOnClient(mc -> mc.player.getName().getString());
@@ -63,7 +63,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             text(context, "Request", "design a small test cottage");
             context.clickScreenButton("Build");
             awaitCalls(context, 1);
-            context.runOnClient(mc -> mc.screen.onClose());
+            context.runOnClient(mc -> mc.gui.screen().onClose());
             command(context, "another request while the preview is pending");
             check(calls.get() == 1, "a waiting preview allowed a competing AI request");
             check(state(world, a).isAir(), "new-build preview changed the server world");
@@ -96,7 +96,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             context.clickScreenButton("Back");
             context.clickScreenButton("New build");
             context.waitFor(mc -> ClientState.string("selectedBuild", null) == null);
-            context.runOnClient(mc -> mc.screen.onClose());
+            context.runOnClient(mc -> mc.gui.screen().onClose());
 
             // A second build gets its own area; naming it must leave the first build's area untouched.
             zone(context, b);
@@ -122,7 +122,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             context.waitFor(mc -> mc.hitResult instanceof BlockHitResult hit && hit.getBlockPos().equals(a.above()));
             context.getInput().holdShift();
             context.waitTicks(5);
-            context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+            context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT);
             context.waitTicks(10);
             context.getInput().releaseShift();
             context.waitFor(mc -> first.equals(ClientState.string("selectedBuild", null)));
@@ -151,7 +151,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             check(context.computeOnClient(mc -> first.equals(ClientState.string("selectedBuild", null))
                     && smallerZone.equals(ClientState.zone())), "wand selection did not reveal the saved zone");
             check(state(world, a.above()).is(Blocks.OAK_STAIRS), "wand selection changed the clicked block");
-            context.runOnClient(mc -> mc.gui.getChat().clearMessages(false));
+            context.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             context.takeScreenshot("workspace-wand-restores-excluded-zone");
 
             // Switching buildings must not carry the previous building's zone along with it.
@@ -196,7 +196,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             context.waitTicks(20);
             check(context.computeOnClient(mc -> first.equals(ClientState.string("selectedBuild", null))),
                     "retry did not make its original edit target visible again");
-            context.runOnClient(mc -> mc.screen.onClose());
+            context.runOnClient(mc -> mc.gui.screen().onClose());
             screenshotWorld(context, "workspace-change-preview");
             check(calls.get() == 3, "retry generated another AI plan");
             command(context, "edit #" + second + " change the other house while this preview is pending");
@@ -281,16 +281,16 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
     }
 
     private static void openCreate(ClientGameTestContext context) {
-        context.runOnClient(mc -> mc.setScreen(new JustBuildScreen()));
+        context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
         context.tryClickScreenButton("Create");
         context.waitTicks(5);
     }
 
     private static void screenshotWorld(ClientGameTestContext context, String name) {
-        context.runOnClient(mc -> mc.options.hideGui = true);
+        context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
         context.waitTicks(3);
         context.takeScreenshot(name);
-        context.runOnClient(mc -> mc.options.hideGui = false);
+        context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
     }
 
     /** Adds one material swap to the design copy with the block picker. */
@@ -306,7 +306,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
 
     private static void text(ClientGameTestContext context, String label, String value) {
         context.runOnClient(mc -> {
-            EditBox box = (EditBox) mc.screen.children().stream().filter(c -> c instanceof EditBox e
+            EditBox box = (EditBox) mc.gui.screen().children().stream().filter(c -> c instanceof EditBox e
                     && e.getMessage().getString().equals(label)).findFirst().orElseThrow();
             box.setValue(value);
         });
@@ -333,7 +333,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
     private static void sneakSelect(ClientGameTestContext context) {
         context.getInput().holdShift();
         context.waitTicks(5);
-        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT);
         context.waitTicks(10);
         context.getInput().releaseShift();
         context.waitTicks(2);

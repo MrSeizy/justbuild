@@ -18,7 +18,7 @@ final class FloorPreviewScreen extends ToolScreen {
         button("Lower layer", left, 36, quarter, () -> { FloorPreview.lower(); rebuildWidgets(); }).active = !FloorPreview.blocks().isEmpty();
         button("Upper layer", left + quarter + 4, 36, quarter, () -> { FloorPreview.upper(); rebuildWidgets(); }).active = !FloorPreview.blocks().isEmpty();
         button("All layers", left + 2 * (quarter + 4), 36, quarter, () -> { FloorPreview.all(); rebuildWidgets(); });
-        button("View in world", left + 3 * (quarter + 4), 36, quarter, () -> minecraft.setScreen(null));
+        button("View in world", left + 3 * (quarter + 4), 36, quarter, () -> minecraft.gui.setScreen(null));
         int third = (panelWidth - 8) / 3;
         button("Before", left, 62, third, () -> { GhostPreview.before(true); rebuildWidgets(); });
         button("After", left + third + 4, 62, third, () -> { GhostPreview.before(false); rebuildWidgets(); });

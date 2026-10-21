@@ -14,7 +14,7 @@ final class ProjectMembersScreen extends ToolScreen {
         for (int i = 0; i < rows && page * rows + i < members.size(); i++) {
             var build = members.get(page * rows + i);
             button(build.title() + " · v" + build.versions(), left, 66 + i * 26, panelWidth,
-                    () -> { run("select " + build.id()); minecraft.setScreen(new BuildDetailsScreen(this, build.id())); });
+                    () -> { run("select " + build.id()); minecraft.gui.setScreen(new BuildDetailsScreen(this, build.id())); });
         }
         int third = (panelWidth - 8) / 3;
         button("Back", left, height - 28, third, this::onClose);

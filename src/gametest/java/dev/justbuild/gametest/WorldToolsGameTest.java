@@ -35,7 +35,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /** Real server reads, rotated plans, previews, restricted edit diffs, and undo. All model calls use a local stub. */
 public final class WorldToolsGameTest implements FabricClientGameTest {
@@ -64,7 +64,7 @@ public final class WorldToolsGameTest implements FabricClientGameTest {
         ConfigStore store = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         configure(store, stub.getAddress().getPort());
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
-            world.getClientLevel().waitForChunksRender();
+            world.getConnection().waitForChunksRender();
             BlockPos feet = context.computeOnClient(mc -> mc.player.blockPosition());
             BlockPos origin = feet.offset(10, 14, 10);
             BlockState stair = Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.EAST);
@@ -93,10 +93,10 @@ public final class WorldToolsGameTest implements FabricClientGameTest {
             world.getServer().runCommand("tp " + name + " " + (origin.getX() - 8.5) + " " + (origin.getY() + 4)
                     + " " + (origin.getZ() + 0.5) + " -90 20");
             context.waitTicks(10);
-            context.runOnClient(mc -> mc.options.hideGui = true);
+            context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
             context.waitTicks(5);
             context.takeScreenshot("world-zone-footprint");
-            context.runOnClient(mc -> mc.options.hideGui = false);
+            context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
             command(context, "inspect");
             check(calls.isEmpty(), "manual inspection called the AI");
             check(state(world, origin.south()).is(Blocks.OAK_STAIRS), "manual inspection changed blocks");
@@ -116,7 +116,7 @@ public final class WorldToolsGameTest implements FabricClientGameTest {
             command(context, "zone expand 8");
             world.getServer().runCommand("gamemode creative " + name);
             lookDownAt(context, world, name, origin.offset(3, -1, 3));
-            context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT);
+            context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
             context.waitTicks(10);
             world.getServer().runCommand("gamemode spectator " + name);
             world.getServer().runCommand("tp " + name + " " + (origin.getX() - 8.5) + " " + (origin.getY() + 4)
@@ -164,12 +164,12 @@ public final class WorldToolsGameTest implements FabricClientGameTest {
             // Manual expansion opens room for the same edit while retaining the saved build's origin.
             command(context, "zone expand 2");
             command(context, "zone expand 127"); // Too large: leave the previous footprint intact.
-            context.runOnClient(mc -> mc.setScreen(new JustBuildScreen()));
+            context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
             context.tryClickScreenButton("World");
             command(context, "zone expand 4");
             context.waitTicks(10);
             context.takeScreenshot("world-zone-controls");
-            context.runOnClient(mc -> mc.screen.onClose());
+            context.runOnClient(mc -> mc.gui.screen().onClose());
             // Looking upward gives no block hit, so expansion includes the position underfoot.
             world.getServer().runCommand("tp " + name + " " + (origin.getX() + 0.5) + " " + (origin.getY() + 4)
                     + " " + (origin.getZ() + 8.5) + " -90 -90");
@@ -261,10 +261,10 @@ public final class WorldToolsGameTest implements FabricClientGameTest {
             }
             player.inventoryMenu.broadcastChanges();
         });
-        context.runOnClient(mc -> mc.setScreen(new JustBuildScreen()));
+        context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
         context.tryClickScreenButton("World");
         context.clickScreenButton("Wand: Zone");
-        context.waitFor(mc -> mc.screen == null && mc.player.getMainHandItem().is(ZoneWand.ITEM));
+        context.waitFor(mc -> mc.gui.screen() == null && mc.player.getMainHandItem().is(ZoneWand.ITEM));
         command(context, "zone wand");
         check(itemCount(world, ZoneWand.ITEM) == 1 && itemCount(world, Items.GOLD_INGOT) == 63,
                 "equipping the wand duplicated it or lost a hotbar stack");
@@ -293,13 +293,13 @@ public final class WorldToolsGameTest implements FabricClientGameTest {
         world.getServer().runOnServer(server -> server.overworld().setBlock(second,
                 Blocks.CHEST.defaultBlockState(), Block.UPDATE_CLIENTS));
         lookDownAt(context, world, name, first);
-        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(10);
         check(state(world, first).is(Blocks.STONE), "left-clicking with the wand broke the selected block");
         lookDownAt(context, world, name, second);
-        context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT);
         context.waitTicks(10);
-        check(context.computeOnClient(mc -> mc.screen == null), "right-clicking with the wand opened a container");
+        check(context.computeOnClient(mc -> mc.gui.screen() == null), "right-clicking with the wand opened a container");
         check(state(world, second).is(Blocks.CHEST), "right-clicking with the wand changed the selected block");
         context.runOnClient(mc -> mc.player.setXRot(35));
         context.waitTicks(5);

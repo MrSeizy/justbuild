@@ -47,7 +47,7 @@ final class ProfileTestScreen extends FormScreen {
         }
         addRenderableWidget(GlassButton.builder(Component.literal(checks == null ? "Cancel test" : "Back to profiles"), b -> onClose())
                 .bounds(left, height - 26, (panelWidth - 4) / 2, 20).build());
-        var retry = addRenderableWidget(GlassButton.builder(Component.literal("Test again"), b -> minecraft.setScreen(new ProfileTestScreen(parent, draft, local)))
+        var retry = addRenderableWidget(GlassButton.builder(Component.literal("Test again"), b -> minecraft.gui.setScreen(new ProfileTestScreen(parent, draft, local)))
                 .bounds(left + (panelWidth + 4) / 2, height - 26, (panelWidth - 4) / 2, 20)
                 .tooltip(Tooltip.create(Component.literal("Send another tiny request; it may use paid tokens."))).build());
         retry.active = checks != null && connection == minecraft.getConnection();
@@ -71,13 +71,13 @@ final class ProfileTestScreen extends FormScreen {
             catch (RuntimeException e) { result = List.of(ProfileDiagnostics.unexpected()); }
             var reply = result;
             Minecraft.getInstance().execute(() -> {
-                if (Minecraft.getInstance().screen == this && connection == Minecraft.getInstance().getConnection()) accept(reply);
+                if (Minecraft.getInstance().gui.screen() == this && connection == Minecraft.getInstance().getConnection()) accept(reply);
             });
         });
     }
     static void receive(ProfileTestPayload payload) {
         var mc = Minecraft.getInstance();
-        if (mc.screen instanceof ProfileTestScreen s && !s.local && s.id == payload.id() && s.connection == mc.getConnection())
+        if (mc.gui.screen() instanceof ProfileTestScreen s && !s.local && s.id == payload.id() && s.connection == mc.getConnection())
             s.accept(payload.checks());
     }
     private void accept(List<Check> result) {
@@ -90,7 +90,7 @@ final class ProfileTestScreen extends FormScreen {
             ClientPlayNetworking.send(new ProfileTestRequestPayload(id, "", true));
         super.removed();
     }
-    @Override public void onClose() { minecraft.setScreen(parent); }
+    @Override public void onClose() { minecraft.gui.setScreen(parent); }
     @Override public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float tick) { Glass.sheet(g, left, panelWidth, height); }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float tick) {
         super.extractRenderState(g, mx, my, tick);

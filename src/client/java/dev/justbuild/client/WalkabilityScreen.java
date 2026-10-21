@@ -14,7 +14,7 @@ final class WalkabilityScreen extends ToolScreen {
     @Override protected void build() {
         int third = (panelWidth - 8) / 3;
         button("Check again", left, 36, third, () -> { page = 0; run("walkability"); });
-        button("View markers", left + third + 4, 36, third, () -> minecraft.setScreen(null));
+        button("View markers", left + third + 4, 36, third, () -> minecraft.gui.setScreen(null));
         button("Clear markers", left + 2 * (third + 4), 36, third, () -> run("walkability clear"));
         List<FormattedCharSequence> wrapped = new ArrayList<>(); var route = ClientState.route();
         for (String line : route == null ? List.of("Select a building or preview, then check its routes. Markers expire after two minutes.") : route.lines()) {

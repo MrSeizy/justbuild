@@ -41,7 +41,7 @@ public final class PortalTest implements FabricClientGameTest {
         ConfigStore store = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         write(store, stub.getAddress().getPort());
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            singleplayer.getClientLevel().waitForChunksRender();
+            singleplayer.getConnection().waitForChunksRender();
             String name = context.computeOnClient(mc -> mc.player.getName().getString());
             int[] at = context.computeOnClient(mc -> new int[] {mc.player.getBlockX(), mc.player.getBlockY(),
                     mc.player.getBlockZ()});
@@ -82,10 +82,10 @@ public final class PortalTest implements FabricClientGameTest {
                     + " frames and " + counts[3] + " eyes");
             singleplayer.getServer().runCommand("tp " + name + " " + (at[0] - 4.5) + " " + (at[1] + 3) + " "
                     + (at[2] - 4.5) + " facing " + (at[0] + 8) + " " + (at[1] + 2) + " " + (at[2] + 0.5));
-            context.runOnClient(mc -> mc.options.hideGui = true);
+            context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
             context.waitTicks(30);
             context.takeScreenshot("portals");
-            context.runOnClient(mc -> mc.options.hideGui = false);
+            context.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
         } finally {
             stub.stop(0);
             try {

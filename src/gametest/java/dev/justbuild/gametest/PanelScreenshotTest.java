@@ -17,7 +17,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.narration.NarrationThunk;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * Opens the panel in a fresh singleplayer world, screenshots each tab, and edits profiles end to end
@@ -29,9 +29,9 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
         ConfigStore store = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("justbuild.json"));
         resetProfiles(store);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            singleplayer.getClientLevel().waitForChunksRender();
+            singleplayer.getConnection().waitForChunksRender();
             // Press Right Shift for real, so the key mapping itself is tested.
-            context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+            context.getInput().pressKey(InputConstants.KEY_RSHIFT);
             context.waitForScreen(JustBuildScreen.class);
             context.waitTicks(40);
             context.takeScreenshot("justbuild-create");
@@ -84,7 +84,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
             context.waitTicks(5);
             context.takeScreenshot("justbuild-profiles");
             context.clickScreenButton("Grok Build");
-            check(context.computeOnClient(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof Button b
+            check(context.computeOnClient(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof Button b
                     && b.getMessage().getString().equals("Grok Build CLI"))), "Grok profile did not select its CLI");
             context.takeScreenshot("justbuild-profiles-grok");
             context.clickScreenButton("★ Claude");
@@ -137,7 +137,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
             context.clickScreenButton("Cancel");
             context.waitTicks(5);
             context.takeScreenshot("justbuild-profiles-unsaved");
-            check(context.computeOnClient(mc -> mc.screen instanceof ProfilesScreen), "Cancel dropped unsaved changes without asking");
+            check(context.computeOnClient(mc -> mc.gui.screen() instanceof ProfilesScreen), "Cancel dropped unsaved changes without asking");
             context.clickScreenButton("Cancel");
             context.waitForScreen(JustBuildScreen.class);
 
@@ -148,17 +148,17 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
             context.takeScreenshot("justbuild-after-status");
             // Glass states: a hovered button, keyboard focus, and the panel over a bright sky (no blur behind it).
             hover(context, "Status");
-            check(context.computeOnClient(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof AbstractWidget w
+            check(context.computeOnClient(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof AbstractWidget w
                     && w.getMessage().getString().equals("Status") && w.isHovered())), "the Status button did not report hovered");
             context.takeScreenshot("glass-hover");
-            context.getInput().pressKey(GLFW.GLFW_KEY_TAB);
+            context.getInput().pressKey(InputConstants.KEY_TAB);
             context.waitTicks(3);
-            check(context.computeOnClient(mc -> mc.screen.getFocused() != null), "Tab did not focus any widget");
+            check(context.computeOnClient(mc -> mc.gui.screen().getFocused() != null), "Tab did not focus any widget");
             context.takeScreenshot("glass-keyboard-focus");
-            context.runOnClient(mc -> mc.setScreen(null));
+            context.runOnClient(mc -> mc.gui.setScreen(null));
             singleplayer.getServer().runCommand("time set noon");
             context.runOnClient(mc -> mc.player.setXRot(-75));
-            context.getInput().pressKey(GLFW.GLFW_KEY_RIGHT_SHIFT);
+            context.getInput().pressKey(InputConstants.KEY_RSHIFT);
             context.waitForScreen(JustBuildScreen.class);
             context.waitTicks(5);
             context.takeScreenshot("glass-over-sky");
@@ -169,7 +169,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
     /** Puts the mouse over the button with this label (window pixels are GUI pixels times the GUI scale). */
     private static void hover(ClientGameTestContext context, String label) {
         double[] at = context.computeOnClient(mc -> {
-            var button = mc.screen.children().stream()
+            var button = mc.gui.screen().children().stream()
                     .filter(c -> c instanceof net.minecraft.client.gui.components.AbstractWidget w && w.getMessage().getString().equals(label))
                     .map(c -> (net.minecraft.client.gui.components.AbstractWidget) c)
                     .findFirst().orElseThrow(() -> new AssertionError("No button labelled " + label));
@@ -181,7 +181,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
     }
 
     private static AbstractWidget widget(Minecraft mc, String label) {
-        return mc.screen.children().stream()
+        return mc.gui.screen().children().stream()
                 .filter(c -> c instanceof AbstractWidget w && w.getMessage().getString().equals(label))
                 .map(c -> (AbstractWidget) c)
                 .findFirst().orElseThrow(() -> new AssertionError("No widget labelled " + label));
@@ -202,6 +202,11 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
                 }
 
                 @Override
+                public net.minecraft.client.gui.narration.NarrationTrigger narrationTrigger() {
+                    return net.minecraft.client.gui.narration.NarrationTrigger.SYSTEM;
+                }
+
+                @Override
                 public NarrationElementOutput nest() {
                     return this;
                 }
@@ -212,7 +217,7 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
 
     /** Focuses the text box whose label starts with {@code label} (EditBox labels are their hints here). */
     private static void focusBox(ClientGameTestContext context, String label) {
-        context.runOnClient(mc -> mc.screen.setFocused(mc.screen.children().stream()
+        context.runOnClient(mc -> mc.gui.screen().setFocused(mc.gui.screen().children().stream()
                 .filter(c -> c instanceof EditBox box && box.getMessage().getString().startsWith(label))
                 .findFirst().orElseThrow(() -> new AssertionError("No text box labelled " + label))));
     }
@@ -234,28 +239,35 @@ public final class PanelScreenshotTest implements FabricClientGameTest {
 
     private static void serverAiPolicy(ClientGameTestContext context, ConfigStore store) {
         context.clickScreenButton("Server AI…");
-        context.waitFor(mc -> mc.screen != null && mc.screen.getTitle().getString().equals("Server AI policy"));
+        context.waitFor(mc -> mc.gui.screen() != null && mc.gui.screen().getTitle().getString().equals("Server AI policy"));
         context.runOnClient(mc -> {
-            check(!widget(mc, "★ Require players' AI").active, "Require was not the selected default");
-            mc.screen.resize(320, 240);
-            for (var child : mc.screen.children()) if (child instanceof AbstractWidget w) {
+            check(widget(mc, "★ Require players' AI").active, "the selected policy can't be focused or narrated");
+            mc.gui.screen().resize(320, 240);
+            for (var child : mc.gui.screen().children()) if (child instanceof AbstractWidget w) {
                 check(w.getX() >= 0 && w.getY() >= 0 && w.getRight() <= 320 && w.getBottom() <= 240,
                         "policy control left the small screen: " + w.getMessage().getString());
             }
-            mc.screen.resize(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+            mc.gui.screen().resize(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
         });
+        String said = narration(context, "★ Require players' AI");
+        check(said.contains("Selected:"), "the current policy narrates \"" + said + "\"");
+        context.clickScreenButton("★ Require players' AI");
+        context.waitTicks(3);
+        check(savedPlayerAi(store).equals("require"), "pressing the current policy changed it");
+        context.getInput().setCursorPos(0, 0);
+        context.waitTicks(3);
         context.takeScreenshot("server-ai-policy-default");
         context.clickScreenButton("Prefer players' AI");
-        context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof Button b
+        context.waitFor(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof Button b
                 && b.getMessage().getString().equals("★ Prefer players' AI")));
         check(savedPlayerAi(store).equals("prefer"), "the UI policy change did not save");
         context.runOnClient(mc -> mc.player.connection.sendCommand("jb playerai off"));
-        context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof Button b
+        context.waitFor(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof Button b
                 && b.getMessage().getString().equals("★ Use server AI")));
         check(savedPlayerAi(store).equals("off"), "the alias policy command did not save");
         context.takeScreenshot("server-ai-policy-command-update");
         context.clickScreenButton("Require players' AI");
-        context.waitFor(mc -> mc.screen.children().stream().anyMatch(c -> c instanceof Button b
+        context.waitFor(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof Button b
                 && b.getMessage().getString().equals("★ Require players' AI")));
         check(savedPlayerAi(store).equals("require"), "the UI could not restore Require");
         context.clickScreenButton("Back");

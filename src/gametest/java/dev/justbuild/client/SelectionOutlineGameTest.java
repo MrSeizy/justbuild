@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 public final class SelectionOutlineGameTest implements FabricClientGameTest {
     @Override public void runTest(ClientGameTestContext c) {
         try (TestSingleplayerContext w = c.worldBuilder().create()) {
-            w.getClientLevel().waitForChunksRender();
+            w.getConnection().waitForChunksRender();
             String name = c.computeOnClient(mc -> mc.player.getName().getString());
             BlockPos base = c.computeOnClient(mc -> mc.player.blockPosition().above(12));
             w.getServer().runOnServer(s -> {
@@ -33,7 +33,7 @@ public final class SelectionOutlineGameTest implements FabricClientGameTest {
             w.getServer().runCommand("gamemode spectator " + name);
             w.getServer().runCommand("tp " + name + " " + (base.getX() + 17.5) + " " + (base.getY() + 14)
                     + " " + (base.getZ() + 20.5) + " 140 25");
-            c.runOnClient(mc -> mc.options.hideGui = true);
+            c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, true));
             c.waitTicks(12);
             Path visible = c.takeScreenshot("selection-outlines-smooth");
             w.getServer().runOnServer(s -> s.getPlayerList().getPlayers().getFirst()
@@ -59,7 +59,7 @@ public final class SelectionOutlineGameTest implements FabricClientGameTest {
             c.waitTicks(8);
             c.takeScreenshot("selection-outlines-polygon");
         } finally {
-            c.runOnClient(mc -> mc.options.hideGui = false);
+            c.runOnClient(mc -> dev.justbuild.client.TestHud.hidden(mc, false));
         }
     }
 

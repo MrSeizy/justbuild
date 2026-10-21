@@ -13,14 +13,14 @@ final class ProjectDetailsScreen extends ToolScreen {
         button("Style: " + (project == null ? "auto" : project.theme().style()), left, 42, third, () -> {
             var styles = ClientState.list("styles"); if (!styles.isEmpty()) run("project style " + styles.get((styles.indexOf(project.theme().style()) + 1) % styles.size()));
         }).active = ready;
-        button("Buildings", left + third + 4, 42, third, () -> minecraft.setScreen(new ProjectMembersScreen(this, id))).active = ready;
-        button("Team", left + 2 * (third + 4), 42, third, () -> minecraft.setScreen(new ProjectTeamScreen(this, id))).active = ready;
-        button("Shared palette…", left, 82, panelWidth, () -> minecraft.setScreen(new ProjectPaletteScreen(this, id))).active = ready;
+        button("Buildings", left + third + 4, 42, third, () -> minecraft.gui.setScreen(new ProjectMembersScreen(this, id))).active = ready;
+        button("Team", left + 2 * (third + 4), 42, third, () -> minecraft.gui.setScreen(new ProjectTeamScreen(this, id))).active = ready;
+        button("Shared palette…", left, 82, panelWidth, () -> minecraft.gui.setScreen(new ProjectPaletteScreen(this, id))).active = ready;
         button("Add selected build", left, 108, half, () -> run("project add")).active = ready && ClientState.string("selectedBuild", null) != null;
         button("Remove selected", left + half + 4, 108, half, () -> run("project remove")).danger().active = ready && ClientState.string("selectedBuild", null) != null;
         button("Back", left, height - 28, third, this::onClose);
-        button("New building", left + third + 4, height - 28, third, () -> { run("select clear"); run("zone clear"); minecraft.setScreen(new JustBuildScreen()); }).active = ready;
-        button("Connections", left + 2 * (third + 4), height - 28, third, () -> minecraft.setScreen(new ConnectionsScreen(this))).active = ready;
+        button("New building", left + third + 4, height - 28, third, () -> { run("select clear"); run("zone clear"); minecraft.gui.setScreen(new JustBuildScreen()); }).active = ready;
+        button("Connections", left + 2 * (third + 4), height - 28, third, () -> minecraft.gui.setScreen(new ConnectionsScreen(this))).active = ready;
     }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int x, int y, float tick) {
         super.extractRenderState(g, x, y, tick);
