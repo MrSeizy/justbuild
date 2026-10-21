@@ -21,7 +21,16 @@ property to run every registered scenario:
 ./gradlew runClientGameTest
 ```
 
-Client tests need a graphical session (or `xvfb-run -a` with software OpenGL on Linux). Screenshots are under
+Client tests need a graphical session. For headless Linux, install Xvfb, xauth, Mesa's OpenGL and EGL libraries,
+and OpenAL, then run with software rendering through EGL:
+
+```sh
+LIBGL_ALWAYS_SOFTWARE=true SDL_VIDEO_FORCE_EGL=1 xvfb-run -a ./gradlew --no-daemon runClientGameTest -PclientTests=PanelScreenshotTest,FormDraftGameTest
+```
+
+Minecraft 26.3 requests an sRGB framebuffer that Xvfb's GLX does not provide; SDL's EGL path supports it.
+The [Verify workflow](../.github/workflows/verify.yml) lists the Ubuntu packages and sets these variables.
+Screenshots are under
 `build/run/clientGameTest/screenshots/`; logs are under `build/run/clientGameTest/logs/`. A failed scenario can
 stop the run before later scenarios execute. Inspect the log before treating a partial run as a full pass.
 

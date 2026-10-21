@@ -58,6 +58,8 @@ jobs:
     timeout-minutes: 20
     env:
       LIBGL_ALWAYS_SOFTWARE: 'true'
+      # Minecraft 26.3 requests an sRGB framebuffer that Xvfb's GLX cannot provide.
+      SDL_VIDEO_FORCE_EGL: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -70,7 +72,7 @@ jobs:
       - name: Install virtual display and software OpenGL
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth libgl1-mesa-dri libglx-mesa0 libopenal1
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri libglx-mesa0 libegl1 libegl-mesa0 libopenal1
       - name: Panel, forms, relay, and recovery smoke tests
         run: xvfb-run -a ./gradlew --no-daemon runClientGameTest -PclientTests=PanelScreenshotTest,FormDraftGameTest,RelayTest,ConfigGuardGameTest
       - name: Screenshots and game logs
