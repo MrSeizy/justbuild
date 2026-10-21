@@ -31,18 +31,39 @@ public final class ProfilesScreen extends FormScreen {
             new String[] {"OpenAI", "https://api.openai.com/v1"},
             new String[] {"OpenRouter", "https://openrouter.ai/api/v1"},
             new String[] {"DeepSeek", "https://api.deepseek.com/v1"},
+            new String[] {"Moonshot (Kimi)", "https://api.moonshot.ai/v1"},
+            new String[] {"Z.AI (GLM)", "https://api.z.ai/api/paas/v4", "General API billing; use a Z.AI API key."},
+            new String[] {"Alibaba (Qwen)", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+                    "Alibaba Model Studio, Singapore. Use a matching regional API key; edit the URL for another region or workspace."},
+            new String[] {"Bedrock (us-east-1)", "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1",
+                    "Use a Bedrock API key with model access. Edit the region if needed; enter the model ID manually."},
+            new String[] {"Vertex AI (setup)", "https://aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/global/endpoints/openapi",
+                    "Replace PROJECT_ID in the URL. Enter a Google OAuth access token as the key; refresh it when it expires (usually one hour). Enter a supported model manually. Claude on Vertex needs a separate adapter."},
             new String[] {"Groq", "https://api.groq.com/openai/v1"},
             new String[] {"Mistral", "https://api.mistral.ai/v1"},
             new String[] {"xAI", "https://api.x.ai/v1"},
             new String[] {"Gemini", "https://generativelanguage.googleapis.com/v1beta/openai"},
-            new String[] {"Qwen (Token Plan)", "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"},
+            new String[] {"Qwen (Token Plan)", "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+                    "QwenCloud Personal or Team Token Plan. Use the dedicated Token Plan API key; pay-as-you-go keys use a different endpoint."},
             new String[] {"Experiential Labs", "https://api.experientiallabs.ai/v1"},
             new String[] {"Ollama (local)", "http://localhost:11434/v1"},
             new String[] {"LM Studio (local)", "http://localhost:1234/v1"},
             new String[] {"Custom", ""});
 
     private static final List<String[]> ANTHROPIC_PRESETS = List.of(
-            new String[] {"Anthropic", JustBuildConfig.DEFAULT_ANTHROPIC_BASE_URL}, new String[] {"Custom", ""});
+            new String[] {"Anthropic", JustBuildConfig.DEFAULT_ANTHROPIC_BASE_URL},
+            new String[] {"OpenRouter", "https://openrouter.ai/api/v1"},
+            new String[] {"DeepSeek", "https://api.deepseek.com/anthropic"},
+            new String[] {"Moonshot (Kimi)", "https://api.moonshot.ai/anthropic"},
+            new String[] {"Z.AI (GLM)", "https://api.z.ai/api/anthropic",
+                    "Requires an account eligible for Z.AI's Anthropic route. For general prepaid API use, prefer the OpenAI-compatible Z.AI preset."},
+            new String[] {"Alibaba (Qwen)", "https://dashscope-intl.aliyuncs.com/apps/anthropic",
+                    "Alibaba Model Studio, Singapore. Use a matching regional API key; edit the URL for another region or workspace."},
+            new String[] {"Qwen (Token Plan)", "https://token-plan.maas.qwencloudapi.com/apps/anthropic",
+                    "QwenCloud Personal or Team Token Plan. Use the dedicated Token Plan API key; pay-as-you-go keys use a different endpoint."},
+            new String[] {"Bedrock (us-east-1)", "https://bedrock-runtime.us-east-1.amazonaws.com/anthropic",
+                    "Use a Bedrock API key with model access. Edit the region if needed; enter the model ID manually."},
+            new String[] {"Custom", ""});
 
     private static final int WHITE = 0xFFFFFFFF;
     private static final int GRAY = 0xFFAAAAAA;
@@ -274,12 +295,13 @@ public final class ProfilesScreen extends FormScreen {
         y += ROW;
         List<String[]> presets = "anthropic".equals(d.provider) ? ANTHROPIC_PRESETS : PRESETS;
         int preset = presetIndex(d.baseUrl, presets);
-        addRenderableWidget(GlassButton.builder(Component.literal(preset < 0 ? "Custom" : presets.get(preset)[0]), b -> {
+        Button presetButton = GlassButton.builder(Component.literal(preset < 0 ? "Custom" : presets.get(preset)[0]), b -> {
             d.baseUrl = presets.get((presetIndex(d.baseUrl, presets) + 1) % presets.size())[1];
             message = "";
             rebuildWidgets();
         }).bounds(fieldX, y, fieldWidth, 20).tooltip(Tooltip.create(Component.literal(
-                "Fill in a known service’s base URL, or choose Custom for a blank URL"))).build());
+                presetHint(preset, presets)))).build();
+        addRenderableWidget(presetButton);
         label("Preset", formX, y);
 
         y += ROW;
@@ -311,6 +333,9 @@ public final class ProfilesScreen extends FormScreen {
             d.baseUrl = v;
             key.setHint(Component.literal(keyHint(d)));
             clear.active = d.keepsSavedKey();
+            int currentPreset = presetIndex(v, presets);
+            presetButton.setMessage(Component.literal(currentPreset < 0 ? "Custom" : presets.get(currentPreset)[0]));
+            presetButton.setTooltip(Tooltip.create(Component.literal(presetHint(currentPreset, presets))));
         });
         label("API key", formX, y);
 
@@ -371,6 +396,12 @@ public final class ProfilesScreen extends FormScreen {
             }
         }
         return -1;
+    }
+
+    private static String presetHint(int index, List<String[]> presets) {
+        String[] preset = index < 0 ? null : presets.get(index);
+        return (preset == null ? "Custom" : preset[0]) + ": Click to choose the next service. "
+                + (preset != null && preset.length > 2 ? preset[2] : "Fill in a known service's base URL, or choose Custom for a blank URL.");
     }
 
     private String uniqueName(String base) {

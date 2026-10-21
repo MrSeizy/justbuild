@@ -9,6 +9,7 @@ import com.sun.net.httpserver.HttpServer;
 import dev.justbuild.config.JustBuildConfig;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -119,7 +120,7 @@ class AnthropicCompatibleProviderTest {
         p.apiKey = "changed"; p.maxTokens = 1; p.baseUrl = "http://127.0.0.1:1";
         assertEquals("{\"ok\":true}", provider.complete(request(), new CancellationToken()));
         JsonObject body = bodies.getFirst();
-        assertEquals("SYSTEM", body.get("system").getAsString());
+        assertEquals("SYSTEM\nReturn only JSON matching this schema:\n{\"type\":\"object\"}", body.get("system").getAsString());
         assertEquals("a", body.get("model").getAsString());
         assertEquals(16000, body.get("max_tokens").getAsInt());
         assertTrue(body.get("stream").getAsBoolean());
@@ -129,6 +130,31 @@ class AnthropicCompatibleProviderTest {
         assertEquals(List.of("fixture-secret-key"), keys);
         assertEquals(List.of("2023-06-01"), versions);
         assertEquals(List.of("/v1/messages"), paths);
+    }
+
+    @Test void compatibleServicesUseTheirDocumentedAuthenticationAndMessagePaths() {
+        for (String base : List.of("https://openrouter.ai/api/v1", "https://api.moonshot.ai/anthropic",
+                "https://api.moonshot.cn/anthropic", "https://api.z.ai/api/anthropic",
+                "https://token-plan.maas.qwencloudapi.com/apps/anthropic")) {
+            var http = AnthropicMessages.requestBuilder(URI.create(AnthropicMessages.endpoint(base, "/messages")), " fixture-key ")
+                    .build();
+            assertEquals("Bearer fixture-key", http.headers().firstValue("Authorization").orElseThrow(), base);
+            assertTrue(http.headers().firstValue("x-api-key").isEmpty(), base);
+            assertTrue(http.uri().getPath().endsWith("/v1/messages"), base);
+            assertFalse(http.uri().getPath().contains("/v1/v1/"), base);
+        }
+        for (String base : List.of("https://api.anthropic.com/v1", "https://api.deepseek.com/anthropic",
+                "https://dashscope-intl.aliyuncs.com/apps/anthropic",
+                "https://bedrock-runtime.us-east-1.amazonaws.com/anthropic", "https://custom.example/anthropic",
+                "https://openrouter.ai.evil.example/api", "https://example.org/openrouter.ai")) {
+            var http = AnthropicMessages.requestBuilder(URI.create(AnthropicMessages.endpoint(base, "/messages")), "fixture-key").build();
+            assertEquals("fixture-key", http.headers().firstValue("x-api-key").orElseThrow(), base);
+            assertTrue(http.headers().firstValue("Authorization").isEmpty(), base);
+            assertEquals("2023-06-01", http.headers().firstValue("anthropic-version").orElseThrow());
+        }
+        var noKey = AnthropicMessages.requestBuilder(URI.create("https://openrouter.ai/api/v1/models"), " ").build();
+        assertTrue(noKey.headers().firstValue("Authorization").isEmpty());
+        assertTrue(noKey.headers().firstValue("x-api-key").isEmpty());
     }
 
     @Test void streamUsesOnlyTextAndCumulativeUsageAndRejectsTruncation() throws Exception {

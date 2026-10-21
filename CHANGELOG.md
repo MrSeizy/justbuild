@@ -7,6 +7,7 @@ User-visible changes are recorded here. Unreleased entries describe development 
 ### Added
 
 - Anthropic-compatible API profiles with custom base URLs, encrypted API keys, model selection, connection testing, and a configurable output-token limit. Native Messages API requests support streamed plans and review images, with fallbacks for services without structured output or image support.
+- Anthropic presets for OpenRouter, DeepSeek, Moonshot/Kimi, Z.AI/GLM, Alibaba/Qwen, Qwen Token Plan and Amazon Bedrock, with service-specific authentication. Added the missing OpenAI-compatible presets and a Vertex AI setup template, with official documentation and account/region requirements in the user guide.
 - Public demo players in the README and a [catalog of all 24 videos](docs/demos/README.md).
 
 ### Changed

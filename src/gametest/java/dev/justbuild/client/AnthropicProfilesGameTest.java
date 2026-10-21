@@ -68,7 +68,13 @@ public final class AnthropicProfilesGameTest implements FabricClientGameTest {
                 world.getConnection().waitForChunksRender();
                 context.waitFor(mc -> !ClientState.profiles().isEmpty());
                 context.runOnClient(mc -> mc.gui.setScreen(new ProfilesScreen(new JustBuildScreen(), false)));
+                // Every preset is selectable without sending a request or saving the draft.
+                cyclePresets(context, List.of("OpenAI", "OpenRouter", "DeepSeek", "Moonshot (Kimi)", "Z.AI (GLM)",
+                        "Alibaba (Qwen)", "Bedrock (us-east-1)", "Vertex AI (setup)", "Groq", "Mistral", "xAI",
+                        "Gemini", "Qwen (Token Plan)", "Experiential Labs", "Ollama (local)", "LM Studio (local)", "Custom"));
                 context.clickScreenButton("OpenAI-compatible");
+                cyclePresets(context, List.of("Anthropic", "OpenRouter", "DeepSeek", "Moonshot (Kimi)", "Z.AI (GLM)",
+                        "Alibaba (Qwen)", "Qwen (Token Plan)", "Bedrock (us-east-1)", "Custom"));
                 context.runOnClient(mc -> {
                     check(field(mc.gui.screen(), "https://…/v1").getValue().equals(JustBuildConfig.DEFAULT_ANTHROPIC_BASE_URL),
                             "provider switch did not select the Anthropic URL");
@@ -138,6 +144,20 @@ public final class AnthropicProfilesGameTest implements FabricClientGameTest {
             if (stub != null) stub.stop(0);
             try { if (original == null) Files.deleteIfExists(file); else Files.write(file, original); }
             catch (Exception e) { throw new AssertionError(e); }
+        }
+    }
+
+    private static void cyclePresets(ClientGameTestContext context, List<String> names) {
+        for (String name : names) {
+            context.runOnClient(mc -> {
+                check(hasButton(mc.gui.screen(), name), "missing preset: " + name);
+                String url = field(mc.gui.screen(), "https://…/v1").getValue();
+                check(name.equals("Custom") ? url.isEmpty() : url.startsWith("http"), "invalid preset URL: " + name);
+                if (name.equals("Vertex AI (setup)")) check(url.contains("/projects/PROJECT_ID/"), "missing project template");
+                check(mc.gui.screen().children().stream().filter(EditBox.class::isInstance).map(EditBox.class::cast)
+                        .noneMatch(e -> e.getValue().contains("fixture-key")), "preset exposed saved key");
+            });
+            context.clickScreenButton(name);
         }
     }
 

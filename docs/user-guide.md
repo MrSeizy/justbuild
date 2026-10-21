@@ -46,16 +46,50 @@ Existing configurations keep their profiles; choose **New**, then cycle **Provid
 
 Anthropic API support is available in development builds after 0.1.0. For Anthropic itself, use
 `https://api.anthropic.com/v1`; for another compatible service, use its API base URL. A root URL without `/v1`
-is also accepted: JustBuild appends `/v1/messages` and `/v1/models`. Requests use `x-api-key` and
-`anthropic-version: 2023-06-01`. This uses API billing, separate from a Claude subscription; the **Claude CLI**
+is also accepted: JustBuild appends `/v1/messages` and `/v1/models`. Requests use `anthropic-version: 2023-06-01`
+and `x-api-key`; OpenRouter, Moonshot, Z.AI and Qwen Token Plan use their documented `Authorization: Bearer` authentication instead.
+This uses API billing, separate from a Claude subscription; the **Claude CLI**
 provider still uses your existing CLI login. **Pick…** reads the endpoint's model list; if the service has no
 model-list endpoint, type its model identifier manually and use **Test connection**.
 
 **Max tokens** controls Anthropic's maximum response length (default 8,192; allowed range 1–128,000).
 The selected model may support a lower maximum. Raise this value if a large plan reaches the output limit.
-JustBuild requests structured JSON and streams text, progress, and token usage. Compatible services that reject
-structured output are retried with the JSON schema in the prompt. Review images use native image blocks;
+JustBuild requests structured JSON and streams text, progress, and token usage. The JSON schema is also included
+in the prompt for services that silently ignore structured output; services that reject it are retried without that API option. Review images use native image blocks;
 services that reject images are retried with the text views and diagnostics. Incomplete responses are rejected.
+
+### API service presets
+
+The following presets are available in development builds after 0.1.0. Click **Preset** to cycle through services;
+hover it for setup notes. Presets fill the base URL; enter a key from that service and select or type a supported model.
+The existing OpenAI, Groq, Mistral, xAI, Gemini, Qwen Token Plan, Experiential Labs, Ollama and LM Studio presets remain available.
+
+| Service and official documentation | Anthropic-compatible base URL | OpenAI-compatible base URL |
+|---|---|---|
+| OpenRouter ([Messages](https://openrouter.ai/docs/api/api-reference/anthropic-messages/create-messages), [API](https://openrouter.ai/docs/api/reference/overview)) | `https://openrouter.ai/api/v1` | `https://openrouter.ai/api/v1` |
+| DeepSeek ([Messages](https://api-docs.deepseek.com/guides/anthropic_api/), [API](https://api-docs.deepseek.com/)) | `https://api.deepseek.com/anthropic` | `https://api.deepseek.com/v1` |
+| Moonshot / Kimi ([Messages](https://platform.moonshot.ai/docs/guide/claude-code-kimi), [API](https://platform.moonshot.ai/docs/api)) | `https://api.moonshot.ai/anthropic` | `https://api.moonshot.ai/v1` |
+| Z.AI / GLM ([account requirements](https://zcode.z.ai/en/docs/configuration), [API](https://docs.z.ai/api-reference/introduction)) | `https://api.z.ai/api/anthropic` | `https://api.z.ai/api/paas/v4` |
+| Alibaba / Qwen ([regional endpoints](https://www.alibabacloud.com/help/en/model-studio/base-url)) | `https://dashscope-intl.aliyuncs.com/apps/anthropic` | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
+| Qwen Token Plan ([Personal setup](https://docs.qwencloud.com/token-plan/personal/token-plan-personal-quickstart), [Team setup](https://docs.qwencloud.com/token-plan/team/token-plan-team-quickstart)) | `https://token-plan.maas.qwencloudapi.com/apps/anthropic` | `https://token-plan.maas.qwencloudapi.com/compatible-mode/v1` |
+| Amazon Bedrock ([Messages](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-messages-api.html), [Chat Completions](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-chat-completions.html)) | `https://bedrock-runtime.us-east-1.amazonaws.com/anthropic` | `https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1` |
+| Google Vertex AI ([OpenAI setup](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/start/openai), [Claude integration](https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai)) | Requires a separate Vertex adapter; not a Messages base-URL preset | `https://aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/global/endpoints/openapi` |
+
+Alibaba uses the Singapore pay-as-you-go endpoint. Its keys are region-specific; edit the URL for another region
+or a workspace-specific domain. **Qwen (Token Plan)** uses the dedicated `sk-sp-` Token Plan key and its own endpoints
+for both Personal and Team editions; pay-as-you-go keys and URLs are not interchangeable with Token Plan.
+Z.AI's Anthropic route
+has account/billing restrictions; the general OpenAI-compatible preset is the appropriate choice for resource packages
+or prepaid accounts that cannot use that route. Coding Plan subscriptions only cover eligible coding use.
+
+Bedrock uses a **Bedrock API key**, not an AWS access-key/secret-key pair. Change `us-east-1` to your enabled region,
+grant access to the chosen model and enter its Bedrock model or inference-profile ID manually. The runtime endpoint
+has no model list; **Test connection** tests generation directly after the model-list warning.
+
+The **Vertex AI (setup)** preset requires replacing `PROJECT_ID` with your Google Cloud project and entering a Google
+OAuth access token in the API key field. Tokens normally expire after one hour and must be refreshed manually; JustBuild
+does not perform Google login or refresh credentials. Use a model supported by Vertex's OpenAI endpoint. Claude on Vertex
+uses a different request path and body and is not supported by the Anthropic-compatible backend.
 
 The mod runs the CLIs headless with host tools disabled and personal instructions, skills, and memory suppressed.
 Claude keeps its existing subscription login and uses restricted/safe mode, with automatic instructions, memory,

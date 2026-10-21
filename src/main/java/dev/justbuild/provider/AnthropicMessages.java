@@ -4,7 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.net.URI;
+import java.net.http.HttpRequest;
 import java.util.Base64;
+import java.util.Locale;
+import java.util.Set;
 
 /** Native Messages API content, including image blocks and structured JSON output. */
 final class AnthropicMessages {
@@ -15,13 +19,26 @@ final class AnthropicMessages {
         return base + (base.endsWith("/v1") ? "" : "/v1") + path;
     }
 
+    static HttpRequest.Builder requestBuilder(URI uri, String apiKey) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(uri).header("anthropic-version", "2023-06-01");
+        if (apiKey != null && !apiKey.isBlank()) {
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            // These services document Anthropic auth_token (Bearer), not the native x-api-key header.
+            boolean bearer = Set.of("openrouter.ai", "api.moonshot.ai", "api.moonshot.cn", "api.z.ai",
+                    "token-plan.maas.qwencloudapi.com").contains(host);
+            builder.header(bearer ? "Authorization" : "x-api-key", (bearer ? "Bearer " : "") + apiKey.strip());
+        }
+        return builder;
+    }
+
     static String requestBody(PlanRequest request, int maxTokens, boolean structured) {
         JsonObject body = new JsonObject();
         body.addProperty("model", request.model().strip());
         body.addProperty("max_tokens", maxTokens);
         body.addProperty("stream", true);
-        body.addProperty("system", request.systemPrompt() + (structured ? "" :
-                "\nReturn only JSON matching this schema:\n" + request.schemaJson()));
+        // Some compatible endpoints silently ignore output_config.format, so always include the schema in text too.
+        body.addProperty("system", request.systemPrompt()
+                + "\nReturn only JSON matching this schema:\n" + request.schemaJson());
         JsonArray content = new JsonArray();
         JsonObject text = new JsonObject();
         text.addProperty("type", "text");

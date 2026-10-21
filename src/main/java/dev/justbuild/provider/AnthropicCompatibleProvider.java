@@ -112,9 +112,6 @@ public final class AnthropicCompatibleProvider implements BuildProvider {
     }
 
     private HttpRequest.Builder builder(URI uri) {
-        // The widely implemented Messages protocol also works with Anthropic's direct API.
-        HttpRequest.Builder builder = HttpRequest.newBuilder(uri).header("anthropic-version", "2023-06-01");
-        if (settings.hasKey()) builder.header("x-api-key", settings.apiKey.strip());
-        return builder;
+        return AnthropicMessages.requestBuilder(uri, settings.apiKey);
     }
 }
