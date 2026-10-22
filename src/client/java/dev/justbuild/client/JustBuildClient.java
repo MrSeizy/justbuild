@@ -48,7 +48,9 @@ public final class JustBuildClient implements ClientModInitializer {
                 }
             }
         });
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PromptDrafts.flush());
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            PromptDrafts.tick();
             // Disconnect can discard queued callbacks; session views must also clear when the world is gone.
             if (client.level == null) {
                 PreviewBox.clear();
@@ -98,6 +100,7 @@ public final class JustBuildClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(PreviewPayload.TYPE,
                 (payload, context) -> context.client().execute(() -> PreviewBox.receive(payload)));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
+            PromptDrafts.flush();
             PreviewBox.clear();
             ClientState.clear();
             BuilderBots.clear();

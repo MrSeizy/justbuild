@@ -151,7 +151,7 @@ public final class ProfilesScreen extends FormScreen {
         int formX = left + LIST_WIDTH + 8;
         int formWidth = panelWidth - LIST_WIDTH - 8;
         int bw = (formWidth - 4) / 3;
-        addRenderableWidget(GlassButton.builder(Component.literal("Save"), b -> save())
+        addRenderableWidget(GlassButton.builder(Component.literal("Save"), b -> save(active))
                 .bounds(formX, y, bw, 20).tooltip(Tooltip.create(Component.literal(
                         "Save all profiles; builds keep using the ★ profile"))).confirmation().build());
         var test = addRenderableWidget(GlassButton.builder(Component.literal("Test connection"), b ->
@@ -419,14 +419,24 @@ public final class ProfilesScreen extends FormScreen {
 
     // ---- saving ----
 
-    /** Save edits without changing which profile builds use. */
-    private void save() {
+    /** Save the tested draft as active; validation errors return to the editor with every draft intact. */
+    void saveAndUse(ProfileEdits.Edit testedDraft) {
+        minecraft.gui.setScreen(this);
+        ProfileDraft tested = drafts.get(selected);
+        if (!tested.toEdit().equals(testedDraft)) {
+            message = "This draft changed. Test the connection again before using it.";
+            return;
+        }
+        save(tested);
+    }
+
+    private void save(ProfileDraft profileToUse) {
         Set<String> names = new HashSet<>();
         for (int i = 0; i < drafts.size(); i++) {
             ProfileDraft d = drafts.get(i);
             String problem = d.name.isBlank() ? "Every profile needs a name."
                     : !names.add(d.name.strip().toLowerCase(Locale.ROOT)) ? "Two profiles are called “" + d.name.strip() + "”."
-                    : d.isApi() && d.model.isBlank() && (d == active || d.edited())
+                    : d.isApi() && d.model.isBlank() && (d == profileToUse || d.edited())
                     ? "“" + d.name.strip() + "” needs a model: press Pick… or type one."
                     : "anthropic".equals(d.provider) && (d.outputTokens() < 1
                             || d.outputTokens() > JustBuildConfig.MAX_OUTPUT_TOKENS)
@@ -440,9 +450,9 @@ public final class ProfilesScreen extends FormScreen {
             }
         }
         List<ProfileEdits.Edit> edits = drafts.stream().map(ProfileDraft::toEdit).toList();
-        String json = ProfileEdits.toJson(new ProfileEdits.Request(edits, active.name.strip()));
+        var request = new ProfileEdits.Request(edits, profileToUse.name.strip());
         if (local) {
-            String error = LocalProfiles.save(new ProfileEdits.Request(edits, active.name.strip()));
+            String error = LocalProfiles.save(request);
             if (error != null) {
                 message = error;
                 return;
@@ -451,6 +461,7 @@ public final class ProfilesScreen extends FormScreen {
             minecraft.gui.setScreen(parent);
             return;
         }
+        String json = ProfileEdits.toJson(request);
         if (json.length() > ProfilesPayload.MAX_LENGTH) {
             message = "That is too much to send at once; remove some profiles.";
             return;

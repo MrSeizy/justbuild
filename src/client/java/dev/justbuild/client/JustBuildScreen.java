@@ -63,6 +63,8 @@ public final class JustBuildScreen extends FormScreen {
         super(Component.literal("JustBuild"));
     }
 
+    @Override public void removed() { PromptDrafts.flush(); }
+
     @Override
     public boolean isPauseScreen() {
         return false;

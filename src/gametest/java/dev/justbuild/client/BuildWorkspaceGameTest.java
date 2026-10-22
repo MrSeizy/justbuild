@@ -255,7 +255,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             command(context, "edit this should require a selection");
             check(calls.get() == 3, "edit silently fell back to the latest build");
 
-            // A retry rejected by changed limits must clear the obsolete retry action.
+            // A temporary limit failure must keep completed work until the player explicitly cancels it.
             zone(context, c.east(20));
             replies.add(EXTENDED);
             command(context, "build a final test cottage");
@@ -271,6 +271,9 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             } catch (Exception e) { throw new AssertionError("Could not lower the retry limit", e); }
             command(context, "reload");
             command(context, "retry");
+            check(context.computeOnClient(mc -> ClientState.string("retainedPlan", null) != null),
+                    "a temporary limit failure lost the saved plan");
+            command(context, "cancel");
             context.waitFor(mc -> ClientState.string("retainedPlan", null) == null);
             check(calls.get() == 4, "retrying a rejected plan made another AI call");
         } finally {

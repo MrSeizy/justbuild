@@ -16,14 +16,13 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /** Tests one frozen unsaved draft. Closing cancels; stale replies cannot land in a later screen/connection. */
 final class ProfileTestScreen extends FormScreen {
     private static final AtomicLong IDS = new AtomicLong();
     private final long id = IDS.incrementAndGet();
-    private final Screen parent;
+    private final ProfilesScreen parent;
     private final ProfileEdits.Edit draft;
     private final boolean local;
     private final Object connection = Minecraft.getInstance().getConnection();
@@ -31,7 +30,7 @@ final class ProfileTestScreen extends FormScreen {
     private List<Check> checks;
     private boolean started;
     private int page, left, panelWidth;
-    ProfileTestScreen(Screen parent, ProfileEdits.Edit draft, boolean local) {
+    ProfileTestScreen(ProfilesScreen parent, ProfileEdits.Edit draft, boolean local) {
         super(Component.literal("JustBuild · Test connection"));
         this.parent = parent; this.draft = draft; this.local = local;
     }
@@ -45,12 +44,23 @@ final class ProfileTestScreen extends FormScreen {
             var next = addRenderableWidget(GlassButton.builder(Component.literal("Next check"), b -> { page++; rebuildWidgets(); })
                     .bounds(left + (panelWidth + 4) / 2, height - 50, (panelWidth - 4) / 2, 20).build()); next.active = page < checks.size() - 1;
         }
+        int actionWidth = (panelWidth - 8) / 3;
+        var save = addRenderableWidget(GlassButton.builder(Component.literal("Save & use"), b -> {
+            if (canSaveAndUse()) parent.saveAndUse(draft);
+        }).bounds(left, height - 26, actionWidth, 20).confirmation()
+                .tooltip(Tooltip.create(Component.literal("Save all profile edits and use this tested profile for future builds."))).build());
+        save.active = canSaveAndUse();
         addRenderableWidget(GlassButton.builder(Component.literal(checks == null ? "Cancel test" : "Back to profiles"), b -> onClose())
-                .bounds(left, height - 26, (panelWidth - 4) / 2, 20).build());
+                .bounds(left + actionWidth + 4, height - 26, actionWidth, 20).build());
         var retry = addRenderableWidget(GlassButton.builder(Component.literal("Test again"), b -> minecraft.gui.setScreen(new ProfileTestScreen(parent, draft, local)))
-                .bounds(left + (panelWidth + 4) / 2, height - 26, (panelWidth - 4) / 2, 20)
+                .bounds(left + 2 * (actionWidth + 4), height - 26, panelWidth - 2 * (actionWidth + 4), 20)
                 .tooltip(Tooltip.create(Component.literal("Send another tiny request; it may use paid tokens."))).build());
         retry.active = checks != null && connection == minecraft.getConnection();
+    }
+    private boolean canSaveAndUse() {
+        return checks != null && checks.stream().anyMatch(c -> c.status() == Status.PASS)
+                && checks.stream().noneMatch(c -> c.status() == Status.FAIL)
+                && connection == minecraft.getConnection();
     }
     private void start() {
         if (!local) {

@@ -15,6 +15,7 @@
       "dev.justbuild.client.PromptEditorGameTest",
       "dev.justbuild.gametest.PreviewTest",
       "dev.justbuild.client.PersistentPreviewTest",
+      "dev.justbuild.client.ResumePreviewGameTest",
       "dev.justbuild.gametest.RoofTest",
       "dev.justbuild.gametest.RelayTest",
       "dev.justbuild.gametest.GuidesTest",

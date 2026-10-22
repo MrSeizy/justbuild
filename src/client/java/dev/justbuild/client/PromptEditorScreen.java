@@ -17,7 +17,7 @@ final class PromptEditorScreen extends Screen {
     private final net.minecraft.client.multiplayer.ClientPacketListener connection;
     private MultiLineEditBox editor;
     private int left, panelWidth;
-    private String message = "Enter adds a line · Ctrl+Enter sends";
+    private String message;
     PromptEditorScreen(Screen parent, String target, String question, int options, Runnable sent) {
         super(Component.literal(question != null ? "Answer the AI" : target == null ? "Describe a new build" : "Describe your changes"));
         this.parent = parent; this.target = target; this.question = question; this.options = options; this.sent = sent;
@@ -66,7 +66,8 @@ final class PromptEditorScreen extends Screen {
         if (e.hasControlDown() && (e.key() == InputConstants.KEY_RETURN || e.key() == InputConstants.KEY_NUMPADENTER)) { submit(); return true; }
         return super.keyPressed(e);
     }
-    @Override public void onClose() { minecraft.gui.setScreen(parent); }
+    @Override public void onClose() { PromptDrafts.flush(); minecraft.gui.setScreen(parent); }
+    @Override public void removed() { PromptDrafts.flush(); }
     @Override public void extractBackground(GuiGraphicsExtractor g, int x, int y, float tick) {
         Glass.sheet(g, left, panelWidth, height);
         if (editor != null) Glass.pill(g, editor.getX(), editor.getY(), editor.getWidth(), editor.getHeight(), 0x14FFFFFF,
@@ -78,7 +79,9 @@ final class PromptEditorScreen extends Screen {
         g.text(font, font.plainSubstrByWidth(context, panelWidth), left, 35, Glass.TEXT);
         g.text(font, editor.getValue().length() + " / " + BuildRequestPayload.MAX_TEXT, left, height - 90, Glass.MUTED);
         int line = height - 49;
-        for (var text : font.split(Component.literal(message), panelWidth)) {
+        String feedback = message != null ? message : PromptDrafts.problem();
+        if (feedback == null) feedback = "Enter adds a line · Ctrl+Enter sends";
+        for (var text : font.split(Component.literal(feedback), panelWidth)) {
             if (line + font.lineHeight > height - 30) break;
             g.text(font, text, left, line, Glass.MUTED); line += font.lineHeight;
         }

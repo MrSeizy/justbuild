@@ -238,7 +238,9 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
   Use **↗** beside the box for the multiline editor, with a visible count up to 4,096 characters. Enter adds a line;
   Ctrl+Enter sends. **Save prompt** keeps reusable text on this computer, and **Reuse prompt…** puts it back in the
   editor for you to change or send. Up to 20 prompts are saved in `config/justbuild-prompts.json`. Drafts remain in
-  memory for up to 64 build/world contexts until the game closes; they are separate from saved prompts.
+  `config/justbuild-drafts.json` for up to 64 player/build/world contexts, including across game restarts. Drafts
+  save periodically while typing and when leaving the editor. They are local to this computer, separate from saved
+  prompts, and never send a request or grant AI consent by themselves.
   The bottom row follows what's waiting: **Build it** for a preview, **Confirm undo** for an undo, **Discard** or
   **Stop request**, and **Undo** names what it would undo. Build and confirmation buttons share the same mint styling.
   Buttons in the panel's messages can be clicked. A
@@ -273,8 +275,8 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
     `reasoning_effort`. Thinking models may spend a long time reasoning before writing a plan. None requests no
     reasoning where supported; available settings depend on the model and endpoint. Endpoint default leaves the field out;
   - for Anthropic-compatible profiles, **Max tokens**, the maximum response length;
-  - **Save** (green; saves edits while builds keep using ★) and **Cancel**. Return to Settings and click **Profile**
-    (or **My profile** on a remote server) to switch the active profile. An
+  - **Save** (green; saves edits while builds keep using ★) and **Cancel**. **Test connection → Save & use** saves
+    all edits and activates the tested profile. You can also switch with **Profile** (or **My profile** on a remote server) in Settings. An
     HTTP API profile needs a model before it saves, and Cancel asks again before dropping unsaved changes.
 
   In singleplayer and as LAN host the editor works on the world's server: API keys go to it as a packet, never as a
@@ -338,7 +340,7 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild lock <name>`, `/justbuild lock`, `/justbuild unlock <id>` | Persist the selected part as a protected area, list your locks, or remove one (the console and admins can remove any) |
 | `/justbuild link a [id]`, `/justbuild link b [id]`, `/justbuild link clear` | Pick two saved buildings, using the selected build when no id is given |
 | `/justbuild connect <description>` | Preview a separate path, bridge, fence, or landscape connecting the two buildings |
-| `/justbuild retry` | Preview a retained plan without another AI call: one that crossed the zone (after enlarging it), or one that finished after you left its area (after returning) |
+| `/justbuild retry` | Resume saved previews and alternatives after reconnecting, or retry a plan after returning to its area/enlarging its zone; rechecks the world without another AI call |
 | `/justbuild checkpoint save <name>`, `/justbuild checkpoint restore <name>` | Save the selected build's plan as a named checkpoint; preview restoring it as an undoable edit |
 | `/justbuild checkpoint` | List checkpoints for the selected build |
 | `/justbuild add <name>` | Add the part-wand selection as an editable build without changing blocks; save its original checkpoint |
@@ -469,11 +471,11 @@ chest contents, sign text, books, entities, and other block-entity data are excl
 image input fall back to text views and diagnostics. `/justbuild inspect` only shows a local summary.
 
 The mod rejects an entire generated plan or edit diff that crosses the footprint, including clearing, foundations, and
-completed bed halves. It keeps that plan for 30 minutes in the current session: enlarge the area, then **Retry saved
-plan** or `/justbuild retry`. Retry revalidates the original plan at its original position, always previews, and does not
-call the AI. A plan that finishes after you leave its area, by walking away or going through a portal while the AI
-works, is kept the same way: the message names the dimension to return to, then retry. A changed source build makes
-the retained edit stale; a new request, Cancel, or disconnect discards it.
+completed bed halves. It saves that completed plan across disconnects and restarts: enlarge the area, then **Retry
+saved plan** or `/justbuild retry`. Retry revalidates the original plan at its original position, always previews, and
+does not call the AI. A plan that finishes after you leave its area, by walking away or going through a portal while
+the AI works, is kept the same way: the message names the dimension to return to, then retry. A changed source build
+makes the retained edit stale; cancel it and start a new request.
 Confirmation checks the boundary again. Undo also respects the current zone; clear or enlarge
 it to undo a larger area. Undo runs in the build's own dimension once all of it is loaded; since it steps back
 through your latest change first, it tells you where that build is when you are somewhere else. The footprint bounds JustBuild's direct block changes; normal Minecraft physics can
@@ -660,10 +662,28 @@ visible ceiling one block at a time to inspect rooms and stairs beneath the roof
 coordinates. **View in world** applies that height cutoff to preview ghosts. Existing world blocks remain visible and
 untouched, so use the section viewer to see beneath an existing roof. A fresh or moved preview resets the cutoff.
 
+## Saving unfinished work
+
+Completed previews and alternatives save automatically in the world. After reconnecting or reopening the world,
+choose **Create → Retry saved plan** (or `/justbuild retry`). The selected alternative, position, rotation, requirements,
+part selection, and protected connection areas are retained. Resume rebuilds all completed options against current
+world state, loaded chunks, limits, ownership, and locks, then waits for **Build it**, even with Auto-build enabled.
+It never makes another AI request. If an edited building changed versions while you were away, the saved edit is
+refused. Move back to its area or fix a temporary limit before retrying; failed checks keep the saved plan.
+
+Each player has one saved preview set per world. A newly completed preview replaces it; **Build it** or **Discard**
+removes it from disk. A discarded preview can still be retried for 30 minutes in the current session. **Cancel** also
+removes a saved set that has not been resumed. An interrupted alternatives request keeps only options already
+completed; in-flight AI calls and unanswered questions stop on disconnect and do not restart automatically.
+Unsent prompt text stays on your computer, scoped to your player, world/server, building, and question. Sending a
+request clears only its draft; restoring draft text does not send it.
+
 ## Storage
 
 The mod uses files rather than a database. Each world's `justbuild/builds/<id>.json.gz` stores a building's plans,
-versions, checkpoints, and undo states; `designs/<id>.json.gz` stores each reusable design. Shared JSON files hold
+versions, checkpoints, and undo states; `designs/<id>.json.gz` stores each reusable design. Completed preview sets
+use `previews/<player-uuid>.json.gz` (format 1), with original plans and placement metadata, separate from placed
+builds and undo history. Unreadable preview files are preserved; Cancel explicitly removes that player's saved file. Shared JSON files hold
 undo history (`history.json`), locked areas (`locked-areas.json`), village projects (`projects.json`), and per-player
 Auto-build choices and new-build requirements (`players.json`). Building records also retain named parts, requirements,
 and zone height/polygon data. Records load
@@ -882,6 +902,9 @@ profile-management permission. Closing the test cancels it; a late reply cannot 
 The result does not show provider error bodies, API keys or private endpoint URLs. Passing confirms basic access and
 JSON support; it does not guarantee build quality. The test sends no world data and makes no build changes.
 
-After testing, choose **Save**, then return to Settings and select it with **Profile** or **My profile**. The profile
-marked **★** remains active while you edit or test a different one. On a remote server, also enable
+After a successful test, choose **Save & use** to save all profile edits and activate the tested profile in one step.
+It becomes available once the response succeeds with no failed checks; model-list warnings do not block it.
+**Back to profiles → Save** saves edits while keeping the current **★** profile active. If another draft needs
+attention, saving returns to the editor with your edits intact. The profile marked **★** remains active while you
+edit or test a different one. On a remote server, also enable
 **Use my AI here: On** if you want that server to use your local profile.

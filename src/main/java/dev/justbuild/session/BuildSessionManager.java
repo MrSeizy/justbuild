@@ -138,6 +138,7 @@ public final class BuildSessionManager {
     private final ConfigStore configStore;
     private volatile JustBuildConfig config;
     private final PlanStore planStore;
+    private final PreviewStore previewStore;
     private final BuildStore store;
     private final DesignStore designStore;
     private final DesignTransfer designTransfer;
@@ -203,7 +204,7 @@ public final class BuildSessionManager {
     private boolean historyWritable = true;
     private final PlacementScheduler scheduler;
 
-    /** All transient state for an actor. Removing this entry is the complete disconnect cleanup. */
+    /** Live state for an actor. Completed previews also have an independent on-disk snapshot. */
     private final Map<String, PlayerSession> playerSessions = new HashMap<>();
     private final class PlayerSession {
         String activeProject;
@@ -219,6 +220,9 @@ public final class BuildSessionManager {
         PartSelection part;
         String[] connections;
         RetainedPlan retainedPlan;
+        PreviewStore.Saved savedPreview;
+        String previewLoadProblem;
+        boolean resumingPreview;
         PendingUndo pendingUndo;
         Alternatives alternatives;
         QualityInfo qualityInfo;
@@ -229,7 +233,17 @@ public final class BuildSessionManager {
         final PreviewLifecycle preview = new PreviewLifecycle();
         String[] connections() { if (connections == null) connections = new String[2]; return connections; }
     }
-    private PlayerSession playerSession(String actor) { return playerSessions.computeIfAbsent(actor, ignored -> new PlayerSession()); }
+    private PlayerSession playerSession(String actor) {
+        return playerSessions.computeIfAbsent(actor, id -> {
+            PlayerSession session = new PlayerSession();
+            try { session.savedPreview = previewStore.load(id); }
+            catch (IOException e) {
+                session.previewLoadProblem = e.getMessage();
+                LOGGER.warn("Could not load saved preview for {}: {}", id, e.toString());
+            }
+            return session;
+        });
+    }
     private List<ActiveRequest> planningRequests() {
         return playerSessions.values().stream().map(s -> s.planning.current).filter(java.util.Objects::nonNull).toList();
     }
@@ -287,7 +301,8 @@ public final class BuildSessionManager {
         boolean projectCaptured;
         String projectId;
         ProjectTheme theme = ProjectTheme.EMPTY;
-        final dev.justbuild.prompt.BuildConstraints constraints;
+        dev.justbuild.prompt.BuildConstraints constraints;
+        String typedRequest;
         /** The guides this request carries (attached by the mod, plus any the AI asked for); null before its first call. */
         List<GuideLibrary.Guide> guides;
         /** Whether the AI has had its one guide round. */
@@ -322,7 +337,7 @@ public final class BuildSessionManager {
             int changedSince, int kept) {
     }
 
-    /** A plan ready to place; kept for this session until the player confirms or cancels. */
+    /** A plan ready to place; durable recipes are rebuilt through current checks after reconnect. */
     private record PendingPlacement(String actor, CommandSourceStack source, ServerLevel level, BuildRecord record,
             boolean isNew, BuildRecord.Version version, Map<BlockPos, BlockState> placements,
             Map<BlockPos, BlockState> ours, String title, String summary, String ready, String aiSummary,
@@ -368,6 +383,7 @@ public final class BuildSessionManager {
         this.configStore = configStore;
         this.config = config;
         this.planStore = planStore;
+        this.previewStore = new PreviewStore(worldData.resolve("previews"));
         this.store = new BuildStore(worldData.resolve("builds"));
         this.designStore = new DesignStore(worldData.resolve("designs"));
         this.designTransfer = new DesignTransfer(net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("justbuild/library"));
@@ -2097,7 +2113,8 @@ public final class BuildSessionManager {
                     Map.of());
             record.zone(request.zone != null ? request.zone : footprint(record, placements.keySet()));
             record.constraints(request.constraints);
-            if (request.status != null) record.typedRequest(request.conversation.request()); // AI-planned, retried or not
+            if (request.typedRequest != null) record.typedRequest(request.typedRequest);
+            else if (request.status != null) record.typedRequest(request.conversation.request()); // AI-planned, retried or not
             reportSkipped(request.source, result);
             if (placements.size() < result.placements().size()) send(request.source, Chat.info("Kept "
                     + (result.placements().size() - placements.size()) + " planned blocks inside protected areas unchanged."));
@@ -2246,8 +2263,15 @@ public final class BuildSessionManager {
             return false;
         }
         playerSession(request.actor).retainedPlan = new RetainedPlan(request, plan,
-                request.target == null ? null : request.target.current(), Instant.now().plus(Duration.ofMinutes(30)));
-        send(request.source, Chat.with(Chat.with(Chat.error(problem + " Plan kept for 30 minutes. " + then
+                request.target == null ? null : request.target.current(), Instant.MAX);
+        if (!playerSession(request.actor).resumingPreview) {
+            var choice = new PreviewStore.Choice(plan, describe(request), request.status == null ? request.typedRequest
+                    : request.conversation.request(), request.level.dimension(), request.origin, request.facing,
+                    request.target == null ? null : request.target.id(), request.target == null ? null : request.target.current().id(),
+                    request.zone, request.focus, request.guards, request.constraints, request.projectId, null);
+            savePreview(request.actor, request.source, new PreviewStore.Saved(List.of(choice), 0));
+        }
+        send(request.source, Chat.with(Chat.with(Chat.error(problem + " Plan kept. " + then
                 + " retry it (no new AI call)."), "Retry", "/justbuild retry", "Preview the kept plan again"),
                 "Discard", "/justbuild cancel", "Forget the kept plan"));
         sendStateTo(request.source);
@@ -2264,6 +2288,10 @@ public final class BuildSessionManager {
         if (!canPlace(source) || !canChangeZone(source)) return;
         String actor = ownerOf(source);
         RetainedPlan retained = playerSession(actor).retainedPlan;
+        if (retained == null && (playerSession(actor).savedPreview != null || playerSession(actor).previewLoadProblem != null)) {
+            resumePreview(source);
+            return;
+        }
         if (retained == null || Instant.now().isAfter(retained.expires())) {
             playerSession(actor).retainedPlan = null;
             send(source, Chat.error("No retained plan is available. Start a new request."));
@@ -2301,6 +2329,128 @@ public final class BuildSessionManager {
         if (request.target != null) { busy.add(request.target.id()); placeEdit(request, retained.plan()); }
         else placeNew(request, retained.plan());
         sendStateTo(source);
+    }
+
+    /** Snapshot only completed work. In-flight AI calls and connection consent never resume. */
+    private void savePreview(String actor, CommandSourceStack source) {
+        PlayerSession session = playerSession(actor);
+        if (session.resumingPreview) return;
+        Alternatives options = session.alternatives;
+        List<PendingPlacement> previews = options != null && !options.choices.isEmpty() ? options.choices
+                : session.preview.current == null ? List.of() : List.of(session.preview.current);
+        if (previews.isEmpty()) return;
+        try {
+            List<PreviewStore.Choice> choices = new java.util.ArrayList<>();
+            for (PendingPlacement p : previews) {
+                BuildRecord r = p.record();
+                choices.add(new PreviewStore.Choice(p.sourcePlan(), p.isNew() ? r.current().request() : p.version().request(),
+                        r.typedRequest(), r.dimension(), r.origin(), r.facing(), p.isNew() ? null : r.id(),
+                        p.isNew() ? null : r.current().id(), p.zone(), p.focus(), p.guards(), r.constraints(), p.projectId(),
+                        p.restoreLive() ? PlanSnapshot.capture(p.title(), r.origin(), r.facing(), p.placements()) : null));
+            }
+            PreviewStore.Saved saved = new PreviewStore.Saved(choices, options == null ? 0 : options.selected);
+            savePreview(actor, source, saved);
+        } catch (PlanException | IllegalArgumentException e) {
+            LOGGER.warn("Could not save preview for {}: {}", actor, e.toString());
+            send(source, Chat.error("This preview could not be saved for reconnect: " + e.getMessage()));
+        }
+    }
+
+    private void savePreview(String actor, CommandSourceStack source, PreviewStore.Saved saved) {
+        try {
+            previewStore.save(actor, saved);
+            PlayerSession session = playerSession(actor); session.savedPreview = saved; session.previewLoadProblem = null;
+        } catch (IOException e) {
+            LOGGER.warn("Could not save preview for {}: {}", actor, e.toString());
+            send(source, Chat.error("This plan could not be saved for reconnect: " + e.getMessage()));
+        }
+    }
+
+    private boolean clearSavedPreview(CommandSourceStack source) {
+        PlayerSession session = playerSession(ownerOf(source));
+        if (session.savedPreview == null && session.previewLoadProblem == null) return true;
+        try {
+            previewStore.delete(ownerOf(source)); session.savedPreview = null; session.previewLoadProblem = null;
+            return true;
+        } catch (IOException e) {
+            send(source, Chat.error("The saved preview could not be removed. Try again after checking the world's justbuild/previews folder."));
+            return false;
+        }
+    }
+
+    private static String retainedTitle(PlayerSession session) {
+        if (session.retainedPlan != null) return session.retainedPlan.plan().title();
+        if (session.preview.current != null || session.planning.current != null) return null;
+        return session.savedPreview != null ? session.savedPreview.title()
+                : session.previewLoadProblem != null ? "Unreadable saved preview" : null;
+    }
+
+    private void resumePreview(CommandSourceStack source) {
+        String actor = ownerOf(source); PlayerSession session = playerSession(actor);
+        PreviewStore.Saved saved = session.savedPreview;
+        if (saved == null) {
+            send(source, Chat.error("The saved preview could not be read. Its file was kept in justbuild/previews; repair it or use Cancel to remove it."));
+            return;
+        }
+        // Validate every alternative before rebuilding any. A changed source cannot accept an old edit.
+        for (var choice : saved.choices()) {
+            if (!choice.dimension().equals(source.getLevel().dimension())) {
+                send(source, Chat.error("Return to " + choice.dimension().identifier() + " to resume this preview.")); return;
+            }
+            if (choice.target() != null) {
+                BuildRecord record = registry.get(choice.target()).orElse(null);
+                if (record == null || !record.current().id().equals(choice.version())) {
+                    send(source, Chat.error("The original build changed. Cancel this saved preview and start a new request.")); return;
+                }
+                if (!mayModify(source, record)) return;
+                if (busy.contains(record.id())) { send(source, Chat.error("The original build is busy. Wait before resuming.")); return; }
+            }
+        }
+        Alternatives batch = new Alternatives("Saved alternatives", saved.choices().size());
+        session.alternatives = batch; session.resumingPreview = true;
+        boolean ready = false;
+        try {
+            for (var choice : saved.choices()) {
+                BuildRecord target = choice.target() == null ? null : registry.get(choice.target()).orElseThrow();
+                ActiveRequest request = new ActiveRequest(actor, new Conversation(choice.request()), source.getLevel(),
+                        choice.origin(), choice.facing(), target, PromptSpec.Placement.FRONT, false, null, source);
+                request.zone = session.zone != null && !session.zone.fromBuild() ? zoneFor(actor, choice.dimension()) : choice.zone();
+                request.focus = choice.focus(); request.guards = choice.guards();
+                request.constraints = target == null ? choice.constraints() : target.constraints();
+                request.projectId = choice.project(); request.projectCaptured = true; request.typedRequest = choice.typedRequest();
+                request.savedPlan = true; request.forcePreview = true; request.restoreLive = choice.localChanges() != null;
+                config.limits().check(choice.plan());
+                var rendered = PlanPipeline.run(choice.localChanges() == null ? choice.plan() : choice.localChanges(),
+                        choice.origin(), choice.facing(), source.getLevel(), p -> readLoaded(source.getLevel(), p), config.maxBlocks);
+                ensureLoaded(source.getLevel(), rendered.placements().keySet());
+                if (target != null) busy.add(target.id());
+                int before = batch.choices.size();
+                if (request.restoreLive) previewLocalChange(request, rendered.placements(), null, Map.of());
+                else if (target == null) placeNew(request, choice.plan());
+                else placeEdit(request, choice.plan());
+                if (batch.choices.size() != before + 1) return;
+            }
+            batch.collecting = false; batch.selected = saved.selected();
+            session.retainedPlan = null;
+            PendingPlacement selected = batch.choices.get(batch.selected);
+            session.selectedBuild = selected.isNew() ? null : selected.record().id();
+            session.zone = selected.zone() == null ? null : new ZoneSelection(selected.zone().dimension(), selected.record().origin(), selected.zone());
+            offer(selected, true);
+            ready = session.preview.current == selected;
+        } catch (PlanException | IllegalArgumentException e) {
+            send(source, Chat.error("Saved preview kept: " + e.getMessage()));
+        } finally {
+            session.resumingPreview = false;
+            if (!ready) {
+                session.alternatives = null; session.retainedPlan = null;
+                for (var choice : saved.choices()) if (choice.target() != null) busy.remove(choice.target());
+            } else {
+                savePreview(actor, source);
+                send(source, Chat.info("Resumed " + count(saved.choices().size(), "saved option")
+                        + " with fresh world checks. Review the preview, then Build it. No AI call was made."));
+            }
+            sendStateTo(source);
+        }
     }
 
     private static PendingPlacement pending(ActiveRequest request, BuildRecord record, boolean isNew,
@@ -2342,6 +2492,7 @@ public final class BuildSessionManager {
         Alternatives batch = playerSession(p.actor()).alternatives;
         if (batch != null && batch.collecting) {
             batch.choices.add(p);
+            savePreview(p.actor(), p.source());
             return;
         }
         try {
@@ -2368,6 +2519,7 @@ public final class BuildSessionManager {
         if (replaced != null) {
             discard(replaced);
         }
+        savePreview(p.actor(), p.source());
         int width = p.max().getX() - p.min().getX() + 1;
         int height = p.max().getY() - p.min().getY() + 1;
         int depth = p.max().getZ() - p.min().getZ() + 1;
@@ -2451,6 +2603,7 @@ public final class BuildSessionManager {
                     List.of(new BuildRecord.Version(old.record().current().request(), finalPlan, System.currentTimeMillis())), Map.of());
             record.zone(old.zone() == null ? footprint(record, placements.keySet()) : old.zone());
             record.constraints(old.record().constraints());
+            record.typedRequest(old.record().typedRequest());
             record.constraints().check(origin, placements, Map.of());
             BuildRegion box = BuildRegion.enclosing(old.level().dimension(), placements.keySet());
             PendingPlacement moved = new PendingPlacement(actor, source, old.level(), record, true, null, placements,
@@ -2500,6 +2653,7 @@ public final class BuildSessionManager {
             send(source, Chat.error("Preview kept: " + e.getMessage() + " Confirm again when ready, or cancel."));
             return;
         }
+        if (!clearSavedPreview(source)) return;
         playerSession(ownerOf(source)).preview.take();
         playerSession(ownerOf(source)).alternatives = null;
         commit(p.withSource(source), true);
@@ -2507,6 +2661,7 @@ public final class BuildSessionManager {
     }
 
     private void commit(PendingPlacement p, boolean afterPreview) {
+        if (!clearSavedPreview(p.source())) return;
         playerSession(p.actor()).qualityInfo = null; playerSession(p.actor()).qualityUndo = null;
         if (!canPlace(p.source())) { discard(p); return; }
         if (!p.isNew() && (registry.get(p.record().id()).orElse(null) != p.record() || !mayModify(p.source(), p.record()))) {
@@ -2850,8 +3005,10 @@ public final class BuildSessionManager {
     /** Preview controls must never cancel a newer request or placement when their client view is stale. */
     public void discardPreview(CommandSourceStack source) {
         String actor = ownerOf(source);
-        PendingPlacement preview = playerSession(actor).preview.take();
+        PendingPlacement preview = playerSession(actor).preview.current;
         if (preview != null) {
+            if (!clearSavedPreview(source)) return;
+            playerSession(actor).preview.take();
             playerSession(actor).alternatives = null;
             discard(preview);
             keepDiscarded(preview);
@@ -2862,7 +3019,10 @@ public final class BuildSessionManager {
 
     public void cancel(CommandSourceStack source) {
         String actor = ownerOf(source);
-        boolean any = playerSession(actor).alternatives != null;
+        boolean any = playerSession(actor).alternatives != null || playerSession(actor).savedPreview != null
+                || playerSession(actor).previewLoadProblem != null;
+        // A disk error must not prevent stopping an AI call or rolling back an active placement.
+        clearSavedPreview(source);
         playerSession(actor).alternatives = null;
         if (playerSession(actor).retainedPlan != null) {
             playerSession(actor).retainedPlan = null;
@@ -3393,6 +3553,7 @@ public final class BuildSessionManager {
         String actor = player.getUUID().toString();
         PlayerSession session = playerSessions.get(actor);
         if (session != null) {
+            savePreview(actor, player.createCommandSourceStack());
             session.planning.end(session.planning.current, true);
             PendingPlacement pending = session.preview.take();
             if (pending != null) discard(pending);
@@ -3522,7 +3683,7 @@ public final class BuildSessionManager {
                 session.zone != null && session.zone.zone() == null, partHere ? part.region() : null,
                 partHere ? part.outline() : null, partHere && part.region() == null,
                 ZoneWand.isPart(player.getMainHandItem()) || ZoneWand.isPart(player.getOffhandItem()),
-                links == null ? null : links[0], links == null ? null : links[1], session.retainedPlan == null ? null : session.retainedPlan.plan().title());
+                links == null ? null : links[0], links == null ? null : links[1], retainedTitle(session));
         var polygon = session.polygonDraft;
         var workshop = new PanelStateBuilder.Workshop(prefs.constraints(actor), polygon == null ? null
                 : new PanelStateBuilder.PolygonView(polygon.dimension(), polygon.y(), polygon.points()),
@@ -3720,6 +3881,13 @@ public final class BuildSessionManager {
         request.zone = zoneFor(actor, record.dimension()); request.savedPlan = true; request.forcePreview = true; request.restoreLive = true;
         PartSelection part = playerSession(actor).part;
         if (part != null && part.region() != null && record.id().equals(part.buildId())) request.focus = part.region();
+        previewLocalChange(request, changes, recipe, rendered);
+    }
+
+    private void previewLocalChange(ActiveRequest request, Map<BlockPos, BlockState> changes,
+            BuildPlan recipe, Map<BlockPos, BlockState> rendered) throws PlanException {
+        String actor = request.actor; CommandSourceStack source = request.source; BuildRecord record = request.target;
+        String description = request.conversation.request();
         Map<BlockPos, BlockState> allowed = new LinkedHashMap<>(changes);
         // Local tools select matching cells; older parts of the saved build may lie outside today's zone.
         allowed.keySet().removeIf(p -> !mayChange(request, p) || request.zone != null && !request.zone.contains(p));
@@ -4417,6 +4585,9 @@ public final class BuildSessionManager {
         RetainedPlan retained = playerSession(actor).retainedPlan;
         if (retained != null) send(source, Chat.info("Retained plan: “" + retained.plan().title()
                 + "”. Enlarge its area, then /justbuild retry; no new AI call."));
+        else if (retainedTitle(playerSession(actor)) != null) send(source, Chat.with(Chat.info("Saved preview: “"
+                + retainedTitle(playerSession(actor)) + "”. Resume with fresh world checks; no AI call."),
+                "Resume", "/justbuild retry", "Preview the saved options again"));
         ActiveRequest request = playerSession(actor).planning.current;
         if (request != null) {
             if (request.inFlight != null) {
@@ -4492,6 +4663,12 @@ public final class BuildSessionManager {
         profileTests.close();
         closed = true;
         relay.close();
+        for (var entry : playerSessions.entrySet()) {
+            PlayerSession session = entry.getValue();
+            PendingPlacement p = session.preview.current;
+            if (p == null && session.alternatives != null && !session.alternatives.choices.isEmpty()) p = session.alternatives.choices.getFirst();
+            if (p != null) savePreview(entry.getKey(), p.source());
+        }
         List.copyOf(planningRequests()).forEach(r -> endRequest(r, true));
         playerSessions.clear();
         for (PlacementJob job : scheduler.drain()) {
