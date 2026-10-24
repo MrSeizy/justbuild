@@ -35,7 +35,7 @@ Install your chosen CLI using its official instructions for your operating syste
 | `claude` (default) | Your Claude subscription through the `claude` CLI | Install Claude Code, then run `claude auth login` (the Claude desktop app alone is not enough) |
 | `codex` | Your ChatGPT subscription through the `codex` CLI | Install the Codex CLI, then run `codex login`. |
 | `grok` | Your Grok login through Grok Build CLI | Install Grok Build, run `grok login`, and select a Grok profile. **Pick…** uses `grok models`. |
-| `anthropic` (unreleased) | Native Anthropic `/v1/messages`, including compatible services | Choose Anthropic-compatible, enter a base URL and API key, then pick a model |
+| `anthropic` | Native Anthropic `/v1/messages`, including compatible services | Choose Anthropic-compatible, enter a base URL and API key, then pick a model |
 | `openai` | Any OpenAI-compatible `/chat/completions` endpoint (OpenAI, OpenRouter, DeepSeek, Groq, Mistral, xAI, Gemini, Qwen, Experiential Labs, Ollama, LM Studio, …) | Fill in a profile in the panel: preset or base URL, API key, then pick a model |
 
 Each backend is used through a **model profile**: a name, a provider, a model, and for HTTP API profiles a base
@@ -44,7 +44,7 @@ per endpoint or one fast and one careful model, and switch between them in one c
 Choose the **Custom** preset to clear the base URL, then enter your own endpoint.
 Existing configurations keep their profiles; choose **New**, then cycle **Provider** to add another backend.
 
-Anthropic API support is available in development builds after 0.1.0. For Anthropic itself, use
+Anthropic API support is available in JustBuild 0.2.0 and newer. For Anthropic itself, use
 `https://api.anthropic.com/v1`; for another compatible service, use its API base URL. A root URL without `/v1`
 is also accepted: JustBuild appends `/v1/messages` and `/v1/models`. Requests use `anthropic-version: 2023-06-01`
 and `x-api-key`; OpenRouter, Moonshot, Z.AI and Qwen Token Plan use their documented `Authorization: Bearer` authentication instead.
@@ -60,7 +60,7 @@ services that reject images are retried with the text views and diagnostics. Inc
 
 ### API service presets
 
-The following presets are available in development builds after 0.1.0. Click **Preset** to cycle through services;
+The following presets are available in JustBuild 0.2.0 and newer. Click **Preset** to cycle through services;
 hover it for setup notes. Presets fill the base URL; enter a key from that service and select or type a supported model.
 The existing OpenAI, Groq, Mistral, xAI, Gemini, Qwen Token Plan, Experiential Labs, Ollama and LM Studio presets remain available.
 

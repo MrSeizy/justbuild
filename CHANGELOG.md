@@ -4,11 +4,14 @@ User-visible changes are recorded here. Unreleased entries describe development 
 
 ## Unreleased
 
+No unreleased changes.
+
+## [0.2.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.2.0) — 2026-10-23
+
 ### Added
 
 - **Save & use** on successful profile connection tests saves the draft and activates it in one step for local or server profiles.
 - Automatic saving of completed previews and alternatives across disconnects and world restarts. Retry saved plan restores the chosen option and placement with fresh world, version, and permission checks, without another AI request. Unsent prompt drafts also survive game restarts on the local computer.
-
 - Anthropic-compatible API profiles with custom base URLs, encrypted API keys, model selection, connection testing, and a configurable output-token limit. Native Messages API requests support streamed plans and review images, with fallbacks for services without structured output or image support.
 - Anthropic presets for OpenRouter, DeepSeek, Moonshot/Kimi, Z.AI/GLM, Alibaba/Qwen, Qwen Token Plan and Amazon Bedrock, with service-specific authentication. Added the missing OpenAI-compatible presets and a Vertex AI setup template, with official documentation and account/region requirements in the user guide.
 - Public demo players in the README and a [catalog of all 24 videos](docs/demos/README.md).

@@ -22,11 +22,11 @@ a bridge between two houses. The AI plans the structure and JustBuild checks the
 ghost preview and confirm before any blocks are placed. Optional **Auto-build** places fresh AI results immediately.
 Every build stays editable afterwards, with saved versions and undo.
 
-It works with the AI you already have: Claude Code, Codex, Grok Build, or an OpenAI-compatible API.
-Development builds also support Anthropic-compatible APIs (see the [changelog](CHANGELOG.md)).
+It works with the AI you already have: Claude Code, Codex, Grok Build, or an OpenAI-compatible or
+Anthropic-compatible API (see the [changelog](CHANGELOG.md)).
 
 > [!TIP]
-> [Download JustBuild 0.1.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.1.0) for Minecraft 26.3,
+> [Download JustBuild 0.2.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.2.0) for Minecraft 26.3,
 > or [build the jar from source](#building-from-source).
 
 ## Features
@@ -91,7 +91,7 @@ API key, or local AI server.
 | Claude Code | Your Claude subscription | Install the `claude` CLI and run `claude auth login`. The desktop app alone isn't enough. |
 | Codex | Your ChatGPT subscription | Install the `codex` CLI and run `codex login`. |
 | Grok Build | Your Grok account | Install the `grok` CLI and run `grok login`. |
-| Anthropic-compatible API (unreleased) | API key if required | Choose Anthropic-compatible, enter the base URL and key, then pick a model. |
+| Anthropic-compatible API | API key if required | Choose Anthropic-compatible, enter the base URL and key, then pick a model. |
 | OpenAI-compatible API | API key if required | Pick a hosted-provider preset or a local Ollama or LM Studio server, then choose a model. |
 
 See [backend setup](docs/user-guide.md#backends) for CLI login requirements and
@@ -120,7 +120,7 @@ Save up to 20 profiles, such as one fast model and one careful one, and switch b
 
 1. Create a Fabric instance for Minecraft 26.3 in your launcher.
 2. Put [Fabric API](https://modrinth.com/mod/fabric-api) and
-   [`justbuild-0.1.0.jar`](https://github.com/MrSeizy/justbuild/releases/download/v0.1.0/justbuild-0.1.0.jar)
+   [`justbuild-0.2.0.jar`](https://github.com/MrSeizy/justbuild/releases/download/v0.2.0/justbuild-0.2.0.jar)
    in the instance's `mods` folder.
 3. Start the game, open a world, and press **Right Shift**.
 
