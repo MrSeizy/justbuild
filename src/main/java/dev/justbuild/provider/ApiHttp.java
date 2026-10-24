@@ -119,8 +119,11 @@ final class ApiHttp {
             throw new CancelledException();
         } catch (TimeoutException e) {
             future.cancel(true);
+            token.throwIfCancelled();
             throw new ProviderException("No response after " + timeout.toSeconds() + " s");
         } catch (ExecutionException e) {
+            // HttpClient can wrap cancellation in an IOException before future.cancel completes.
+            token.throwIfCancelled();
             Throwable cause = e.getCause();
             if (cause instanceof HttpTimeoutException) {
                 throw new ProviderException("No response after " + timeout.toSeconds() + " s");

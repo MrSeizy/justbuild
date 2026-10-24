@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 class AnthropicCompatibleProviderTest {
@@ -238,7 +239,7 @@ class AnthropicCompatibleProviderTest {
         assertThrows(ProviderException.class, () -> new AnthropicCompatibleProvider(profile()).complete(request(), new CancellationToken()));
     }
 
-    @Test void cancellationInterruptsAStalledBody() throws Exception {
+    @RepeatedTest(25) void cancellationInterruptsAStalledBody() throws Exception {
         stall = true; var token = new CancellationToken(); var failure = new AtomicReference<Throwable>();
         Thread thread = Thread.ofVirtual().start(() -> {
             try { new AnthropicCompatibleProvider(profile()).complete(request(), token); }
@@ -246,7 +247,7 @@ class AnthropicCompatibleProviderTest {
         });
         assertTrue(bodyStarted.await(2, TimeUnit.SECONDS)); token.cancel();
         thread.join(2000); assertFalse(thread.isAlive(), "cancel left a blocked response reader");
-        assertInstanceOf(CancelledException.class, failure.get());
+        assertInstanceOf(CancelledException.class, failure.get(), () -> String.valueOf(failure.get()));
     }
 
     @Test void deadlineInterruptsAStalledBody() {

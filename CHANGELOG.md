@@ -21,6 +21,10 @@ No unreleased changes.
 - Saved API keys are retained only while both the provider and base URL remain the same.
 - Quality gallery scenes and screenshots clear dropped items, and bridge acceptance checks require continuous fence rails at the correct height along both deck edges.
 
+### Fixed
+
+- Cancelling an API request while its connection is completing now reports cancellation instead of a connection failure.
+
 ## [0.1.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.1.0) — 2026-10-21
 
 First public release for Minecraft 26.3, Fabric Loader 0.20.1 or newer, Fabric API, and Java 25 or newer.
