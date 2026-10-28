@@ -9,6 +9,7 @@ providers; they do not need paid AI accounts. The packaged mod excludes the `gam
 ./gradlew build compileGametestJava
 ./gradlew test --tests '*EncryptedCredentialsTest'
 ./gradlew runClientGameTest -PclientTests=PanelScreenshotTest,FormDraftGameTest
+./gradlew runClientGameTest -PclientTests=ConstructionGameTest,ConstructionMaterialsGameTest,ConstructionResumeGameTest,PreviewControlsGameTest
 ```
 
 `clientTests` accepts comma-separated simple class names or fully qualified entrypoint names. Unknown names fail
@@ -33,6 +34,13 @@ The [Verify workflow](../.github/workflows/verify.yml) lists the Ubuntu packages
 Screenshots are under
 `build/run/clientGameTest/screenshots/`; logs are under `build/run/clientGameTest/logs/`. A failed scenario can
 stop the run before later scenarios execute. Inspect the log before treating a partial run as a full pass.
+
+The construction scenarios cover mode switching, supply costs, saved-project recovery, layer totals, and material
+search/filter updates without losing the typing cursor. Cobble scenarios check that obstructions and protected
+cells are stepped past and reported, that a hanging lantern waits for its ceiling, and that grass is cleared while
+dug-in terrain is left for the player. They also capture compact and larger menu layouts;
+`PreviewControlsGameTest` submits a prompt through the panel, checks that placement choices appear only after
+the preview is ready, and checks instant placement and entry into Guided Build from a preview with alternatives.
 
 Credential tests use temporary vaults, including when launched directly from an IDE. Game tests use
 `build/gametest-credentials/`. Keep that directory with the generated game config between runs, or delete both

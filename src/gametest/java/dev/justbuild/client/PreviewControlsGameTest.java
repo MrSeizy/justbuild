@@ -68,8 +68,21 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
                 context.waitTicks(20);
                 command(context, "zone 1 " + position(at.offset(-3, -1, -3)));
                 command(context, "zone 2 " + position(at.offset(3, -1, 3)));
-                command(context, "alternatives build 2 a marker");
+                context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
+                context.clickScreenButton("Create");
+                check(context.computeOnClient(mc -> mc.gui.screen().children().stream().noneMatch(c -> c instanceof GlassButton b
+                        && (b.getMessage().getString().equals("Instant Build") || b.getMessage().getString().equals("Guided Build")
+                        || b.getMessage().getString().equals("Survival")))), "Placement choices appeared before the AI produced a preview");
+                context.clickScreenButton("Options: 1");
+                context.runOnClient(mc -> {
+                    mc.gui.toastManager().clear();
+                    mc.gui.screen().children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.EditBox)
+                            .map(c -> (net.minecraft.client.gui.components.EditBox) c).findFirst().orElseThrow().setValue("a marker");
+                });
+                context.takeScreenshot("prompt-before-preview");
+                context.clickScreenButton("Send ×2");
                 context.waitFor(mc -> ClientState.preview() != null && ClientState.preview().options().size() == 2, 1200);
+                context.runOnClient(mc -> mc.gui.setScreen(null));
                 context.waitTicks(10);
                 checkBaseLayout(context);
                 context.takeScreenshot("preview-world-controls");
@@ -77,7 +90,12 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
                 context.runOnClient(mc -> mc.gui.setScreen(new JustBuildScreen()));
                 context.tryClickScreenButton("Create");
                 context.waitTicks(5);
+                context.runOnClient(mc -> { ConstructionMaterialsGameTest.checkLayout(mc.gui.screen()); mc.gui.toastManager().clear(); });
                 context.takeScreenshot("glass-create-preview-waiting");
+                context.clickScreenButton("Guided Build"); context.waitForScreen(ConstructionSetupScreen.class);
+                context.clickScreenButton("Back"); context.waitForScreen(JustBuildScreen.class);
+                check(context.computeOnClient(mc -> mc.gui.screen().children().stream().anyMatch(c -> c instanceof GlassButton b
+                        && b.getMessage().getString().equals("Instant Build") && b.active)), "Creative preview lost instant building");
                 check(context.computeOnClient(mc -> ClientState.preview().added() == 3 && ClientState.preview().replaced() == 0
                         && ClientState.preview().removed() == 0 && ClientState.preview().width() == 3), "preview summary counts or dimensions wrong");
                 context.tryClickScreenButton("Before");
@@ -91,6 +109,7 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
                 context.waitFor(mc -> ClientState.preview().option() == 0, 200);
                 context.runOnClient(mc -> {
                     mc.gui.screen().resize(320, 240);
+                    ConstructionMaterialsGameTest.checkLayout(mc.gui.screen());
                     for (var child : mc.gui.screen().children()) if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget)
                         check(widget.getX() >= 0 && widget.getRight() <= 320 && widget.getY() >= 0 && widget.getBottom() <= 240,
                                 "preview control outside narrow screen: " + widget.getMessage().getString());

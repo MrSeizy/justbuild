@@ -4,6 +4,15 @@ User-visible changes are recorded here. Unreleased entries describe development 
 
 ## Unreleased
 
+### Added
+
+- Survival construction projects with Guide, Assist, and Cobble modes sharing a saved blueprint and world-checked progress. Guide tracks manual building; Assist places correctly oriented blocks from inventory within normal reach; Cobble uses an explicitly linked chest or barrel and follows neighboring blocks around each wall course.
+- A construction HUD with the project status and up to six remaining materials for the current layer, shortages first in red, and a Right Shift project panel listing the whole build's remaining materials with the missing amounts. The panel pages with buttons or the mouse wheel; current-layer ghosts, supply linking, and pause/resume controls share the same project. Projects survive restarts in a paused state, and a paused project says why it paused. Missing supplies, unloaded chunks, and blocks that need the player never get placed for free or overwritten.
+- A single **Send** prompt action followed by **Instant Build** and **Guided Build** choices once the preview is ready. Guided Build opens the Guide, Assist, and Cobble mode cards. The menus include highlighted mode and supply controls, readable material tables, item icons, search, and a missing-supplies filter.
+- Cobble steps past blocks he can't build yet (obstructions, protected cells, hanging blocks waiting for their ceiling) and returns to them once the problem clears, clears grass and other replaceable plants from the site, and outlines in red the block that needs the player, with its coordinates in the status.
+- Link chest also works without aiming: the panel closes and the next chest or barrel opened becomes the supply.
+- A project file that can't be read is explained in the project panel, and **End project** sets it aside under a new name so new plans can start.
+
 ### Changed
 
 - The chat button and panel action **[Build it]** are now **[Instant Build]**, and the prompt's **Build** button is now **Send**.

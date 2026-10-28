@@ -19,6 +19,8 @@ final class WandHud {
     static void register() {
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("justbuild", "wand"), (g, delta) -> {
             Minecraft mc = Minecraft.getInstance();
+            if (ConstructionClient.here() && mc.player != null && !ZoneWand.isWand(mc.player.getMainHandItem())
+                    && !ZoneWand.isWand(mc.player.getOffhandItem())) return;
             if (mc.player == null || mc.gui.screen() != null || mc.gui.hud.isHidden()) return;
             var stack = ZoneWand.isWand(mc.player.getMainHandItem()) ? mc.player.getMainHandItem() : mc.player.getOffhandItem();
             boolean wand = ZoneWand.isWand(stack);
