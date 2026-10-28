@@ -96,6 +96,7 @@ public final class JustBuildCommand {
                 .then(Commands.literal("alternatives").then(alternatives("build", false)).then(alternatives("edit", true)))
                 .then(Commands.literal("preview")
                         .then(Commands.literal("discard").executes(ctx -> run(ctx, BuildSessionManager::discardPreview)))
+                        .then(Commands.literal("previous").executes(ctx -> run(ctx, BuildSessionManager::previewPrevious)))
                         .then(Commands.literal("move").then(Commands.argument("x", IntegerArgumentType.integer(-16, 16))
                                 .then(Commands.argument("y", IntegerArgumentType.integer(-16, 16))
                                         .then(Commands.argument("z", IntegerArgumentType.integer(-16, 16))

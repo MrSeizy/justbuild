@@ -1623,6 +1623,7 @@ public final class BuildSessionManager {
 
     public void chooseAlternative(CommandSourceStack source, int number) {
         String actor = ownerOf(source);
+        if (revisionInFlight(source)) return;
         Alternatives batch = playerSession(actor).alternatives;
         if (batch == null || batch.collecting || number < 1 || number > batch.choices.size()) {
             send(source, Chat.error("Wait for your alternatives, then choose one of the available options.")); return;
@@ -1643,6 +1644,14 @@ public final class BuildSessionManager {
     public boolean hasPendingQuestion(ServerPlayer player) {
         ActiveRequest request = playerSession(player.getUUID().toString()).planning.current;
         return request != null && request.conversation.hasPendingQuestion();
+    }
+
+    /** Preview actions wait for a revision, so its result always replaces the preview the player last saw. */
+    private boolean revisionInFlight(CommandSourceStack source) {
+        ActiveRequest active = playerSession(ownerOf(source)).planning.current;
+        if (active == null || active.revising == null) return false;
+        send(source, Chat.error("Wait for the revision, or stop it first."));
+        return true;
     }
 
     private boolean canStartPlan(CommandSourceStack source) {
@@ -2217,6 +2226,7 @@ public final class BuildSessionManager {
                 PreviewRevisions revisions = revised.revisions().after(describe(request), new PreviewRevisions.Earlier(
                         revised.sourcePlan(), revised.title(), revised.summary(), revised.record().current().request()));
                 send(request.source, Chat.info("Revised “" + next.title() + "” (revision " + revisions.count() + ")."));
+                forgetQuality(revised);
                 replacePreview(revised, next.withRevisions(revisions, "Revised (revision " + revisions.count() + "). "));
                 return;
             }
@@ -2676,18 +2686,31 @@ public final class BuildSessionManager {
     }
 
     private void rebuildPreview(CommandSourceStack source, int dx, int dy, int dz, int rotation, boolean snap, BuildPlan texturePlan) {
+        rebuildPreview(source, dx, dy, dz, rotation, snap, texturePlan, null, null);
+    }
+
+    /**
+     * Re-runs the preview's plan at a new frame. {@code restore} brings back an earlier revision with its own title and
+     * description, leaving {@code revisions} as the history; moves and texture rerolls keep the preview's own.
+     */
+    private void rebuildPreview(CommandSourceStack source, int dx, int dy, int dz, int rotation, boolean snap, BuildPlan texturePlan,
+            PreviewRevisions.Earlier restore, PreviewRevisions revisions) {
         if (!canPlace(source)) return;
         String actor = ownerOf(source);
         PendingPlacement old = playerSession(actor).preview.current;
         if (old == null) { send(source, Chat.error("There is no waiting preview to move.")); return; }
         if (!old.isNew()) { send(source, Chat.error("Edits stay anchored to their building. Save a design to move or rotate a copy.")); return; }
+        if (revisionInFlight(source)) return;
         if (!old.level().dimension().equals(source.getLevel().dimension())) {
             send(source, Chat.error("Return to the preview's dimension first.")); return;
         }
         if (Math.abs(dx) > 16 || Math.abs(dy) > 16 || Math.abs(dz) > 16 || rotation % 90 != 0 || rotation < 0 || rotation > 270) {
             send(source, Chat.error("Move at most 16 blocks per axis, or rotate by 0, 90, 180, or 270 degrees.")); return;
         }
-        BuildPlan sourcePlan = texturePlan == null ? old.sourcePlan() : texturePlan;
+        BuildPlan sourcePlan = restore != null ? restore.plan() : texturePlan == null ? old.sourcePlan() : texturePlan;
+        String title = restore != null ? restore.title() : old.title();
+        String summary = restore != null ? restore.summary() : old.summary();
+        String description = restore != null ? restore.description() : old.record().current().request();
         try {
             BlockPos origin = old.record().origin().offset(dx, dy, dz);
             if (Math.abs((long) origin.getX()) > 29_999_000 || Math.abs((long) origin.getZ()) > 29_999_000) {
@@ -2709,25 +2732,35 @@ public final class BuildSessionManager {
             if (placements.isEmpty()) throw new PlanException("No blocks remain outside the protected areas.");
             if (old.zone() != null) old.zone().check(old.level().dimension(), placements.keySet());
             BuildPlan finalPlan = placements.equals(result.placements()) ? sourcePlan
-                    : PlanSnapshot.capture(old.title(), origin, facing, placements);
+                    : PlanSnapshot.capture(title, origin, facing, placements);
             config.limits().check(finalPlan);
             BuildRecord record = new BuildRecord(old.record().id(), actor, old.level().dimension(), origin, facing,
-                    List.of(new BuildRecord.Version(old.record().current().request(), finalPlan, System.currentTimeMillis())), Map.of());
+                    List.of(new BuildRecord.Version(description, finalPlan, System.currentTimeMillis())), Map.of());
             record.zone(old.zone() == null ? footprint(record, placements.keySet()) : old.zone());
             record.constraints(old.record().constraints());
             record.typedRequest(old.record().typedRequest());
             record.constraints().check(origin, placements, Map.of());
             BuildRegion box = BuildRegion.enclosing(old.level().dimension(), placements.keySet());
             PendingPlacement moved = new PendingPlacement(actor, source, old.level(), record, true, null, placements,
-                    Map.of(), old.title(), old.summary(), "Adjusted preview (no AI call). ", old.aiSummary(), old.requestStarted(),
-                    box.min(), box.max(), old.zone(), old.focus(), old.guards(),
-                    BuildQuality.inspect(placements, p -> readLoaded(old.level(), p)), sourcePlan, old.restoreLive(), old.projectId(), old.revisions());
+                    Map.of(), title, summary, restore != null ? "Previous version (no AI call). " : "Adjusted preview (no AI call). ",
+                    old.aiSummary(), old.requestStarted(), box.min(), box.max(), old.zone(), old.focus(), old.guards(),
+                    BuildQuality.inspect(placements, p -> readLoaded(old.level(), p)), sourcePlan, old.restoreLive(), old.projectId(),
+                    restore != null ? revisions : old.revisions());
             playerSession(actor).preview.take();
             showPreview(old, false);
             Alternatives batch = playerSession(actor).alternatives;
             if (batch != null && !batch.collecting) batch.choices.set(batch.selected, moved);
             offer(moved, true);
         } catch (PlanException | IllegalArgumentException e) { send(source, Chat.error("Preview unchanged: " + e.getMessage())); }
+    }
+
+    /** Brings back the version before the waiting preview's latest revision, at its current position (no AI call). */
+    public void previewPrevious(CommandSourceStack source) {
+        PendingPlacement preview = playerSession(ownerOf(source)).preview.current;
+        if (preview == null || !preview.isNew() || !preview.revisions().hasPrevious()) {
+            send(source, Chat.error("This preview has no earlier version.")); return;
+        }
+        rebuildPreview(source, 0, 0, 0, 0, false, null, preview.revisions().latest(), preview.revisions().previous());
     }
 
     /** Tells the requesting player's game to draw (or remove) the preview box, if it has JustBuild. */
@@ -2746,6 +2779,7 @@ public final class BuildSessionManager {
         ServerPlayer player = source.getPlayer();
         if (player == null) { send(source, Chat.error("Construction needs a player in the world.")); return; }
         if (!action.startsWith("start ")) { construction.command(player, action.trim()); return; }
+        if (revisionInFlight(source)) return;
         if (!canPlace(source)) return;
         PendingPlacement p = playerSession(ownerOf(source)).preview.current;
         if (p == null || !p.isNew()) { send(source, Chat.error("Survival construction starts from a new building preview.")); return; }
@@ -2782,6 +2816,7 @@ public final class BuildSessionManager {
         if (construction.active(source.getPlayer())) {
             send(source, Chat.error("Close your survival construction project before placing another preview.")); return;
         }
+        if (revisionInFlight(source)) return;
         PendingPlacement p = playerSession(ownerOf(source)).preview.current;
         if (p == null) {
             send(source, Chat.error("No build preview is waiting. To confirm an undo, use /justbuild undo confirm."));
@@ -3161,6 +3196,8 @@ public final class BuildSessionManager {
         PendingPlacement preview = playerSession(actor).preview.current;
         if (preview != null) {
             if (!clearSavedPreview(source)) return;
+            ActiveRequest revision = playerSession(actor).planning.current;
+            if (revision != null && revision.revising != null) endRequest(revision, true);
             playerSession(actor).preview.take();
             playerSession(actor).alternatives = null;
             discard(preview);
@@ -3172,6 +3209,14 @@ public final class BuildSessionManager {
 
     public void cancel(CommandSourceStack source) {
         String actor = ownerOf(source);
+        ActiveRequest revision = playerSession(actor).planning.current;
+        if (revision != null && revision.revising != null) {
+            // Stop ends only the revision; a second Cancel discards the preview as usual.
+            endRequest(revision, true);
+            send(source, Chat.info("Stopped the revision; the preview is unchanged."));
+            sendStateTo(source);
+            return;
+        }
         boolean any = playerSession(actor).alternatives != null || playerSession(actor).savedPreview != null
                 || playerSession(actor).previewLoadProblem != null;
         // A disk error must not prevent stopping an AI call or rolling back an active placement.
@@ -3377,6 +3422,8 @@ public final class BuildSessionManager {
         for (PendingPlacement p : waitingPreviews()) {
             drawOutline(p);
             showPreview(p, true);
+            ActiveRequest revision = playerSession(p.actor()).planning.current;
+            if (revision != null && revision.revising == p) continue; // the revision's own progress line takes the bar
             bar(p.source(), StatusText.BAR + (p.isNew()
                     ? "Preview ready: Right Shift → Instant Build or Guided Build"
                     : "Preview ready: Right Shift → Instant Build or Discard"));
@@ -4097,6 +4144,7 @@ public final class BuildSessionManager {
 
     public void qualityRepair(CommandSourceStack source, String arguments) {
         String actor = ownerOf(source); PendingPlacement old = playerSession(actor).preview.current;
+        if (revisionInFlight(source)) return;
         if (!canPlace(source) || old == null) { send(source, Chat.error("Create a preview before choosing a repair.")); return; }
         if (!old.level().dimension().equals(source.getLevel().dimension())) { send(source, Chat.error("Return to the preview's dimension.")); return; }
         if (!old.isNew() && !mayModify(source, old.record())) return;
