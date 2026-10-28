@@ -71,9 +71,9 @@ class PreviewRevisionsTest {
         var revisions = PreviewRevisions.NONE.after("x".repeat(700), version("Hut", "y".repeat(900)));
         var history = revisions.history("ignored once an original exists");
         assertEquals("y".repeat(PromptCheck.MAX_HISTORY_TEXT), history.original());
-        assertEquals(List.of("x".repeat(PromptCheck.MAX_HISTORY_TEXT)), history.earlier());
+        assertEquals(List.of("x".repeat(PromptCheck.MAX_HISTORY_TEXT)), history.changes());
         assertEquals("a retried plan", PreviewRevisions.NONE.history("a retried plan").original());
-        assertEquals(List.of(), PreviewRevisions.NONE.history("a retried plan").earlier());
+        assertEquals(List.of(), PreviewRevisions.NONE.history("a retried plan").changes());
         assertTrue(PreviewRevisions.MAX_EARLIER <= PromptCheck.MAX_HISTORY);
     }
 
