@@ -187,7 +187,7 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
   - **Off for every server** until you press **Use my AI here: On** in Right Shift → Settings while playing on it (remembered per
     server address in `myAiServers`). Until then the server uses its own profile, or refuses if it requires players'
     own AI.
-  - **Only builds you start.** An AI-starting `/justbuild` (a description, `edit`, `template`, `again`, `answer`) allows
+  - **Only builds you start.** An AI-starting `/justbuild` (a description, `edit`, `revise`, `connect`, `interior`, `template`, `again`, `answer`) allows
     twelve AI calls within a 15-minute inactivity window (a guide request, up to four shared spatial/catalog reads, a plan, up to two tries at a smaller plan,
     up to two review rounds, and bounded headroom). An `alternatives` command allows twelve calls per requested option,
     still within the 30-per-hour ceiling. Chat renews only as the answer to a question your AI just asked. A button in
@@ -330,6 +330,8 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild preview move <x> <y> <z>`, `/justbuild preview rotate <degrees>`, `/justbuild preview snap` | Move a new-build or copy preview, rotate clockwise by 90/180/270°, or snap its origin to the ground; no AI call |
 | `/justbuild alternatives build <2\|3> <description>`, `/justbuild alternatives edit <2\|3> <change>` | Generate separate options; all wait for your choice and confirmation |
 | `/justbuild preview option <number>` | Switch between completed options without another AI call |
+| `/justbuild preview previous` | Return to the version before the preview's latest revision without another AI call |
+| `/justbuild revise <change>` | Ask the AI to change the waiting new-building or design-copy preview before building |
 | `/justbuild select` | Select the saved building under your crosshair, up to 64 blocks away |
 | `/justbuild select #<id>`, `/justbuild select clear` | Select a build and load its saved area; leave editing mode while keeping the current zone |
 | `/justbuild rename <name>` | Name the selected build (1 to 60 characters); edits keep the name |
@@ -530,12 +532,28 @@ switch with **◀ ▶** at the base of the preview (or `/justbuild preview optio
 displayed option. Moving a preview or switching options makes no additional AI call. If a later option fails,
 completed options remain available.
 
+**Revise before building.** While a new-building or design-copy preview waits, the Create tab's request box reads
+*Describe a change to this preview…* and its button reads **Revise**. You can also type `/justbuild revise <change>`.
+The AI changes the unplaced plan at the preview's current position and rotation. Nothing is placed until you choose
+**Instant Build** or **Guided Build**.
+
+While the AI works, the preview stays visible, and placement and preview controls wait. **Stop** ends only the
+revision; **Discard** ends both. If the AI asks a question, its answer buttons appear in the preview section. If the
+revised plan fails a check, such as crossing the zone, the current preview stays and chat explains why. Auto-build
+never places a revision.
+
+**Previous** (or `/justbuild preview previous`) returns to the version before the latest revision, with no AI call.
+Up to 10 earlier versions are kept while you play. With alternatives, Revise changes only the displayed option, and
+each option keeps its own history. After a restart, **Retry saved plan** brings back the latest version. Edit
+previews of placed buildings can't be revised; apply or discard them first.
+
 ## Survival construction
 
 Send your prompt using the single **Send** button. When the AI finishes, inspect the preview, then choose
 **Instant Build** to place it immediately or **Guided Build** to build with real materials. The two choices sit
 together in the preview's bottom row. Guided Build supports **new buildings and design copies**; edits and
-restores use Instant Build. Turn Auto-build off when you want to make this choice for every new plan.
+restores use Instant Build. To change the design first, **Revise** the preview; Guided Build then uses the revised
+blueprint. Turn Auto-build off when you want to make this choice for every new plan.
 
 Guided Build opens the **Guide**, **Assist**, and **Cobble** mode cards. All three use the same blueprint and
 progress, and you can switch between them later. While a project is open, JustBuild takes no new requests (**Send**

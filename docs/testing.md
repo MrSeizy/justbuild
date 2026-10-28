@@ -10,6 +10,7 @@ providers; they do not need paid AI accounts. The packaged mod excludes the `gam
 ./gradlew test --tests '*EncryptedCredentialsTest'
 ./gradlew runClientGameTest -PclientTests=PanelScreenshotTest,FormDraftGameTest
 ./gradlew runClientGameTest -PclientTests=ConstructionGameTest,ConstructionMaterialsGameTest,ConstructionResumeGameTest,PreviewControlsGameTest
+./gradlew runClientGameTest -PclientTests=PreviewRevisionGameTest
 ```
 
 `clientTests` accepts comma-separated simple class names or fully qualified entrypoint names. Unknown names fail
@@ -41,6 +42,11 @@ cells are stepped past and reported, that a hanging lantern waits for its ceilin
 dug-in terrain is left for the player. They also capture compact and larger menu layouts;
 `PreviewControlsGameTest` submits a prompt through the panel, checks that placement choices appear only after
 the preview is ready, and checks instant placement and entry into Guided Build from a preview with alternatives.
+`PreviewRevisionGameTest` revises a moved preview through the panel. It checks that the AI received the unplaced
+plan, that a revision's question can be answered from the preview panel, that Previous makes no AI call, and that
+Stop, Discard, and zone-crossing revisions leave the right state. It also checks that Auto-build never places a
+revision, that alternatives keep separate histories, and that Instant Build, Guided Build, and Retry after a restart
+all use the revised plan.
 
 Credential tests use temporary vaults, including when launched directly from an IDE. Game tests use
 `build/gametest-credentials/`. Keep that directory with the generated game config between runs, or delete both

@@ -12,6 +12,7 @@ User-visible changes are recorded here. Unreleased entries describe development 
 - Cobble steps past blocks he can't build yet (obstructions, protected cells, hanging blocks waiting for their ceiling) and returns to them once the problem clears, clears grass and other replaceable plants from the site, and outlines in red the block that needs the player, with its coordinates in the status.
 - Link chest also works without aiming: the panel closes and the next chest or barrel opened becomes the supply.
 - A project file that can't be read is explained in the project panel, and **End project** sets it aside under a new name so new plans can start.
+- **Revise** a waiting new-building or design-copy preview with the AI before building (`/justbuild revise <change>`). The revised plan replaces the preview at its current position after the usual checks; **Previous** steps back through up to 10 earlier versions without another AI call, and each alternative keeps its own history. Stop ends only the revision. Players using their own AI on a server need this version of the client: 0.2.0 clients refuse revision requests.
 
 ### Changed
 
