@@ -221,7 +221,7 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
 
     /** The system prompt for this request, made the same way on the server and in a player's game. */
     public String systemPrompt(PlanLimits limits, Guidance.DetailLevel detail) {
-        return PromptBuilder.systemPrompt(limits, detail, offerGuides, inspectionRemaining);
+        return PromptBuilder.systemPrompt(limits, detail, offerGuides, inspectionRemaining, proposal);
     }
 
     BuildContext context() {
@@ -262,8 +262,11 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
             text += "\n\n" + snapshot.format();
         }
         if (!inspections.isEmpty()) {
-            text += "\nUse these live samples to guide changes; the saved plan describes intent and may differ from "
-                    + "the world. Preserve unrelated work. Later overlapping samples supersede earlier samples.";
+            text += proposal
+                    ? "\nThese live samples show the site before the proposed build is placed; fit the plan to them. "
+                            + "Later overlapping samples supersede earlier samples."
+                    : "\nUse these live samples to guide changes; the saved plan describes intent and may differ from "
+                            + "the world. Preserve unrelated work. Later overlapping samples supersede earlier samples.";
         }
         text += feedback.format();
         return PromptBuilder.withGuides(text, GuideLibrary.defaults().resolve(guides));

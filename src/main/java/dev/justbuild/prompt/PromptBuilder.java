@@ -22,7 +22,21 @@ public final class PromptBuilder {
 
     public static String systemPrompt(PlanLimits limits, Guidance.DetailLevel detail, boolean offerGuides,
             int inspectionRemaining) {
-        String prompt = base(limits) + "\n" + Guidance.QUALITY_RULES + "\n\n" + detail.prompt() + "\n";
+        return systemPrompt(limits, detail, offerGuides, inspectionRemaining, false);
+    }
+
+    /** {@code proposal}: the plan in the request is a preview the player has not placed yet. */
+    public static String systemPrompt(PlanLimits limits, Guidance.DetailLevel detail, boolean offerGuides,
+            int inspectionRemaining, boolean proposal) {
+        String base = base(limits);
+        if (proposal) {
+            String existing = "you are revising an existing build.";
+            if (!base.contains(existing)) {
+                throw new IllegalStateException("the system prompt no longer says: " + existing);
+            }
+            base = base.replace(existing, "you are revising a proposed build that has not been placed yet.");
+        }
+        String prompt = base + "\n" + Guidance.QUALITY_RULES + "\n\n" + detail.prompt() + "\n";
         if (offerGuides) {
             prompt += "\nConstruction references: select guides from the menu using the whole request, its "
                     + "constraints, and any answers. Before drafting a substantial build or layout change, request "
@@ -291,7 +305,7 @@ public final class PromptBuilder {
         }
         sb.append("\nCurrent plan:\n").append(edit.currentPlanJson())
                 .append("\n\nRequested change: ").append(edit.change().trim())
-                .append("\nKeep the plan's origin and return the complete revised plan with kind \"build\", preserving ")
+                .append("\nWhen you build, keep the plan's origin and return the complete revised plan, preserving ")
                 .append("parts the requested change does not mention.");
         appendExchanges(sb, exchanges);
         return sb.toString();
@@ -305,6 +319,7 @@ public final class PromptBuilder {
                 rounds, false);
     }
 
+    /** The same, for a revision of an unplaced proposal when {@code proposal} is set. */
     public static String reviewContent(BuildContext context, String request, String originalRequest,
             List<String> earlierChanges, List<Exchange> exchanges,
             String currentPlanJson, String views, int round, int rounds, boolean proposal) {

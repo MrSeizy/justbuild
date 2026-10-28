@@ -174,9 +174,28 @@ class PromptSpecTest {
             assertTrue(text.contains("This revises a proposed build that has not been placed yet."), spec.kind().toString());
             assertTrue(text.contains("Requested change: add a chimney"), spec.kind().toString());
             assertFalse(text.contains("This is an edit to an existing build."), spec.kind().toString());
+            assertFalse(text.contains("existing build"), spec.kind().toString());
+            assertFalse(text.contains("Omitted cells"), spec.kind().toString());
         }
         String edit = PromptSpec.edit("d:d", "b:b", "a hut", List.of(), PLAN, "add a door", List.of(), 0, 10)
                 .review(PLAN, 1, 1).userContent();
         assertTrue(edit.contains("This is an edit to an existing build."), "ordinary edit reviews keep their wording");
+    }
+
+    @Test
+    void proposalSystemPromptAndLiveSampleFooterSayThePlanIsNotPlaced() throws Exception {
+        dev.justbuild.plan.PlanLimits limits = new dev.justbuild.plan.PlanLimits(2000, 50000, 96);
+        assertTrue(revision().systemPrompt(limits, Guidance.DetailLevel.DETAILED)
+                .contains("revising a proposed build that has not been placed yet"));
+        var snapshot = dev.justbuild.prompt.WorldSnapshot.sample(new dev.justbuild.plan.InspectionRequest(
+                new Cell(0, 0, 0), new Cell(2, 1, 1)), p -> "minecraft:stone");
+        String proposal = revision().withWorld(null, List.of(snapshot), 0).userContent();
+        assertTrue(proposal.contains("These live samples show the site before the proposed build is placed; fit the plan "
+                + "to them. Later overlapping samples supersede earlier samples."));
+        assertFalse(proposal.contains("Preserve unrelated work."));
+        String edit = PromptSpec.edit("d:d", "b:b", "a hut", List.of(), PLAN, "add a door", List.of(), 0, 10)
+                .withWorld(null, List.of(snapshot), 0).userContent();
+        assertTrue(edit.contains("the saved plan describes intent and may differ from the world. Preserve unrelated work."));
+        assertFalse(edit.contains("before the proposed build is placed"));
     }
 }
