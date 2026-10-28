@@ -26,7 +26,7 @@ public record PreviewRevisions(String original, List<String> changes, List<Earli
     }
 
     /** What a revision tells the AI about the preview's past, clipped to what a player's game accepts. */
-    public record History(String original, List<String> earlier) { }
+    public record History(String original, List<String> changes) { }
 
     public PreviewRevisions {
         changes = List.copyOf(changes);
@@ -65,7 +65,10 @@ public record PreviewRevisions(String original, List<String> changes, List<Earli
                 earlier.subList(0, earlier.size() - 1), count - 1);
     }
 
-    /** The stored request of a revised version: the current description plus the change (and any answers). */
+    /**
+     * The stored request of a revised version: the current description plus the change (and any answers). Once a
+     * description reaches {@link #MAX_DESCRIPTION}, later changes no longer fit; the plan itself still carries them.
+     */
     public static String description(String current, String change) {
         String next = current + " (revised: " + change + ")";
         return next.length() <= MAX_DESCRIPTION ? next : next.substring(0, MAX_DESCRIPTION - 1) + "…";
