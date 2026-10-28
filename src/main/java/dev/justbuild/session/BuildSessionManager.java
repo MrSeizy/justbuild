@@ -135,6 +135,7 @@ public final class BuildSessionManager {
     private static final Duration UNDO_CONFIRM_TTL = Duration.ofSeconds(60);
 
     private final MinecraftServer server;
+    private final dev.justbuild.construction.ConstructionManager construction;
     private final ConfigStore configStore;
     private volatile JustBuildConfig config;
     private final PlanStore planStore;
@@ -379,6 +380,21 @@ public final class BuildSessionManager {
     public BuildSessionManager(MinecraftServer server, ConfigStore configStore, JustBuildConfig config,
             PlanStore planStore, Path worldData) {
         this.server = server;
+        this.construction = new dev.justbuild.construction.ConstructionManager(server, worldData.resolve("construction"),
+                new dev.justbuild.construction.ConstructionManager.Access() {
+                    public int maxBlocks() { return BuildSessionManager.this.config.maxBlocks; }
+                    public boolean allowed(ServerPlayer player) {
+                        return allowedNow(player.createCommandSourceStack()) && lockLoadProblem == null && buildLoadProblem == null;
+                    }
+                    public boolean cell(ServerPlayer player, BlockPos pos) {
+                        if (locked(player.level().dimension(), pos)) return false;
+                        CommandSourceStack source = player.createCommandSourceStack();
+                        if (isAdmin(source)) return true;
+                        return registry.all().stream().noneMatch(r -> r.dimension().equals(player.level().dimension())
+                                && !canModify(source, r) && registry.current(r).containsKey(pos)
+                                && !registry.current(r).get(pos).isAir());
+                    }
+                });
         this.relay = new RelayHub(server);
         this.configStore = configStore;
         this.config = config;
@@ -1574,6 +1590,9 @@ public final class BuildSessionManager {
 
     private boolean canStartPlan(CommandSourceStack source) {
         if (!canPlace(source)) return false;
+        if (construction.active(source.getPlayer())) {
+            send(source, Chat.error("Close your survival construction project before starting another plan.")); return false;
+        }
         String actor = ownerOf(source);
         if (playerSession(actor).preview.current != null || scheduler.busy(actor)) {
             send(source, Chat.error("Finish or cancel your current preview or placement before starting another plan."));
@@ -2489,6 +2508,10 @@ public final class BuildSessionManager {
     }
 
     private void offer(PendingPlacement p, boolean forcePreview, boolean autoBuild) {
+        if (construction.active(p.source().getPlayer())) {
+            discard(p); keepDiscarded(p);
+            send(p.source(), Chat.error("Plan kept. Close your survival construction project before opening another preview.")); return;
+        }
         Alternatives batch = playerSession(p.actor()).alternatives;
         if (batch != null && batch.collecting) {
             batch.choices.add(p);
@@ -2628,7 +2651,48 @@ public final class BuildSessionManager {
                 p.min(), p.max(), p.title()) : PreviewPayload.hidden());
     }
 
+    public dev.justbuild.construction.ConstructionManager construction() { return construction; }
+
+    public void constructionCommand(CommandSourceStack source, String action) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) { send(source, Chat.error("Construction needs a player in the world.")); return; }
+        if (!action.startsWith("start ")) { construction.command(player, action.trim()); return; }
+        if (!canPlace(source)) return;
+        PendingPlacement p = playerSession(ownerOf(source)).preview.current;
+        if (p == null || !p.isNew()) { send(source, Chat.error("Survival construction starts from a new building preview.")); return; }
+        if (!p.level().dimension().equals(player.level().dimension())) { send(source, Chat.error("Return to the preview's dimension.")); return; }
+        try {
+            var mode = dev.justbuild.construction.ConstructionProject.Mode.valueOf(action.substring(6).trim().toUpperCase(java.util.Locale.ROOT));
+            config.limits().check(p.sourcePlan());
+            if (p.placements().size() > config.maxBlocks) throw new PlanException("This blueprint exceeds the current block limit.");
+            ensureLoaded(p.level(), p.placements().keySet());
+            if (p.zone() != null) p.zone().check(p.level().dimension(), p.placements().keySet());
+            p.record().constraints().check(p.record().origin(), p.placements(), p.ours());
+            Set<BlockPos> others = othersCells(source, p.level().dimension(), p.zone(), p.record().id());
+            if (p.placements().keySet().stream().anyMatch(pos -> !mayChange(p, pos) || others.contains(pos)))
+                throw new PlanException("The blueprint now overlaps a protected area. Adjust the preview first.");
+            var project = new dev.justbuild.construction.ConstructionProject(UUID.randomUUID(), player.getUUID(), p.title(),
+                    p.level().dimension(), p.placements(), mode);
+            construction.start(player, project);
+            if (!clearSavedPreview(source)) {
+                construction.close(player); return;
+            }
+            // Ending the project soon after can still bring the preview back, as after Discard.
+            keepDiscarded(p);
+            playerSession(p.actor()).preview.take(); playerSession(p.actor()).alternatives = null;
+            showPreview(p, false); busy.remove(p.record().id());
+            project.paused = false;
+            send(source, Chat.info("Survival project pinned. Press Right Shift to change modes, link supplies, or pause. Clear obstructions by hand."));
+            sendState(player); construction.syncNow(player);
+        } catch (IOException | PlanException | IllegalArgumentException e) {
+            send(source, Chat.error("Preview kept: " + e.getMessage()));
+        }
+    }
+
     public void confirm(CommandSourceStack source) {
+        if (construction.active(source.getPlayer())) {
+            send(source, Chat.error("Close your survival construction project before placing another preview.")); return;
+        }
         PendingPlacement p = playerSession(ownerOf(source)).preview.current;
         if (p == null) {
             send(source, Chat.error("No build preview is waiting. To confirm an undo, use /justbuild undo confirm."));
@@ -3187,6 +3251,7 @@ public final class BuildSessionManager {
     }
 
     public void tick() {
+        construction.tick();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerSession session = playerSessions.get(player.getUUID().toString());
             if (session != null && session.pendingHello != null && server.getTickCount() >= session.nextHelloTick) {
@@ -3223,7 +3288,9 @@ public final class BuildSessionManager {
         for (PendingPlacement p : waitingPreviews()) {
             drawOutline(p);
             showPreview(p, true);
-            bar(p.source(), StatusText.BAR + "Preview of “" + p.title() + "” is waiting: press Right Shift, then Instant Build or Discard");
+            bar(p.source(), StatusText.BAR + (p.isNew()
+                    ? "Preview ready: Right Shift → Instant Build or Guided Build"
+                    : "Preview ready: Right Shift → Instant Build or Discard"));
         }
         for (ActiveRequest request : planningRequests()) {
             RequestStatus status = request.status;
@@ -3534,6 +3601,8 @@ public final class BuildSessionManager {
     }
 
     public void playerRespawned(ServerPlayer player) {
+        construction.left(player, "after you respawned");
+        construction.syncNow(player);
         playerSession(player.getUUID().toString()).starterWand = false;
         giveStarterWand(player);
         sendState(player);
@@ -3549,6 +3618,7 @@ public final class BuildSessionManager {
 
     /** A player left: forget their game and fail any request waiting on it. */
     public void playerLeft(ServerPlayer player) {
+        construction.left(player, "after you left the game");
         profileTests.cancel(player);
         String actor = player.getUUID().toString();
         PlayerSession session = playerSessions.get(actor);
@@ -3666,6 +3736,7 @@ public final class BuildSessionManager {
 
     /** Capture transient state on the server thread; document construction has its own presentation layer. */
     public void sendState(ServerPlayer player) {
+        construction.sync(player);
         if (player.hasDisconnected() || !ServerPlayNetworking.canSend(player, StatePayload.TYPE)) return;
         String actor = player.getUUID().toString(); var session = playerSession(actor);
         var source = player.createCommandSourceStack(); var dimension = player.level().dimension();
