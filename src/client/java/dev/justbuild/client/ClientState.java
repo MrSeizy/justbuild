@@ -21,7 +21,8 @@ final class ClientState {
     record Locked(String id, String name, BuildRegion region, boolean mine) { }
 
     record Preview(String title, boolean movable, List<String> quality, List<String> options, int option, String position,
-            int width, int height, int depth, int added, int replaced, int removed) {
+            int width, int height, int depth, int added, int replaced, int removed, boolean revisable, int revisions,
+            boolean previous) {
         boolean hasCounts() { return added >= 0; }
     }
 

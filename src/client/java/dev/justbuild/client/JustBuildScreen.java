@@ -78,13 +78,14 @@ public final class JustBuildScreen extends FormScreen {
         int top = 22;
         request = new GlassEditBox(font, left, top, panelWidth - 94, 20, Component.literal("Request"), Glass.CUBE);
         request.setMaxLength(MAX_REQUEST);
-        String selectedId = ClientState.string("selectedBuild", null);
-        boolean editing = selectedId != null;
+        String target = requestTarget();
+        boolean revising = PromptSender.REVISE.equals(target);
+        boolean editing = !revising && target != null;
         boolean answering = ClientState.question() != null;
-        draftFor = PromptDrafts.key(selectedId, ClientState.question());
+        draftFor = PromptDrafts.key(target, ClientState.question());
         draft = PromptDrafts.get(draftFor);
-        request.setHint(Component.literal(answering ? "Type your answer…" : editing ? "Describe the change…"
-                : "Describe what you want to build…"));
+        request.setHint(Component.literal(answering ? "Type your answer…" : revising ? "Describe a change to this preview…"
+                : editing ? "Describe the change…" : "Describe what you want to build…"));
         request.setValue(draft.replace('\n', ' '));
         String key = draftFor;
         boolean multiline = draft.indexOf('\n') >= 0;
@@ -93,12 +94,17 @@ public final class JustBuildScreen extends FormScreen {
         request.setResponder(value -> { if (!multiline) { draft = value; PromptDrafts.put(key, value); } });
         addRenderableWidget(request);
         addRenderableWidget(GlassButton.builder(Component.literal("↗"), b -> minecraft.gui.setScreen(new PromptEditorScreen(this,
-                ClientState.string("selectedBuild", null), ClientState.question(), optionCount, () -> { optionCount = 1; tab = Tab.CREATE; })))
+                target, ClientState.question(), revising ? 1 : optionCount, () -> { optionCount = 1; tab = Tab.CREATE; })))
                 .bounds(left + panelWidth - 90, top, 24, 20).tooltip(Tooltip.create(Component.literal(
                         "Expand request editor · multiple lines, character count, and reusable prompts"))).build());
-        String action = answering ? "Answer" : (editing ? "Apply" : "Send") + (optionCount > 1 ? " ×" + optionCount : "");
+        String action = answering ? "Answer" : revising ? "Revise" : (editing ? "Apply" : "Send") + (optionCount > 1 ? " ×" + optionCount : "");
         Button go = GlassButton.builder(Component.literal(action), b -> submit()).bounds(left + panelWidth - 62, top, 62, 20).primary().build();
-        if (!answering && ClientState.planning() != null) {
+        if (revising) {
+            go.active = ClientState.planning() == null;
+            go.setTooltip(Tooltip.create(Component.literal(go.active
+                    ? "Ask the AI to change this preview. Nothing is built until you choose Instant Build or Guided Build."
+                    : "The AI is revising this preview. Wait for it, or press Stop.")));
+        } else if (!answering && ClientState.planning() != null) {
             go.setTooltip(Tooltip.create(Component.literal("Your request “" + ClientState.planning()
                     + "” is still being planned; sending a new one stops it.")));
         }
@@ -135,6 +141,13 @@ public final class JustBuildScreen extends FormScreen {
         }
         setInitialFocus(refocusFilter && filterBox != null ? filterBox : request);
         refocusFilter = false;
+    }
+
+    /** Where the request box sends: a revisable preview is revised, otherwise the selected build or a new one. */
+    private static String requestTarget() {
+        ClientState.Preview preview = ClientState.preview();
+        if (ClientState.question() == null && preview != null && preview.revisable()) return PromptSender.REVISE;
+        return ClientState.string("selectedBuild", null);
     }
 
     private static String label(Tab t) {
@@ -247,23 +260,32 @@ public final class JustBuildScreen extends FormScreen {
                 .bounds(left + 3 * (w + 2), y, w, 20).build());
     }
 
-    /** A completed preview offers the two placement paths together, separate from sending a prompt. */
+    /** A completed preview offers the two placement paths together, separate from sending a prompt; a revision pauses them. */
     private void initBuildChoices(ClientState.Preview preview) {
         int y = contentBottom - 20, buildWidth = Math.min(96, (panelWidth - 168) / 2);
+        boolean revisingNow = ClientState.planning() != null;
         addRenderableWidget(GlassButton.builder(Component.literal("Instant Build"), b -> run("justbuild confirm"))
                 .bounds(left, y, buildWidth, 20).primary()
-                .tooltip(Tooltip.create(Component.literal("Place this preview immediately using the normal build permissions."))).build());
+                .tooltip(Tooltip.create(Component.literal(revisingNow ? "Wait for the revision, or press Stop."
+                        : "Place this preview immediately using the normal build permissions."))).build()).active = !revisingNow;
         addRenderableWidget(GlassButton.builder(Component.literal("Guided Build"), b -> minecraft.gui.setScreen(new ConstructionSetupScreen(this)))
                 .bounds(left + buildWidth + 4, y, buildWidth, 20).primary()
-                .tooltip(Tooltip.create(Component.literal(preview.movable() ? "Choose Guide, Assist, or Cobble and build with real materials."
-                        : "Guided Build is available for new buildings and design copies."))).build()).active = preview.movable();
+                .tooltip(Tooltip.create(Component.literal(revisingNow ? "Wait for the revision, or press Stop."
+                        : preview.movable() ? "Choose Guide, Assist, or Cobble and build with real materials."
+                        : "Guided Build is available for new buildings and design copies."))).build()).active = preview.movable() && !revisingNow;
         String undoTarget = ClientState.undoTarget();
         addRenderableWidget(GlassButton.builder(Component.literal("Undo"), b -> run("justbuild undo"))
                 .bounds(left + panelWidth - 156, y, 44, 20)
                 .tooltip(Tooltip.create(Component.literal(undoTarget == null ? "Nothing to undo" : "Undo your latest change: “" + undoTarget + "” (asks first)")))
                 .build()).active = undoTarget != null;
-        addRenderableWidget(GlassButton.builder(Component.literal("Status"), b -> run("justbuild status"))
-                .bounds(left + panelWidth - 108, y, 48, 20).build());
+        if (revisingNow) {
+            addRenderableWidget(GlassButton.builder(Component.literal("Stop"), b -> run("justbuild cancel"))
+                    .bounds(left + panelWidth - 108, y, 48, 20).danger()
+                    .tooltip(Tooltip.create(Component.literal("Stop the revision; the preview stays as it is"))).build());
+        } else {
+            addRenderableWidget(GlassButton.builder(Component.literal("Status"), b -> run("justbuild status"))
+                    .bounds(left + panelWidth - 108, y, 48, 20).build());
+        }
         addRenderableWidget(GlassButton.builder(Component.literal("Discard"), b -> run("justbuild preview discard"))
                 .bounds(left + panelWidth - 56, y, 56, 20).danger()
                 .tooltip(Tooltip.create(Component.literal("Discard the waiting preview (kept 30 minutes: Retry saved plan brings it back)"))).build());
@@ -305,6 +327,21 @@ public final class JustBuildScreen extends FormScreen {
                     b -> run("justbuild preview option " + (option + 1))).bounds(left + i * (w + 4), y + 48, w, 20)
                     .tooltip(Tooltip.create(Component.literal("Option " + (i + 1) + " of " + n + ": " + preview.options().get(i)))).build();
             addRenderableWidget(i == preview.option() ? choice.current() : choice);
+        }
+        int row = y + (n > 0 ? 72 : 48);
+        List<String> answers = ClientState.question() == null ? List.of() : ClientState.questionOptions();
+        if (!answers.isEmpty()) {
+            // A revision's question takes Previous's slot; Previous waits for the revision anyway.
+            int count = Math.min(answers.size(), 4), w = (panelWidth - 4 * (count - 1)) / count;
+            for (int i = 0; i < count; i++) {
+                String option = answers.get(i);
+                addRenderableWidget(GlassButton.builder(Component.literal(option), b -> run("justbuild answer " + option))
+                        .bounds(left + i * (w + 4), row, w, 20).tooltip(Tooltip.create(Component.literal("Answer: " + option))).build());
+            }
+        } else if (preview.previous()) {
+            addRenderableWidget(GlassButton.builder(Component.literal("Previous"), b -> run("justbuild preview previous"))
+                    .bounds(left, row, third, 20).tooltip(Tooltip.create(Component.literal(
+                            "Return to the version before the latest revision (no AI call)"))).build()).active = ClientState.planning() == null;
         }
     }
 
@@ -691,13 +728,13 @@ public final class JustBuildScreen extends FormScreen {
         if (text.isEmpty()) {
             return;
         }
-        String selectedId = ClientState.string("selectedBuild", null);
+        String target = requestTarget();
         String error;
         if (text.startsWith("/")) {
             error = text.length() > 256 || text.contains("\n") ? "Chat commands must fit on one line (256 characters)." : null;
             if (error == null) run(text.substring(1));
         } else if (ConstructionClient.active()) error = "A Guided Build project is open. End it in the construction panel before sending new requests.";
-        else error = PromptSender.send(selectedId, ClientState.question(), optionCount, text);
+        else error = PromptSender.send(target, ClientState.question(), PromptSender.REVISE.equals(target) ? 1 : optionCount, text);
         if (error != null) { ClientState.addLine(Chat.error(error)); return; }
         optionCount = 1;
         PromptDrafts.put(draftFor, "");
