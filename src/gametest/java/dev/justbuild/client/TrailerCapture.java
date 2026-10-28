@@ -239,7 +239,7 @@ public final class TrailerCapture implements FabricClientGameTest {
                 String partial = CHICKEN_PROMPT.substring(0, Math.min(CHICKEN_PROMPT.length(), (int) Math.ceil((i - typeFrom + 1) * 1.5)));
                 c.runOnClient(mc -> field(mc, "Request").setValue(partial));
             }
-            if (i == click) c.clickScreenButton("Build");
+            if (i == click) c.clickScreenButton("Send");
             if (i == click + 12) c.runOnClient(mc -> mc.gui.setScreen(null));
             return view;
         });

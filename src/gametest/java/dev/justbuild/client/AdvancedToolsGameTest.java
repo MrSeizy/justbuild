@@ -72,7 +72,7 @@ public final class AdvancedToolsGameTest implements FabricClientGameTest {
                 check(warnings > 0, "the deliberately unfinished staircase was not flagged");
                 context.clickScreenButton("Checks (" + warnings + ")");
                 context.waitForScreen(QualityScreen.class); context.takeScreenshot("advanced-quality-checks");
-                context.clickScreenButton("Back"); context.clickScreenButton("Build it");
+                context.clickScreenButton("Back"); context.clickScreenButton("Instant Build");
                 awaitBlock(context, world, center.above(), Blocks.OAK_STAIRS);
                 check(state(world, center.above()).getValue(StairBlock.FACING) == Direction.EAST, "preview rotation lost stair facing");
                 context.waitFor(mc -> ClientState.string("selectedBuild", null) != null);
@@ -165,14 +165,14 @@ public final class AdvancedToolsGameTest implements FabricClientGameTest {
                 command(context, "select clear"); zone(context, d, 5); camera(context, world, player, d);
                 replies.add(plan(set("lapis_block", 0, 0, 0))); replies.add(plan(set("gold_block", 0, 0, 0)));
                 openCreate(context); context.clickScreenButton("Options: 1");
-                text(context, "Request", "a small test marker"); context.clickScreenButton("Build ×2");
+                text(context, "Request", "a small test marker"); context.clickScreenButton("Send ×2");
                 awaitCalls(context, 6);
                 context.waitFor(mc -> ClientState.preview() != null && ClientState.preview().options().size() == 2);
                 check(state(world, d).isAir(), "an alternative was placed before choosing");
                 command(context, "preview option 2"); command(context, "preview move 1 0 0");
                 command(context, "preview option 1"); command(context, "preview option 2");
                 check(context.computeOnClient(mc -> ClientState.preview().position().startsWith(d.east().toShortString())), "switching options lost the moved preview");
-                context.takeScreenshot("advanced-alternative-controls"); context.clickScreenButton("Build it");
+                context.takeScreenshot("advanced-alternative-controls"); context.clickScreenButton("Instant Build");
                 awaitBlock(context, world, d.east(), Blocks.GOLD_BLOCK);
                 check(state(world, d).isAir(), "an unchosen alternative changed the world");
                 check(calls.get() == 6, "preview adjustments or library actions made extra AI calls");

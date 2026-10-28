@@ -96,7 +96,7 @@ public final class JustBuildScreen extends FormScreen {
                 ClientState.string("selectedBuild", null), ClientState.question(), optionCount, () -> { optionCount = 1; tab = Tab.CREATE; })))
                 .bounds(left + panelWidth - 90, top, 24, 20).tooltip(Tooltip.create(Component.literal(
                         "Expand request editor · multiple lines, character count, and reusable prompts"))).build());
-        String action = answering ? "Answer" : (editing ? "Apply" : "Build") + (optionCount > 1 ? " ×" + optionCount : "");
+        String action = answering ? "Answer" : (editing ? "Apply" : "Send") + (optionCount > 1 ? " ×" + optionCount : "");
         Button go = GlassButton.builder(Component.literal(action), b -> submit()).bounds(left + panelWidth - 62, top, 62, 20).primary().build();
         if (!answering && ClientState.planning() != null) {
             go.setTooltip(Tooltip.create(Component.literal("Your request “" + ClientState.planning()
@@ -221,7 +221,7 @@ public final class JustBuildScreen extends FormScreen {
                         : "Undo your latest change: “" + undoTarget + "” (asks first)"))).build()).active = undoTarget != null;
         boolean previewWaiting = ClientState.preview() != null;
         String undoWaiting = ClientState.undoWaiting();
-        Button confirm = GlassButton.builder(Component.literal(previewWaiting ? "Build it" : undoWaiting != null ? "Confirm undo" : "Confirm"),
+        Button confirm = GlassButton.builder(Component.literal(previewWaiting ? "Instant Build" : undoWaiting != null ? "Confirm undo" : "Confirm"),
                 b -> run(previewWaiting ? "justbuild confirm" : "justbuild undo confirm")).bounds(left + w + 2, y, w, 20).tooltip(Tooltip.create(Component.literal(
                 previewWaiting ? "Place the waiting preview" : undoWaiting != null ? "Undo the change to “" + undoWaiting + "”"
                         : "Nothing is waiting"))).primary().build();
@@ -512,7 +512,7 @@ public final class JustBuildScreen extends FormScreen {
         boolean on = "true".equals(ClientState.string("autoBuild", "false"));
         return GlassButton.builder(Component.literal("Auto-build: " + (on ? "On" : "Off")), b -> run("justbuild autobuild " + (on ? "off" : "on")))
                 .bounds(left + (w - 4) / 2 + 4, y, (w - 4) / 2, 20).tooltip(Tooltip.create(Component.literal(
-                        "On: AI results place as soon as they're ready, without Build it. Undo still works; alternatives, "
+                        "On: AI results place as soon as they're ready, without Instant Build. Undo still works; alternatives, "
                                 + "saved plans, and design copies still preview."))).build();
     }
 

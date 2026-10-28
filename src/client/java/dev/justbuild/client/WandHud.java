@@ -36,7 +36,7 @@ final class WandHud {
             List<Line> lines = new ArrayList<>();
             if (!wand) {
                 lines.add(new Line(build.isBlank() ? "New build" : "Editing: " + build, RegionOutline.BUILD));
-                if (ClientState.preview() != null) lines.add(new Line("Preview ready · Build it to place", Glass.TITLE));
+                if (ClientState.preview() != null) lines.add(new Line("Preview ready · Instant Build to place", Glass.TITLE));
                 else if (ClientState.part() != null) lines.add(new Line("Edits limited to selected part", 0xFFD88BFF));
                 lines.add(new Line(JustBuildClient.panelKey() + ": panel · hold wand for outlines", SECONDARY));
             } else if (SelectionHandles.moving()) {

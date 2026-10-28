@@ -21,7 +21,7 @@ final class VersionHistoryScreen extends ToolScreen {
             catch (RuntimeException e) { date = ""; }
             button("v" + version.number() + " · " + date + (version.current() ? " · Current" : " · Preview restore"),
                     left + 40, 60 + i * 48, panelWidth - 40, () -> { run("history preview " + version.id()); minecraft.gui.setScreen(null); })
-                    .setTooltip(Tooltip.create(Component.literal(version.request() + "\nPreview changes against the current build. Build it confirms the restore; undo remains available.")));
+                    .setTooltip(Tooltip.create(Component.literal(version.request() + "\nPreview changes against the current build. Instant Build confirms the restore; undo remains available.")));
         }
         int quarter = (panelWidth - 12) / 4;
         button("Back", left, height - 28, quarter, this::onClose);
@@ -32,7 +32,7 @@ final class VersionHistoryScreen extends ToolScreen {
     }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int x, int y, float tick) {
         super.extractRenderState(g, x, y, tick);
-        text(g, "Recent saved versions. Preview a restore, compare, then Build it to apply.", 32, 55, Glass.MUTED);
+        text(g, "Recent saved versions. Preview a restore, compare, then Instant Build to apply.", 32, 55, Glass.MUTED);
         var versions = ClientState.versions();
         if (versions.isEmpty()) text(g, "Select a building to see its retained versions.", 70, height - 48, Glass.MUTED);
         for (int i = 0; i < rows && page * rows + i < versions.size(); i++) {

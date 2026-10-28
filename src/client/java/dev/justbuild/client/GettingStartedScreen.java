@@ -52,7 +52,7 @@ final class GettingStartedScreen extends ToolScreen {
                     ? "Auto-build is ON: ordinary results place immediately. Turn it off in Settings to inspect previews first. "
                         + "Undo can reverse your latest change. Alternatives still wait for confirmation."
                     : "Inspect the ghost preview, change counts and Checks. Use Before/After to compare. "
-                        + "Build it places the blocks; Discard keeps the world as it is. Undo can reverse your latest change.";
+                        + "Instant Build places the blocks; Discard keeps the world as it is. Undo can reverse your latest change.";
         };
     }
 

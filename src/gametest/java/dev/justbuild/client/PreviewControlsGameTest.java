@@ -194,7 +194,7 @@ public final class PreviewControlsGameTest implements FabricClientGameTest {
                 click(context);
                 context.waitFor(mc -> ClientState.preview() == null, 200);
                 context.waitTicks(20);
-                check(world.getServer().computeOnServer(s -> JustBuildMod.manager().savedBuildCount()) == 1, "Build it did not build");
+                check(world.getServer().computeOnServer(s -> JustBuildMod.manager().savedBuildCount()) == 1, "Instant Build did not build");
                 check(world.getServer().computeOnServer(s -> s.overworld().getBlockState(away).is(Blocks.LAPIS_BLOCK)),
                         "the build is not the chosen option at the moved spot");
 

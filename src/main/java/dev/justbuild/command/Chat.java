@@ -43,10 +43,10 @@ public final class Chat {
                 .append(button("Cancel", "/justbuild cancel", "Stop this request"));
     }
 
-    /** A large plan waiting for the player: [Build it] confirms, [Discard] discards. */
+    /** A large plan waiting for the player: [Instant Build] confirms, [Discard] discards. */
     public static Component preview(String text) {
         return prefix().append(Component.literal(text + "\n").withStyle(ChatFormatting.YELLOW))
-                .append(button("Build it", "/justbuild confirm", "Place this build"))
+                .append(button("Instant Build", "/justbuild confirm", "Place this build"))
                 .append(" ")
                 .append(Component.literal("[Discard]").withStyle(style -> style
                         .withColor(ChatFormatting.RED)

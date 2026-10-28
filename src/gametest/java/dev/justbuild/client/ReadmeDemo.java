@@ -108,11 +108,11 @@ public final class ReadmeDemo implements FabricClientGameTest {
             open(c, "Create");
             type(c, "Request", "Build a cozy stone cottage with a spruce roof and windows.", "Describe the building you want.");
             replies.add(cottage(false));
-            hold(c, "Choose Build to request a plan.", "Build", 12); c.clickScreenButton("Build");
+            hold(c, "Choose Send to request a plan.", "Send", 12); c.clickScreenButton("Send");
             c.waitFor(mc -> ClientState.preview() != null); close(c);
             hold(c, "Inspect the translucent preview before placing blocks.", null, 22);
-            open(c, "Create"); hold(c, "Build it places the preview. Discard removes it.", "Build it", 13);
-            c.clickScreenButton("Build it"); close(c);
+            open(c, "Create"); hold(c, "Instant Build places the preview. Discard removes it.", "Instant Build", 13);
+            c.clickScreenButton("Instant Build"); close(c);
             hold(c, "The mod places the validated plan over several ticks.", null, 30);
             c.waitFor(mc -> ClientState.string("selectedBuild", null) != null && ClientState.preview() == null);
             hold(c, "The finished cottage is saved and remains editable.", null, 22);
@@ -135,7 +135,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             c.clickScreenButton("Before"); hold(c, "Before shows the building as it stands now.", "Before", 16);
             c.clickScreenButton("After"); hold(c, "After shows the proposed roof and chimney.", "After", 16);
             snapshot(c, "before-after");
-            c.clickScreenButton("Back"); c.clickScreenButton("Build it"); close(c);
+            c.clickScreenButton("Back"); c.clickScreenButton("Instant Build"); close(c);
             hold(c, "Confirm applies only the changes to the saved build.", null, 32);
             finish();
 
@@ -170,7 +170,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
                 c.clickScreenButton("Lower layer"); hold(c, "Lower the ceiling to inspect rooms beneath the roof.", "Lower layer", 4);
             }
             hold(c, "Check the interior without changing the world.", null, 17);
-            c.clickScreenButton("Back"); hold(c, "Return to the panel to build or discard the preview.", "Build it", 14);
+            c.clickScreenButton("Back"); hold(c, "Return to the panel to build or discard the preview.", "Instant Build", 14);
             // The second cancel drops the discarded copy's kept plan, which would replace Editing tools on Create.
             close(c); command(c, "cancel"); command(c, "cancel"); finish();
 
@@ -185,7 +185,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             hold(c, "Preview replacement shows the exact changes.", "Preview replacement", 16);
             c.clickScreenButton("Preview replacement"); c.waitFor(mc -> ClientState.preview() != null); close(c);
             hold(c, "Inspect the highlighted blocks before confirming.", null, 18);
-            open(c, "Create"); c.clickScreenButton("Build it"); close(c);
+            open(c, "Create"); c.clickScreenButton("Instant Build"); close(c);
             hold(c, "The palette changes without an AI call.", null, 32);
             finish();
 
@@ -201,7 +201,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             hold(c, "Missing blocks only preserves manual material changes.", "Preview repair", 20);
             c.clickScreenButton("Preview repair"); c.waitFor(mc -> ClientState.preview() != null); close(c);
             hold(c, "Preview the missing blocks before replacing them.", null, 18);
-            open(c, "Create"); c.clickScreenButton("Build it"); close(c);
+            open(c, "Create"); c.clickScreenButton("Instant Build"); close(c);
             hold(c, "Confirm restores the missing wall. No AI call is needed.", null, 24);
             open(c, "Create"); hold(c, "Undo remains available for repairs and material swaps.", "Undo", 17);
             finish();
@@ -217,7 +217,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             c.clickScreenButton("Rotation: 0°"); hold(c, "Preview copy prepares an independent building.", "Preview copy", 15);
             c.clickScreenButton("Preview copy"); c.waitFor(mc -> ClientState.preview() != null); close(c);
             hold(c, "Inspect the copy at its destination, then confirm.", null, 22);
-            open(c, "Create"); c.clickScreenButton("Build it"); close(c);
+            open(c, "Create"); c.clickScreenButton("Instant Build"); close(c);
             hold(c, "The copy has its own history and undo. No AI call.", null, 32);
             finish();
 
@@ -292,7 +292,7 @@ public final class ReadmeDemo implements FabricClientGameTest {
             c.clickScreenButton("After"); hold(c, "After shows the earlier version.", "After", 18);
             c.clickScreenButton("Filter: all"); c.clickScreenButton("Filter: added");
             hold(c, "Filter: replaced isolates material changes.", "Filter: replaced", 20);
-            c.clickScreenButton("Back"); hold(c, "Build it confirms the restore; Discard leaves the build as is.", "Build it", 22);
+            c.clickScreenButton("Back"); hold(c, "Instant Build confirms the restore; Discard leaves the build as is.", "Instant Build", 22);
             c.clickScreenButton("Discard"); close(c); command(c, "cancel"); finish();
 
             workshop(c); c.clickScreenButton("AI usage");
