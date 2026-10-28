@@ -62,6 +62,7 @@ final class PromptEditorScreen extends Screen {
     }
     private void submit() {
         if (connection == null || minecraft.getConnection() != connection) { message = "The connection changed. Reopen the request editor."; return; }
+        if (PromptSender.REVISE.equals(target) && ClientState.planning() != null) { message = "The AI is still revising this preview. Wait for it, or press Stop."; return; }
         String error = PromptSender.send(target, question, options, editor.getValue());
         if (error != null) { message = error; return; }
         PromptDrafts.put(draftKey, ""); sent.run(); onClose();

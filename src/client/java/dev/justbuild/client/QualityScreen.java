@@ -13,7 +13,7 @@ final class QualityScreen extends ToolScreen {
         if(!issues.isEmpty()) {
             var issue=issues.get(page);
             button("Highlight location",left,height-80,half,()->{ QualityOutline.highlight(issue.id()); minecraft.gui.setScreen(null); }).active=issue.position()!=null;
-            button("Preview repair",left+half+4,height-80,half,()->run("quality repair "+issue.id())).active=!issue.repair().isEmpty();
+            button("Preview repair",left+half+4,height-80,half,()->run("quality repair "+issue.id())).active=!issue.repair().isEmpty()&&ClientState.planning()==null&&ClientState.question()==null;
         }
         button("Revert repair suggestion",left,height-56,panelWidth,()->run("quality revert")).active=ClientState.flag("qualityUndo");
         button("Back",left,height-28,third,this::onClose);

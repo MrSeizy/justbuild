@@ -39,7 +39,7 @@ final class CommandHelp {
             e("help [topic|page] [page]", "Browse all commands, or a topic such as zone or box."),
             e("<description>", "Shorthand for build; use build when starting with a command word."),
             e("answer <text>", "Answer the AI's question; ordinary chat works too."),
-            e("cancel", "Stop the current request, preview, or placement."),
+            e("cancel", "Stop the current request, preview, or placement; during a revision, stop only the revision."),
             e("autobuild [on|off]", "Toggle automatic placement, or explicitly turn it on/off."),
             e("retry", "Preview the retained plan again without another AI call."),
             e("zone", "Show your current build zone."),

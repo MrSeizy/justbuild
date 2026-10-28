@@ -278,7 +278,7 @@ public final class JustBuildScreen extends FormScreen {
         addRenderableWidget(GlassButton.builder(Component.literal("Undo"), b -> run("justbuild undo"))
                 .bounds(left + panelWidth - 156, y, 44, 20)
                 .tooltip(Tooltip.create(Component.literal(undoTarget == null ? "Nothing to undo" : "Undo your latest change: “" + undoTarget + "” (asks first)")))
-                .build()).active = undoTarget != null;
+                .build()).active = undoTarget != null && !revisingNow;
         if (revisingNow) {
             addRenderableWidget(GlassButton.builder(Component.literal("Stop"), b -> run("justbuild cancel"))
                     .bounds(left + panelWidth - 108, y, 48, 20).danger()
@@ -327,6 +327,7 @@ public final class JustBuildScreen extends FormScreen {
             GlassButton choice = GlassButton.builder(Component.literal((i + 1) + " · " + preview.options().get(i)),
                     b -> run("justbuild preview option " + (option + 1))).bounds(left + i * (w + 4), y + 48, w, 20)
                     .tooltip(Tooltip.create(Component.literal("Option " + (i + 1) + " of " + n + ": " + preview.options().get(i)))).build();
+            choice.active = !(ClientState.planning() != null || ClientState.question() != null);
             addRenderableWidget(i == preview.option() ? choice.current() : choice);
         }
         int row = y + (n > 0 ? 72 : 48);
@@ -342,7 +343,7 @@ public final class JustBuildScreen extends FormScreen {
         } else if (preview.previous()) {
             addRenderableWidget(GlassButton.builder(Component.literal("Previous"), b -> run("justbuild preview previous"))
                     .bounds(left, row, third, 20).tooltip(Tooltip.create(Component.literal(
-                            "Return to the version before the latest revision (no AI call)"))).build()).active = ClientState.planning() == null;
+                            "Return to the version before the latest revision (no AI call)"))).build()).active = ClientState.planning() == null && ClientState.question() == null;
         }
     }
 
@@ -735,6 +736,7 @@ public final class JustBuildScreen extends FormScreen {
             error = text.length() > 256 || text.contains("\n") ? "Chat commands must fit on one line (256 characters)." : null;
             if (error == null) run(text.substring(1));
         } else if (ConstructionClient.active()) error = "A Guided Build project is open. End it in the construction panel before sending new requests.";
+        else if (PromptSender.REVISE.equals(target) && ClientState.planning() != null) error = "The AI is still revising this preview. Wait for it, or press Stop.";
         else error = PromptSender.send(target, ClientState.question(), PromptSender.REVISE.equals(target) ? 1 : optionCount, text);
         if (error != null) { ClientState.addLine(Chat.error(error)); return; }
         optionCount = 1;
