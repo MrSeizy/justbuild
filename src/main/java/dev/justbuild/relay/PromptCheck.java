@@ -156,6 +156,9 @@ public final class PromptCheck {
         boolean editContext = spec.kind() == PromptSpec.Kind.EDIT
                 || ((spec.kind() == PromptSpec.Kind.REVIEW || spec.kind() == PromptSpec.Kind.SHRINK)
                         && spec.originalRequest() != null);
+        if (spec.proposal() && !editContext) {
+            return Result.refuse("only a revision can describe an unplaced proposal");
+        }
         if (editContext) {
             if (spec.originalRequest() == null || spec.originalRequest().length() > MAX_HISTORY_TEXT
                     || spec.earlierChanges().size() > MAX_HISTORY

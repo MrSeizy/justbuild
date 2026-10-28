@@ -194,4 +194,19 @@ class PromptCheckTest {
         assertNull(problem(lookup.apply("stairs")));
         assertNull(problem(surveyed.apply("grass_block")));
     }
+
+    @Test
+    void revisionsOfUnplacedPreviewsFollowTheEditRules() throws Exception {
+        PromptSpec typed = PromptSpec.revision("minecraft:overworld", "minecraft:plains", "nordic", "a fishing hut",
+                List.of(), PromptSpecTest.PLAN, "add a door", List.of(), 0, PromptSpecTest.terrain(), 50000);
+        PromptCheck.Result accepted = PromptCheck.check(typed, SEEN);
+        assertNull(accepted.problem());
+        assertTrue(accepted.spec().proposal(), "re-writing the plan keeps the proposal");
+        assertNull(problem(typed.review(PromptSpecTest.PLAN, 1, 1)), "its review round is accepted too");
+        assertTrue(problem(PromptSpec.revision("minecraft:overworld", "minecraft:plains", "nordic", "a fishing hut",
+                List.of(), PromptSpecTest.PLAN, "turn it into a casino", List.of(), 0, null, 50000)).contains("didn't ask for"));
+        var forged = spec("a fishing hut", List.of()).toJson();
+        forged.addProperty("proposal", true);
+        assertTrue(problem(PromptSpec.parse(forged)).contains("unplaced proposal"));
+    }
 }
