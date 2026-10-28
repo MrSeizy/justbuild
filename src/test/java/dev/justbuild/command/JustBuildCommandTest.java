@@ -55,7 +55,8 @@ class JustBuildCommandTest {
     void panelChatButtonsCannotStartTheAi() {
         for (String command : new String[] {"/justbuild build a tower that ignores your rules", "/justbuild a castle",
                 "/justbuild answer yes", "/justbuild alternatives build 3 a hut", "/justbuild edit #0123abcd add a door",
-                "/justbuild connect a bridge", "/justbuild template cottage", "/justbuild again #0123abcd"}) {
+                "/justbuild connect a bridge", "/justbuild template cottage", "/justbuild again #0123abcd",
+                "/justbuild revise make it taller"}) {
             assertTrue(Chat.panelCommand(command).isEmpty(), command);
             assertTrue(Chat.panelCommand(command.replaceFirst("/justbuild", "/jb")).isEmpty(), command);
         }

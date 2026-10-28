@@ -205,8 +205,12 @@ class PromptCheckTest {
         assertNull(problem(typed.review(PromptSpecTest.PLAN, 1, 1)), "its review round is accepted too");
         assertTrue(problem(PromptSpec.revision("minecraft:overworld", "minecraft:plains", "nordic", "a fishing hut",
                 List.of(), PromptSpecTest.PLAN, "turn it into a casino", List.of(), 0, null, 50000)).contains("didn't ask for"));
-        var forged = spec("a fishing hut", List.of()).toJson();
-        forged.addProperty("proposal", true);
-        assertTrue(problem(PromptSpec.parse(forged)).contains("unplaced proposal"));
+        assertNull(problem(typed.shrink(PromptSpecTest.PLAN)), "its size retry is accepted too");
+        for (PromptSpec ordinary : List.of(spec("a fishing hut", List.of()), spec("a fishing hut", List.of())
+                .review(PromptSpecTest.PLAN, 1, 1), spec("a fishing hut", List.of()).shrink(PromptSpecTest.PLAN))) {
+            var forged = ordinary.toJson();
+            forged.addProperty("proposal", true);
+            assertTrue(problem(PromptSpec.parse(forged)).contains("unplaced proposal"), ordinary.kind().toString());
+        }
     }
 }
