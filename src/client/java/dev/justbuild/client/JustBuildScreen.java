@@ -263,7 +263,8 @@ public final class JustBuildScreen extends FormScreen {
     /** A completed preview offers the two placement paths together, separate from sending a prompt; a revision pauses them. */
     private void initBuildChoices(ClientState.Preview preview) {
         int y = contentBottom - 20, buildWidth = Math.min(96, (panelWidth - 168) / 2);
-        boolean revisingNow = ClientState.planning() != null;
+        // With a preview waiting, any running request or pending question belongs to its revision.
+        boolean revisingNow = ClientState.planning() != null || ClientState.question() != null;
         addRenderableWidget(GlassButton.builder(Component.literal("Instant Build"), b -> run("justbuild confirm"))
                 .bounds(left, y, buildWidth, 20).primary()
                 .tooltip(Tooltip.create(Component.literal(revisingNow ? "Wait for the revision, or press Stop."
@@ -826,8 +827,10 @@ public final class JustBuildScreen extends FormScreen {
             graphics.text(font, font.plainSubstrByWidth(counts, panelWidth), left, contentTop + 25, GRAY);
         } else graphics.text(font, font.plainSubstrByWidth(context(), panelWidth - (ClientState.string("zoneLabel", null) != null ? 70 : 0)),
                 left, contentTop, GRAY);
-        int y = preview != null ? contentTop + (preview.options().isEmpty() ? 90 : 114) : createRows() + 50
-                + (ClientState.question() != null && !ClientState.questionOptions().isEmpty() ? 24 : 0);
+        boolean answers = ClientState.question() != null && !ClientState.questionOptions().isEmpty();
+        // Below a preview, Previous or a revision's answers take one more row (initPreview).
+        int y = preview != null ? contentTop + (preview.options().isEmpty() ? 90 : 114) + (answers || preview.previous() ? 24 : 0)
+                : createRows() + 50 + (answers ? 24 : 0);
         if (firstBuildHelp()) y += 24;
         if (ClientState.question() != null) {
             for (FormattedCharSequence line : font.split(Component.literal("The AI asks: " + ClientState.question()), panelWidth)) {

@@ -116,6 +116,8 @@ public final class PreviewRevisionGameTest implements FabricClientGameTest {
                 // 2. Previous restores the earlier plan, title, and position without another call.
                 int calls = bodies.size();
                 openCreate(c);
+                c.runOnClient(mc -> mc.gui.toastManager().clear());
+                c.takeScreenshot("preview-revision-previous");
                 c.clickScreenButton("Previous");
                 c.waitFor(mc -> ClientState.preview().revisions() == 0, 200);
                 check(c.computeOnClient(mc -> ClientState.preview().title().equals("Marker") && !ClientState.preview().previous()
@@ -127,6 +129,10 @@ public final class PreviewRevisionGameTest implements FabricClientGameTest {
                 command(c, "revise make it lapis but ask first");
                 c.waitFor(mc -> ClientState.question() != null, 600);
                 openCreate(c);
+                c.runOnClient(mc -> mc.gui.toastManager().clear());
+                c.takeScreenshot("preview-revision-question");
+                check(Boolean.FALSE.equals(button(c, "Instant Build")) && button(c, "Stop") != null,
+                        "the panel did not pause while the revision's question waits");
                 c.clickScreenButton("Lapis");
                 c.waitFor(mc -> ClientState.preview().revisions() == 1, 600);
                 check(bodies.getLast().contains("Player answered: Lapis"), "the answer did not reach the AI");
@@ -141,6 +147,8 @@ public final class PreviewRevisionGameTest implements FabricClientGameTest {
                 check(Boolean.FALSE.equals(button(c, "Instant Build")) && Boolean.FALSE.equals(button(c, "Guided Build"))
                         && Boolean.FALSE.equals(button(c, "Revise")) && button(c, "Stop") != null,
                         "the panel did not pause for the revision");
+                c.runOnClient(mc -> mc.gui.toastManager().clear());
+                c.takeScreenshot("preview-revision-running");
                 c.runOnClient(mc -> mc.gui.setScreen(null));
                 command(c, "confirm");
                 command(c, "preview move 1 0 0");
