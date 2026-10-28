@@ -366,7 +366,7 @@ public final class BuildSessionManager {
                     title, summary, ready, aiSummary, requestStarted, min, max,
                     zone, focus, guards, quality, sourcePlan, restoreLive, projectId, counts, revisions);
         }
-        /** The same preview after an AI revision, with its history and ready text. */
+        /** This preview after an AI revision, carrying its history and ready text. */
         PendingPlacement withRevisions(PreviewRevisions value, String readyText) {
             return new PendingPlacement(actor, source, level, record, isNew, version, placements, ours,
                     title, summary, readyText, aiSummary, requestStarted, min, max,
@@ -1694,7 +1694,7 @@ public final class BuildSessionManager {
         }
         if (request.conversation.isExpired(Instant.now())) {
             endRequest(request, false);
-            send(source, Chat.error("That question expired. Start again."));
+            send(source, Chat.error("That question expired. " + (request.revising != null ? "Revise again." : "Start again.")));
             finishAlternatives(actor);
             return;
         }
@@ -2128,7 +2128,7 @@ public final class BuildSessionManager {
         }
         if (!canPlace(request.source)) {
             endRequest(request, true);
-            playerSession(request.actor).alternatives = null;
+            if (request.revising == null) playerSession(request.actor).alternatives = null;
             sendStateTo(request.source);
             return;
         }
@@ -2180,10 +2180,10 @@ public final class BuildSessionManager {
     private void placeNew(ActiveRequest request, BuildPlan plan) {
         captureProject(request);
         endRequest(request, false);
-        PendingPlacement revised = request.revising;
+        PendingPlacement old = request.revising;
         // A revision replaces only the preview it started from; one discarded or replaced meanwhile drops the result.
-        if (revised != null && playerSession(request.actor).preview.current != revised) return;
-        String failure = revised != null ? "Preview unchanged: " : "The plan can't be built: ";
+        if (old != null && playerSession(request.actor).preview.current != old) return;
+        String failure = old != null ? "Preview unchanged: " : "The plan can't be built: ";
         JustBuildConfig cfg = config;
         try {
             cfg.limits().check(plan);
@@ -2196,43 +2196,46 @@ public final class BuildSessionManager {
             reportKept(request.source, keepOthers(placements, othersCells(request.source, request.level.dimension(), area, null)));
             placements = safe(request.source, request.level, placements, area, pos -> mayChange(request, pos));
             request.constraints.check(request.origin, placements, Map.of());
-            if (revised != null) checkRevisionArea(request, placements.keySet());
+            if (old != null) checkRevisionArea(request, placements.keySet());
             else if (!checkOrRetain(request, plan, placements.keySet())) return;
             if (placements.isEmpty()) {
-                send(request.source, Chat.error(revised != null ? failure + "the revised plan has no blocks that can be placed here."
+                send(request.source, Chat.error(old != null ? failure + "the revised plan has no blocks that can be placed here."
                         : "The plan has no blocks that can be placed here."));
                 return;
             }
             BuildPlan finalPlan = placements.equals(result.placements()) ? plan
                     : PlanSnapshot.capture(plan.title(), request.origin, request.facing, placements);
             cfg.limits().check(finalPlan);
-            String description = revised != null
-                    ? PreviewRevisions.description(revised.record().current().request(), describe(request)) : describe(request);
-            BuildRecord record = new BuildRecord(revised != null ? revised.record().id() : registry.newId(), request.actor,
+            String change = describe(request);
+            String description = old != null ? PreviewRevisions.description(old.record().current().request(), change) : change;
+            BuildRecord record = new BuildRecord(old != null ? old.record().id() : registry.newId(), request.actor,
                     request.level.dimension(), request.origin, request.facing,
                     List.of(new BuildRecord.Version(description, finalPlan, System.currentTimeMillis())), Map.of());
             record.zone(request.zone != null ? request.zone : footprint(record, placements.keySet()));
             record.constraints(request.constraints);
-            if (revised != null) {
+            if (old != null) {
                 // Only what the player typed first: a player's own AI recognizes it, and "again" reruns it.
-                if (revised.record().typedRequest() != null) record.typedRequest(revised.record().typedRequest());
+                if (old.record().typedRequest() != null) record.typedRequest(old.record().typedRequest());
             } else if (request.typedRequest != null) record.typedRequest(request.typedRequest);
             else if (request.status != null) record.typedRequest(request.conversation.request()); // AI-planned, retried or not
             reportSkipped(request.source, result);
             if (placements.size() < result.placements().size()) send(request.source, Chat.info("Kept "
                     + (result.placements().size() - placements.size()) + " planned blocks inside protected areas unchanged."));
             PendingPlacement next = pending(request, record, true, null, placements, Map.of(), plan);
-            if (revised != null) {
-                PreviewRevisions revisions = revised.revisions().after(describe(request), new PreviewRevisions.Earlier(
-                        revised.sourcePlan(), revised.title(), revised.summary(), revised.record().current().request()));
-                send(request.source, Chat.info("Revised “" + next.title() + "” (revision " + revisions.count() + ")."));
-                forgetQuality(revised);
-                replacePreview(revised, next.withRevisions(revisions, "Revised (revision " + revisions.count() + "). "));
+            if (old != null) {
+                PreviewRevisions revisions = old.revisions().after(change, new PreviewRevisions.Earlier(
+                        old.sourcePlan(), old.title(), old.summary(), old.record().current().request()));
+                PendingPlacement revised = next.withRevisions(revisions, "Revised (revision " + revisions.count() + "). ");
+                forgetQuality(old);
+                replacePreview(old, revised);
+                // The replacement can still be refused (a survival project opened, or its area unloaded); offer says so.
+                if (playerSession(request.actor).preview.current == revised) send(request.source,
+                        Chat.info("Revised “" + revised.title() + "” (revision " + revisions.count() + ")."));
                 return;
             }
             offer(next, request.forcePreview, autoBuilds(request));
         } catch (PlanTooLargeException e) {
-            send(request.source, Chat.error(revised != null ? failure + e.getMessage() : tooLarge("The plan", e)));
+            send(request.source, Chat.error(old != null ? failure + e.getMessage() : tooLarge("The plan", e)));
         } catch (PlanException e) {
             send(request.source, Chat.error(failure + e.getMessage()));
         }
@@ -2757,7 +2760,8 @@ public final class BuildSessionManager {
     /** Brings back the version before the waiting preview's latest revision, at its current position (no AI call). */
     public void previewPrevious(CommandSourceStack source) {
         PendingPlacement preview = playerSession(ownerOf(source)).preview.current;
-        if (preview == null || !preview.isNew() || !preview.revisions().hasPrevious()) {
+        if (preview == null) { send(source, Chat.error("No build preview is waiting.")); return; }
+        if (!preview.isNew() || !preview.revisions().hasPrevious()) {
             send(source, Chat.error("This preview has no earlier version.")); return;
         }
         rebuildPreview(source, 0, 0, 0, 0, false, null, preview.revisions().latest(), preview.revisions().previous());
@@ -3001,6 +3005,7 @@ public final class BuildSessionManager {
     /** Shows what an undo would do and asks for confirmation (or runs it directly when confirmUndo is off). */
     public void undo(CommandSourceStack source) {
         if (!canPlace(source)) return;
+        if (revisionInFlight(source)) return;
         String actor = ownerOf(source);
         if (scheduler.busy(actor)) {
             send(source, Chat.with(Chat.error("A build is still being placed."), "Cancel", "/justbuild cancel", "Stop placing it"));
@@ -3046,6 +3051,8 @@ public final class BuildSessionManager {
 
     public void confirmUndo(CommandSourceStack source) {
         String actor = ownerOf(source);
+        // Before the pending undo is taken, so it can still be confirmed once the revision ends.
+        if (revisionInFlight(source)) return;
         PendingUndo pending = playerSession(actor).pendingUndo;
         playerSession(actor).pendingUndo = null;
         if (pending == null) {
@@ -3195,9 +3202,9 @@ public final class BuildSessionManager {
         String actor = ownerOf(source);
         PendingPlacement preview = playerSession(actor).preview.current;
         if (preview != null) {
-            if (!clearSavedPreview(source)) return;
             ActiveRequest revision = playerSession(actor).planning.current;
-            if (revision != null && revision.revising != null) endRequest(revision, true);
+            if (revision != null && revision.revising == preview) endRequest(revision, true);
+            if (!clearSavedPreview(source)) return;
             playerSession(actor).preview.take();
             playerSession(actor).alternatives = null;
             discard(preview);
@@ -3519,7 +3526,8 @@ public final class BuildSessionManager {
             if (request.conversation.isExpired(now)) {
                 String question = request.conversation.pendingQuestion();
                 endRequest(request, false);
-                send(request.source, Chat.error("The question “" + question + "” timed out. Start again."));
+                send(request.source, Chat.error("The question “" + question + "” timed out. "
+                        + (request.revising != null ? "Revise again." : "Start again.")));
                 finishAlternatives(request.actor);
             }
         }
