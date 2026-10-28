@@ -211,7 +211,10 @@ final class ClientStateDecoder {
                     List.copyOf(choices), Math.max(0, Math.min(Math.max(0, choices.size() - 1), p.get("option").getAsInt())),
                     p.get("position").getAsString(), previewNumber(p, "width", 60_000_001), previewNumber(p, "height", 8193),
                     previewNumber(p, "depth", 60_000_001), previewNumber(p, "added", 1_000_000),
-                    previewNumber(p, "replaced", 1_000_000), previewNumber(p, "removed", 1_000_000));
+                    previewNumber(p, "replaced", 1_000_000), previewNumber(p, "removed", 1_000_000),
+                    // Servers without revisions send none of these, so Revise stays hidden there.
+                    p.has("revisable") && p.get("revisable").getAsBoolean(), Math.max(0, previewNumber(p, "revisions", 1_000_000)),
+                    p.has("previous") && p.get("previous").getAsBoolean());
         } catch (RuntimeException e) { return null; }
     }
 

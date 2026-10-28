@@ -19,11 +19,14 @@ final class PromptEditorScreen extends Screen {
     private int left, panelWidth;
     private String message;
     PromptEditorScreen(Screen parent, String target, String question, int options, Runnable sent) {
-        super(Component.literal(question != null ? "Answer the AI" : target == null ? "Describe a new build" : "Describe your changes"));
+        super(Component.literal(question != null ? "Answer the AI" : PromptSender.REVISE.equals(target) ? "Revise the preview"
+                : target == null ? "Describe a new build" : "Describe your changes"));
         this.parent = parent; this.target = target; this.question = question; this.options = options; this.sent = sent;
         this.connection = net.minecraft.client.Minecraft.getInstance().getConnection();
         this.draftKey = PromptDrafts.key(target, question);
-        this.context = question != null ? question : target == null ? "New build" : "Editing: " + ClientState.string("selectedTitle", "#" + target);
+        this.context = question != null ? question : PromptSender.REVISE.equals(target)
+                ? "Revising: " + (ClientState.preview() == null ? "the waiting preview" : ClientState.preview().title())
+                : target == null ? "New build" : "Editing: " + ClientState.string("selectedTitle", "#" + target);
     }
     @Override public boolean isPauseScreen() { return false; }
     @Override protected void init() {
@@ -50,7 +53,8 @@ final class PromptEditorScreen extends Screen {
         });
         button("Reuse prompt…", left + half + 4, height - 76, half, () -> minecraft.gui.setScreen(new SavedPromptsScreen(this, editor::setValue)));
         button("Back", left, height - 28, half, this::onClose);
-        button(question != null ? "Send answer" : options > 1 ? "Send ×" + options : "Send request", left + half + 4, height - 28, half, this::submit).primary();
+        button(question != null ? "Send answer" : PromptSender.REVISE.equals(target) ? "Send revision"
+                : options > 1 ? "Send ×" + options : "Send request", left + half + 4, height - 28, half, this::submit).primary();
         setInitialFocus(editor);
     }
     private GlassButton button(String label, int x, int y, int w, Runnable action) {
