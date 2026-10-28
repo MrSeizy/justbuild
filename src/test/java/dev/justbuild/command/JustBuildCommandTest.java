@@ -27,6 +27,14 @@ class JustBuildCommandTest {
     }
 
     @Test
+    void reviseIsRegistered() {
+        assertTrue(JustBuildCommand.registeredSubcommands().contains("revise"));
+        var dispatcher = new com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack>();
+        JustBuildCommand.register(dispatcher);
+        assertNotNull(dispatcher.getRoot().getChild("justbuild").getChild("revise").getChild("change"));
+    }
+
+    @Test
     void panelChatButtonsCannotRunUnrelatedOrMultilineCommands() {
         assertEquals("justbuild confirm", Chat.panelCommand("/justbuild confirm").orElseThrow());
         assertEquals("jb confirm", Chat.panelCommand("/jb confirm").orElseThrow());

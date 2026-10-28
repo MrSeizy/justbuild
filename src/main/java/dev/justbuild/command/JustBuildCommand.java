@@ -29,7 +29,7 @@ public final class JustBuildCommand {
             "add", "again", "alternatives", "answer", "autobuild", "box", "build", "cancel", "checkpoint", "confirm", "connect",
             "constraints", "construction", "design", "detail", "doctor", "edit", "help", "history", "inspect", "interior", "link", "lock", "materials",
             "model", "models", "new", "playerai", "preview", "profile", "profiles", "project", "provider", "reload", "rename",
-            "quality", "release", "repair", "retry", "select", "status", "style", "template", "templates", "undo", "unlock",
+            "quality", "release", "repair", "retry", "revise", "select", "status", "style", "template", "templates", "undo", "unlock",
             "usage", "walkability", "zone");
 
     public static java.util.Set<String> subcommands() {
@@ -193,6 +193,9 @@ public final class JustBuildCommand {
                 .then(Commands.literal("edit")
                         .then(Commands.argument("change", StringArgumentType.greedyString())
                                 .executes(ctx -> run(ctx, (m, s) -> m.edit(s, StringArgumentType.getString(ctx, "change"))))))
+                .then(Commands.literal("revise")
+                        .then(Commands.argument("change", StringArgumentType.greedyString())
+                                .executes(ctx -> run(ctx, (m, s) -> m.revise(s, StringArgumentType.getString(ctx, "change"))))))
                 .then(Commands.literal("templates").executes(ctx -> run(ctx, (m, s) -> m.templates(s, "")))
                         .then(Commands.argument("filter", StringArgumentType.greedyString())
                                 .executes(ctx -> run(ctx, (m, s) -> m.templates(s, StringArgumentType.getString(ctx, "filter"))))))
