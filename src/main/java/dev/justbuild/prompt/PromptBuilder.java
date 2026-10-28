@@ -273,14 +273,45 @@ public final class PromptBuilder {
         return sb.toString();
     }
 
+    /**
+     * Revising a proposal the player hasn't placed: the plan is the whole design, and the site's samples don't show it.
+     * The terrain comes first, as for a new build.
+     */
+    public static String revisionContent(BuildContext context, EditContext edit, List<Exchange> exchanges,
+            int questionsRemaining, TerrainSummary terrain) {
+        StringBuilder sb = header(context, questionsRemaining);
+        if (terrain != null) {
+            sb.append("\n\n").append(terrain.format());
+        }
+        sb.append("\n\nYou are revising a proposed build that has not been placed yet. World samples show the site ")
+                .append("without it.\nOriginal request: ").append(edit.originalRequest().trim());
+        if (!edit.earlierChanges().isEmpty()) {
+            sb.append("\nEarlier changes:");
+            edit.earlierChanges().forEach(change -> sb.append("\n- ").append(change.trim()));
+        }
+        sb.append("\nCurrent plan:\n").append(edit.currentPlanJson())
+                .append("\n\nRequested change: ").append(edit.change().trim())
+                .append("\nKeep the plan's origin and return the complete revised plan with kind \"build\", preserving ")
+                .append("parts the requested change does not mention.");
+        appendExchanges(sb, exchanges);
+        return sb.toString();
+    }
+
     /** A self-review round: the AI sees its own plan drawn from three sides and returns an improved one. */
     public static String reviewContent(BuildContext context, String request, String originalRequest,
             List<String> earlierChanges, List<Exchange> exchanges,
             String currentPlanJson, String views, int round, int rounds) {
+        return reviewContent(context, request, originalRequest, earlierChanges, exchanges, currentPlanJson, views, round,
+                rounds, false);
+    }
+
+    public static String reviewContent(BuildContext context, String request, String originalRequest,
+            List<String> earlierChanges, List<Exchange> exchanges,
+            String currentPlanJson, String views, int round, int rounds, boolean proposal) {
         StringBuilder sb = header(context, 0)
                 .append("\n\nYou are reviewing your own plan before it is built (round ").append(round).append(" of ")
                 .append(rounds).append(").");
-        appendRevisionContext(sb, request, originalRequest, earlierChanges);
+        appendRevisionContext(sb, request, originalRequest, earlierChanges, proposal);
         appendExchanges(sb, exchanges);
         sb.append("\nCurrent plan:\n").append(currentPlanJson)
                 .append("\n\nViews of the plan:\n").append(views)
@@ -317,10 +348,18 @@ public final class PromptBuilder {
     public static String shrinkContent(BuildContext context, String request, String originalRequest,
             List<String> earlierChanges, List<Exchange> exchanges,
             String currentPlanJson, String count, int limit) {
+        return shrinkContent(context, request, originalRequest, earlierChanges, exchanges, currentPlanJson, count, limit,
+                false);
+    }
+
+    /** The same, for a revision of an unplaced proposal when {@code proposal} is set. */
+    public static String shrinkContent(BuildContext context, String request, String originalRequest,
+            List<String> earlierChanges, List<Exchange> exchanges,
+            String currentPlanJson, String count, int limit, boolean proposal) {
         StringBuilder sb = header(context, 0)
                 .append("\n\nYour plan below places ").append(count).append(" blocks, over the limit of ").append(limit)
                 .append(" (the limit counts every cell a shape covers, including the air inside hollow shapes).");
-        appendRevisionContext(sb, request, originalRequest, earlierChanges);
+        appendRevisionContext(sb, request, originalRequest, earlierChanges, proposal);
         appendExchanges(sb, exchanges);
         sb.append("\nCurrent plan:\n").append(currentPlanJson)
                 .append("\n\nReturn the complete plan again with kind \"build\", keeping the design but well under ")
@@ -332,19 +371,26 @@ public final class PromptBuilder {
     }
 
     private static void appendRevisionContext(StringBuilder sb, String request, String originalRequest,
-            List<String> earlierChanges) {
+            List<String> earlierChanges, boolean proposal) {
         if (originalRequest == null) {
             sb.append("\nPlayer request: ").append(request.trim());
             return;
         }
-        sb.append("\nThis is an edit to an existing build.")
+        sb.append(proposal ? "\nThis revises a proposed build that has not been placed yet."
+                        : "\nThis is an edit to an existing build.")
                 .append("\nOriginal build request: ").append(originalRequest.trim());
         if (!earlierChanges.isEmpty()) {
             sb.append("\nEarlier changes:");
             earlierChanges.forEach(change -> sb.append("\n- ").append(change.trim()));
         }
-        sb.append("\nRequested change: ").append(request.trim())
-                .append("\nThe candidate below is the COMPLETE replacement plan for the existing build, including ")
+        sb.append("\nRequested change: ").append(request.trim());
+        if (proposal) {
+            sb.append("\nThe candidate below is the COMPLETE revised plan, including parts the change does not mention. ")
+                    .append("Keep the plan's origin and the parts the requested change leaves alone. Review may refine ")
+                    .append("the candidate, not start a different revision.");
+            return;
+        }
+        sb.append("\nThe candidate below is the COMPLETE replacement plan for the existing build, including ")
                 .append("unchanged parts. Omitted cells revert to their pre-build state; returning only furniture or ")
                 .append("a patch can erase the walls, floors, roof and doors. Preserve existing structure the draft ")
                 .append("retains, keep the removals already made for the requested edit, and keep usable entrances ")
