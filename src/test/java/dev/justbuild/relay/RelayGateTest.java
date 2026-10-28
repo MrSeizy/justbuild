@@ -149,4 +149,11 @@ class RelayGateTest {
         gate.activity(T0.plus(Duration.ofMinutes(32)));
         assertFalse(gate.allow(T0.plus(Duration.ofMinutes(32))), "old output revived a revoked grant");
     }
+
+    @Test
+    void revisingArmsButPreviousDoesNot() {
+        assertTrue(RelayGate.startsAi("justbuild revise make the roof steeper"));
+        assertFalse(RelayGate.startsAi("justbuild revise"));
+        assertFalse(RelayGate.startsAi("justbuild preview previous"));
+    }
 }

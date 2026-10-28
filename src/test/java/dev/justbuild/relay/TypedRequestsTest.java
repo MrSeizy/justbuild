@@ -58,4 +58,12 @@ class TypedRequestsTest {
             assertEquals(List.of(), requests(root + " build a hut"), root);
         }
     }
+
+    @Test
+    void revisingAWaitingPreviewCountsAsTyped() {
+        assertEquals(List.of("make the roof steeper"), requests("justbuild revise make the roof steeper"));
+        assertEquals(List.of("make the roof steeper"), requests("jb revise make the roof steeper"));
+        assertEquals(List.of(), requests("justbuild revise"));
+        assertEquals(List.of(), requests("justbuild preview previous"));
+    }
 }
