@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.justbuild.plan.PlanLimits;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class PromptBuilderTest {
@@ -134,6 +135,21 @@ class PromptBuilderTest {
         assertTrue(content.contains("You are editing an existing build.\nOriginal request: a castle"
                 + "\nEarlier changes:\n- add a moat\nCurrent plan:\n{\"kind\":\"build\"}"
                 + "\n\nRequested change: make the towers taller\nYou asked: How much taller?\nPlayer answered: Double"));
+    }
+
+    @Test
+    void revisionContentDescribesAnUnplacedProposalWithItsSite() {
+        TerrainSummary terrain = new TerrainSummary(4, -8, -16, new int[][] {{-1, 0}}, Map.of("minecraft:grass_block", 2));
+        String content = PromptBuilder.revisionContent(new BuildContext("d", "b"),
+                new EditContext("a hut", List.of("steeper roof"), "{plan}", " add a chimney "),
+                List.of(new Exchange("Brick?", "yes")), 1, terrain);
+        assertTrue(content.contains(terrain.format()), "the site's terrain is included");
+        assertTrue(content.contains("You are revising a proposed build that has not been placed yet. "
+                + "World samples show the site without it.\nOriginal request: a hut\nEarlier changes:\n- steeper roof"
+                + "\nCurrent plan:\n{plan}\n\nRequested change: add a chimney\n"));
+        assertTrue(content.contains("Keep the plan's origin and return the complete revised plan"));
+        assertTrue(content.endsWith("You asked: Brick?\nPlayer answered: yes"));
+        assertFalse(content.contains("existing build"));
     }
 
     @Test

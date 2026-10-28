@@ -32,6 +32,11 @@ class PromptSpecTest {
                 50000);
     }
 
+    static PromptSpec revision() {
+        return PromptSpec.revision("minecraft:overworld", "minecraft:plains", "nordic", "a fishing hut",
+                List.of("steeper roof"), PLAN, "add a chimney", List.of(new Exchange("Brick?", "yes")), 1, terrain(), 50000);
+    }
+
     @Test
     void newBuildTextMatchesPromptBuilder() throws Exception {
         PromptSpec spec = newBuild();
@@ -128,5 +133,50 @@ class PromptSpecTest {
         assertTrue(PromptSpec.parse(newBuild().withGuides(true, List.of()).toJson()).offerGuides());
         assertThrows(PromptSpec.SpecException.class, () -> PromptSpec.parse("{\"kind\":\"poem\"}"));
         assertThrows(PromptSpec.SpecException.class, () -> PromptSpec.parse("nope"));
+    }
+
+    @Test
+    void revisionTextMatchesPromptBuilder() throws Exception {
+        assertEquals(PromptBuilder.revisionContent(new BuildContext("minecraft:overworld", "minecraft:plains", null,
+                Guidance.Style.NORDIC.promptLine(), null), new EditContext("a fishing hut", List.of("steeper roof"), PLAN,
+                "add a chimney"), List.of(new Exchange("Brick?", "yes")), 1, terrain()), revision().userContent());
+    }
+
+    @Test
+    void revisionsCarryTheProposalFlagThroughJsonAndCopies() throws Exception {
+        PromptSpec revision = revision();
+        assertEquals(PromptSpec.Kind.EDIT, revision.kind());
+        assertTrue(revision.proposal());
+        assertTrue(revision.toJson().get("proposal").getAsBoolean());
+        assertFalse(PromptSpec.edit("d:d", "b:b", "a hut", List.of(), PLAN, "add a door", List.of(), 0, 10).toJson()
+                .has("proposal"), "ordinary requests never carry the field");
+        PromptSpec back = PromptSpec.parse(revision.toJson());
+        assertTrue(back.proposal());
+        assertEquals(revision.userContent(), back.userContent());
+        var older = revision.toJson();
+        older.remove("proposal");
+        assertFalse(PromptSpec.parse(older).proposal(), "JSON without the field is an ordinary edit");
+        for (PromptSpec copy : List.of(revision.review(PLAN, 1, 2), revision.shrink(PLAN),
+                revision.withGuides(false, List.of("windows")), revision.withPlan(PLAN),
+                revision.withFeedback(dev.justbuild.prompt.PlanningFeedback.EMPTY),
+                revision.withTheme(dev.justbuild.prompt.ProjectTheme.EMPTY),
+                revision.withAreas(dev.justbuild.prompt.PlanningAreas.EMPTY),
+                revision.withConstraints(dev.justbuild.prompt.BuildConstraints.NONE),
+                revision.withWorld(null, List.of(), 0))) {
+            assertTrue(copy.proposal(), copy.kind().toString());
+        }
+    }
+
+    @Test
+    void proposalReviewsAndShrinksSayThePlanIsNotPlaced() throws Exception {
+        for (PromptSpec spec : List.of(revision().review(PLAN, 1, 1), revision().shrink(PLAN))) {
+            String text = PromptSpec.parse(spec.toJson()).userContent();
+            assertTrue(text.contains("This revises a proposed build that has not been placed yet."), spec.kind().toString());
+            assertTrue(text.contains("Requested change: add a chimney"), spec.kind().toString());
+            assertFalse(text.contains("This is an edit to an existing build."), spec.kind().toString());
+        }
+        String edit = PromptSpec.edit("d:d", "b:b", "a hut", List.of(), PLAN, "add a door", List.of(), 0, 10)
+                .review(PLAN, 1, 1).userContent();
+        assertTrue(edit.contains("This is an edit to an existing build."), "ordinary edit reviews keep their wording");
     }
 }
