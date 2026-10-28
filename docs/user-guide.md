@@ -16,6 +16,7 @@ See the [installation requirements](../README.md#installation) before setting up
 - [Command reference](#commands)
 - [Build zones and inspections](#build-zones-and-inspection-guided-edits)
 - [Preview controls and alternatives](#preview-controls-and-alternatives)
+- [Survival construction](#survival-construction)
 - [Parts, locks, and connections](#parts-locked-areas-and-connections)
 - [Checkpoints and saved designs](#checkpoints-and-reusable-designs)
 - [Workshop](#building-workshop)
@@ -241,8 +242,10 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
   `config/justbuild-drafts.json` for up to 64 player/build/world contexts, including across game restarts. Drafts
   save periodically while typing and when leaving the editor. They are local to this computer, separate from saved
   prompts, and never send a request or grant AI consent by themselves.
-  The bottom row follows what's waiting: **Instant Build** for a preview, **Confirm undo** for an undo, **Discard** or
-  **Stop request**, and **Undo** names what it would undo. Build and confirmation buttons share the same mint styling.
+  Send the prompt with **Send**. Once the preview is ready, the bottom row offers **Instant Build** to place it
+  or **Guided Build** to choose Guide, Assist, or Cobble for a new building. **Undo** and **Discard** sit beside
+  these choices. Other states show **Confirm undo** or **Stop request** as appropriate. Build and confirmation
+  buttons share the same mint styling.
   Buttons in the panel's messages can be clicked. A
   rejected or discarded plan gets **Retry saved plan** (no new AI call) and **Equip wand: Zone** to move corners before retrying. **Workshop** is here too.
   While a preview waits, its dimensions and full-plan add/replace/remove counts stay visible. **Checks** opens its
@@ -318,6 +321,11 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild zone adjust polygon <start\|add\|undo\|finish\|cancel>` | Draw a polygon using the wand or the current target |
 | `/justbuild inspect` | Summarize loaded block states in the zone, at the spot you point at, or around a build you point at; no AI call or block changes |
 | `/justbuild confirm` | Place the waiting preview (or click `[Instant Build]`); undo has its own confirmation command |
+| `/justbuild construction start <guide\|assist\|cobble>` | Pin a new-build preview as a survival construction project |
+| `/justbuild construction <guide\|assist\|cobble>` | Switch the pinned project between manual guidance, inventory placement, and chest-supplied Cobble |
+| `/justbuild construction <pause\|resume\|layer\|status>` | Pause placement, resume it, toggle current/all layers, or refresh the project |
+| `/justbuild construction <chest\|unlink>` | Link the nearby chest or barrel under your crosshair, or unlink it |
+| `/justbuild construction finish` | Close the blueprint, leaving every placed block and unused supply in the world |
 | `/justbuild preview discard` | Discard only the waiting build preview, keeping its plan available for Retry |
 | `/justbuild preview move <x> <y> <z>`, `/justbuild preview rotate <degrees>`, `/justbuild preview snap` | Move a new-build or copy preview, rotate clockwise by 90/180/270°, or snap its origin to the ground; no AI call |
 | `/justbuild alternatives build <2\|3> <description>`, `/justbuild alternatives edit <2\|3> <change>` | Generate separate options; all wait for your choice and confirmation |
@@ -521,6 +529,89 @@ sequence, with separate model calls and normal review rounds. Nothing is placed 
 switch with **◀ ▶** at the base of the preview (or `/justbuild preview option <n>`), then **Instant Build** to apply only the
 displayed option. Moving a preview or switching options makes no additional AI call. If a later option fails,
 completed options remain available.
+
+## Survival construction
+
+Send your prompt using the single **Send** button. When the AI finishes, inspect the preview, then choose
+**Instant Build** to place it immediately or **Guided Build** to build with real materials. The two choices sit
+together in the preview's bottom row. Guided Build supports **new buildings and design copies**; edits and
+restores use Instant Build. Turn Auto-build off when you want to make this choice for every new plan.
+
+Guided Build opens the **Guide**, **Assist**, and **Cobble** mode cards. All three use the same blueprint and
+progress, and you can switch between them later. While a project is open, JustBuild takes no new requests (**Send**
+is disabled), so end the project before placing other builds. The AI plan is kept as after **Discard**: ending the
+project within 30 minutes lets **Retry saved plan** bring the preview back without another AI request.
+
+![After the AI finishes, the preview offers Instant Build and Guided Build together](images/survival-preview.png)
+
+- **Guide:** place blocks yourself. Matching blocks count automatically, including blocks that were already there.
+- **Assist:** aim at a ghost within your normal block reach and press **Use**. The server places its exact
+  orientation using ordinary items from your inventory. You can hold a different item; the required block is
+  selected from available supplies. Sneak to use blocks normally. The Builder Wand keeps its normal controls.
+- **Cobble:** choose **Link chest** in the project panel. If you are looking at a chest or barrel, it is linked
+  at once; otherwise the panel closes and the next chest or barrel you open within 30 seconds becomes the supply.
+  Both halves of an accessible double chest count. The container must be unlocked, have no unopened loot, and be
+  within 32 blocks of the site. Cobble uses only that linked container. He works through neighboring positions
+  around each wall course, from bottom to top, and can work inside the site without scaffolding.
+
+The in-world HUD shows the project status under its title, then the materials still needed for the current layer,
+with quantities and the amount available in Cobble's linked chest (or your inventory in Guide/Assist). Short
+supplies are listed first and shown in red. Up to six materials are shown; the rest are counted, and the project
+panel lists them all. Counts decrease as blocks are placed and switch to the next layer automatically. When the
+status refers to a block that needs your hands, that block is outlined in red in the world and the status gives its
+coordinates. A paused project says why it paused, such as after a respawn or a world restart.
+
+**Right Shift** opens the project panel with **all materials still needed for the whole build**, alongside your
+inventory and chest quantities; short materials come first with the missing amount. The selected mode is
+highlighted, and the status line identifies its supply source. Use **Previous**/**Next** or the mouse wheel for
+long lists, or **Materials** for an expanded view with item icons and a
+search field for names or item IDs. Toggle **Show: all** to **Show: missing** to find materials that are short
+in Cobble's linked chest, or in your inventory for Guide/Assist. Search and filters stay in place as counts update.
+The panel also switches modes, pauses/resumes, links supplies, and changes the ghost display using
+**Ghosts: layer**/**Ghosts: all**. This toggle does not change the whole-build material totals. Doors and
+other paired placements are counted once on their starting layer. Manual preparation is shown separately.
+Customized items such as named blocks or containers carrying data are left alone.
+
+![The construction HUD lists each material still needed for the current layer and the linked chest's supplies](images/survival-construction.png)
+
+![The project menu lists remaining materials for the whole build, with pages for larger palettes](images/survival-materials.png)
+
+![The survival chooser explains Guide, Assist, and Cobble before starting a project](images/survival-modes.png)
+
+![The expanded material list includes item icons, search, and a missing-supplies filter](images/survival-material-search.png)
+
+Existing solid blocks, block entities, protected areas, and occupied placement spaces are not overwritten. Cobble
+clears grass, ferns, snow layers, and other plants that blocks can replace, including from spaces the blueprint
+keeps empty; dig out other terrain yourself. Assist places blocks from your 36 inventory slots only, never from
+worn armor or your offhand. Doors and beds cost one item for the pair; double slabs and stacked snow or candles
+cost the full number of items. Fluids, waterlogged blocks, filled cauldrons, grown crops, and other states that
+need special preparation are manual tasks.
+
+Cobble steps past any block he can't build yet, such as an obstruction, a protected position, or a hanging lantern
+whose ceiling isn't built, and keeps working. He checks those blocks again every two seconds and returns to each
+one as soon as its problem clears, so a ceiling lantern goes up right after the ceiling. When supplies run short he
+finishes what he can on the current course with other materials, then waits there rather than climbing higher. In
+Guide and Assist, a block that needs the layer above or a space you still have to clear no longer holds the current
+layer back. Once every block stands, the status lists the spaces still to clear. Keep within 96 blocks of Cobble's
+current work and keep the site loaded. No construction mode loads distant chunks.
+
+You can build manually while a project is paused. Progress always comes from the actual world, so breaking a
+completed block makes it unfinished again. Disconnecting, dying, changing dimension, or losing building access
+pauses Assist and Cobble. After a world restart, return to the project and choose **Resume**. Guide never places
+blocks itself, so pausing has no effect there.
+
+**End project** removes the blueprint after a second click within a few seconds. It leaves all blocks and unused
+supplies in place; it does not refund or undo construction. Only one construction project is pinned per player.
+End it before starting another plan. To manage a finished survival building with checkpoints and creative editing tools,
+select it with the Box wand and use **Add existing build**. Construction uses the same singleplayer-owner and
+multiplayer-operator permissions as other JustBuild commands.
+
+Construction projects use separate, versioned files in the world's `justbuild/construction/<player-uuid>.json.gz`.
+They store the blueprint, mode, layer display, and linked supply position; progress is rechecked against world
+blocks. Unknown or damaged files are preserved and hold new plans back until repaired or set aside. Right Shift
+then explains the problem; **End project** (or `/justbuild construction finish`) renames the file to
+`<player-uuid>.unreadable-<time>.json.gz` instead of deleting it. Existing build, preview, and undo files retain
+their released formats.
 
 ## Parts, locked areas, and connections
 

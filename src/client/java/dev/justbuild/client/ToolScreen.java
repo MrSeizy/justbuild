@@ -12,8 +12,9 @@ abstract class ToolScreen extends FormScreen {
     ToolScreen(String title, Screen parent) { super(Component.literal(title)); this.parent = parent; }
     @Override public boolean isPauseScreen() { return false; }
     @Override protected final void init() {
-        panelWidth = Math.min(440, width - 20); left = (width - panelWidth) / 2; build();
+        panelWidth = Math.min(preferredPanelWidth(), width - 20); left = (width - panelWidth) / 2; build();
     }
+    protected int preferredPanelWidth() { return 440; }
     protected abstract void build();
     protected GlassButton button(String label, int x, int y, int width, Runnable action) {
         return addRenderableWidget(GlassButton.builder(Component.literal(label), b -> action.run()).bounds(x, y, width, 20).build());

@@ -17,12 +17,13 @@ import net.minecraft.util.ARGB;
  * and the game tests' click-by-label work as for vanilla buttons; only the drawing differs.
  */
 final class GlassButton extends Button {
-    enum Role { NORMAL, PRIMARY, CONFIRM, DANGER, GHOST, TAB }
+    enum Role { NORMAL, PRIMARY, CONFIRM, DANGER, GHOST, TAB, CHOICE }
 
     private Role role = Role.NORMAL;
     /** The current tab or choice: drawn lit with full-strength text; pressing it does nothing. */
     private boolean selected;
     private Identifier icon;
+    private String subtitle;
 
     private GlassButton(int x, int y, int width, int height, Component message, OnPress onPress, CreateNarration narration) {
         super(x, y, width, height, message, onPress, narration);
@@ -41,6 +42,8 @@ final class GlassButton extends Button {
         role = Role.DANGER;
         return this;
     }
+
+    GlassButton choice() { role = Role.CHOICE; return this; }
 
     /**
      * The current choice in a list: drawn lit with normal text. It stays active, unlike a disabled button, so Tab reaches
@@ -68,6 +71,7 @@ final class GlassButton extends Button {
     protected MutableComponent createNarrationMessage() {
         MutableComponent message = role == Role.TAB ? Component.translatable("gui.narrate.tab", getMessage())
                 : super.createNarrationMessage();
+        if (subtitle != null) message.append(". " + subtitle);
         return selected ? Component.translatable("narrator.select", message) : message;
     }
 
@@ -89,16 +93,20 @@ final class GlassButton extends Button {
             case GHOST -> lit ? 0x24FFFFFF : 0;
             case TAB -> lit ? 0x1AFFFFFF : 0;
             case NORMAL -> lit ? 0x24FFFFFF : 0x12FFFFFF;
+            case CHOICE -> selected ? 0xFF574728 : lit ? 0xFF354154 : 0xFF252E3D;
         };
+        if (subtitle != null && role == Role.NORMAL) fill = lit ? 0xFF354154 : 0xFF252E3D;
         if (dim) fill = ARGB.multiplyAlpha(fill, 0.45f);
         boolean keyboard = active && isFocused() && Minecraft.getInstance().getLastInputType().isKeyboard();
         // A faint ring tells the current choice from a hovered one; the keyboard focus outline wins.
         int focus = switch (role) {
             case PRIMARY -> Glass.PRIMARY;
             case CONFIRM -> 0xFF22C55E;
+            case CHOICE -> Glass.TITLE;
             default -> Glass.ACCENT;
         };
         int edge = keyboard ? focus : selected && role != Role.TAB ? 0x33FFFFFF : 0;
+        if (!dim && (role == Role.CHOICE || subtitle != null)) edge = keyboard || selected ? Glass.TITLE : lit ? 0xFF8794A8 : 0xFF465166;
         Glass.pill(g, getX(), getY(), getWidth(), getHeight(), fill, edge);
         int color = dim ? Glass.DISABLED_TEXT : switch (role) {
             case PRIMARY -> Glass.PRIMARY_TEXT;
@@ -106,8 +114,16 @@ final class GlassButton extends Button {
             case DANGER -> Glass.DANGER_TEXT;
             case TAB -> lit ? 0xFFFFFFFF : Glass.MUTED;
             case NORMAL, GHOST -> Glass.TEXT;
+            case CHOICE -> selected ? Glass.TITLE : Glass.TEXT;
         };
         var font = Minecraft.getInstance().font;
+        if (subtitle != null) {
+            int x = getX() + 10, y = getY() + (getHeight() - 21) / 2;
+            g.text(font, font.plainSubstrByWidth(getMessage().getString(), getWidth() - 20), x, y, color, false);
+            g.text(font, font.plainSubstrByWidth(subtitle, getWidth() - 20), x, y + 12,
+                    dim ? Glass.DISABLED_TEXT : 0xFFBAC5D6, false);
+            return;
+        }
         Component label = getMessage().copy().withColor(color & 0xFFFFFF);
         int textWidth = font.width(label);
         if (icon == null || textWidth + 12 > getWidth() - 4) {
@@ -134,6 +150,7 @@ final class GlassButton extends Button {
         private Tooltip tooltip;
         private CreateNarration narration = DEFAULT_NARRATION;
         private Role role = Role.NORMAL;
+        private String subtitle;
 
         private Builder(Component message, OnPress onPress) {
             super(message, onPress);
@@ -198,10 +215,13 @@ final class GlassButton extends Button {
             return this;
         }
 
+        Builder subtitle(String text) { subtitle = text; return this; }
+
         @Override
         public GlassButton build() {
             GlassButton button = new GlassButton(x, y, width, height, message, onPress, narration);
             button.role = role;
+            button.subtitle = subtitle;
             button.setTooltip(tooltip); // as vanilla does; null means none
             return button;
         }

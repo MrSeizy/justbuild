@@ -30,6 +30,7 @@ public final class JustBuildClient implements ClientModInitializer {
         GlassHud.register();
         WandHud.register();
         BuilderBots.register();
+        ConstructionClient.register();
         KeyMapping open = KeyMappingHelper.registerKeyMapping(
                 new KeyMapping("key.justbuild.panel", InputConstants.Type.KEYBOARD, InputConstants.KEY_RSHIFT, CATEGORY));
         panelKey = open;
@@ -41,6 +42,7 @@ public final class JustBuildClient implements ClientModInitializer {
         // Before vanilla handles keys, so a right-click on a floating preview control isn't also a block placement.
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
             if (client.level != null) {
+                ConstructionClient.beforeTick(client);
                 PreviewControls.beforeTick(client);
                 if (!ZoneWandInput.clearPartBeforeTick(client)) {
                     SelectionHandles.beforeTick(client);
@@ -56,11 +58,12 @@ public final class JustBuildClient implements ClientModInitializer {
                 PreviewBox.clear();
                 ClientState.clear();
                 BuilderBots.clear();
+                ConstructionClient.clear();
                 return;
             }
             while (open.consumeClick()) {
                 if (client.gui.screen() == null && client.player != null) {
-                    client.gui.setScreen(new JustBuildScreen());
+                    client.gui.setScreen(ConstructionClient.active() ? new ConstructionScreen() : new JustBuildScreen());
                 }
             }
             while (build.consumeClick()) {
@@ -75,6 +78,7 @@ public final class JustBuildClient implements ClientModInitializer {
             PreviewControls.tick(client);
             GhostPreview.tick(client);
             BuilderBots.tick(client);
+            ConstructionClient.tick(client);
             SelectionLines.beginTick();
             ZoneOutline.tick(client);
             SelectionHandles.tick(client);
@@ -104,6 +108,7 @@ public final class JustBuildClient implements ClientModInitializer {
             PreviewBox.clear();
             ClientState.clear();
             BuilderBots.clear();
+            ConstructionClient.clear();
         }));
         ClientPlayNetworking.registerGlobalReceiver(StatePayload.TYPE,
                 (payload, context) -> context.client().execute(() -> {

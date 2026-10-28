@@ -102,6 +102,12 @@ public final class JustBuildScreen extends FormScreen {
             go.setTooltip(Tooltip.create(Component.literal("Your request “" + ClientState.planning()
                     + "” is still being planned; sending a new one stops it.")));
         }
+        if (ConstructionClient.active()) {
+            // The server refuses every new plan while a survival project is open; say so before sending.
+            go.active = false;
+            go.setTooltip(Tooltip.create(Component.literal("A Guided Build project is open. End it in the construction panel ("
+                    + JustBuildClient.panelKey() + ") before sending new requests.")));
+        }
         addRenderableWidget(go);
         addRenderableWidget(GlassButton.builder(Component.literal("×"), b -> onClose())
                 .bounds(left + panelWidth - 14, 5, 14, 14).ghost().tooltip(Tooltip.create(Component.literal("Close (Esc)"))).build());
@@ -213,32 +219,54 @@ public final class JustBuildScreen extends FormScreen {
             }
         }
         }
+        if (waiting != null) {
+            initBuildChoices(waiting);
+            return;
+        }
         int y = contentBottom - 20;
         int w = (panelWidth - 6) / 4;
         String undoTarget = ClientState.undoTarget();
         addRenderableWidget(GlassButton.builder(Component.literal("Undo"), b -> run("justbuild undo"))
                 .bounds(left, y, w, 20).tooltip(Tooltip.create(Component.literal(undoTarget == null ? "Nothing to undo"
                         : "Undo your latest change: “" + undoTarget + "” (asks first)"))).build()).active = undoTarget != null;
-        boolean previewWaiting = ClientState.preview() != null;
         String undoWaiting = ClientState.undoWaiting();
-        Button confirm = GlassButton.builder(Component.literal(previewWaiting ? "Instant Build" : undoWaiting != null ? "Confirm undo" : "Confirm"),
-                b -> run(previewWaiting ? "justbuild confirm" : "justbuild undo confirm")).bounds(left + w + 2, y, w, 20).tooltip(Tooltip.create(Component.literal(
-                previewWaiting ? "Place the waiting preview" : undoWaiting != null ? "Undo the change to “" + undoWaiting + "”"
+        Button confirm = GlassButton.builder(Component.literal(undoWaiting != null ? "Confirm undo" : "Confirm"),
+                b -> run("justbuild undo confirm")).bounds(left + w + 2, y, w, 20).tooltip(Tooltip.create(Component.literal(
+                undoWaiting != null ? "Undo the change to “" + undoWaiting + "”"
                         : "Nothing is waiting"))).primary().build();
-        confirm.active = previewWaiting || undoWaiting != null;
+        confirm.active = undoWaiting != null;
         addRenderableWidget(confirm);
-        boolean stopsWork = previewWaiting || undoWaiting == null && (ClientState.planning() != null || ClientState.question() != null);
-        String stop = previewWaiting ? "Discard" : undoWaiting != null ? "Keep it" : stopsWork ? "Stop request" : "Cancel";
-        GlassButton.Builder stopButton = GlassButton.builder(Component.literal(stop), b -> run(previewWaiting ? "justbuild preview discard"
-                        : undoWaiting != null ? "justbuild undo cancel" : "justbuild cancel"))
-                .bounds(left + 2 * (w + 2), y, w, 20).tooltip(Tooltip.create(Component.literal(previewWaiting
-                        ? "Discard the waiting preview (kept 30 minutes: Retry saved plan brings it back)"
-                        : undoWaiting != null ? "Keep the change; the waiting undo is dropped"
+        boolean stopsWork = undoWaiting == null && (ClientState.planning() != null || ClientState.question() != null);
+        String stop = undoWaiting != null ? "Keep it" : stopsWork ? "Stop request" : "Cancel";
+        GlassButton.Builder stopButton = GlassButton.builder(Component.literal(stop), b -> run(undoWaiting != null ? "justbuild undo cancel" : "justbuild cancel"))
+                .bounds(left + 2 * (w + 2), y, w, 20).tooltip(Tooltip.create(Component.literal(undoWaiting != null ? "Keep the change; the waiting undo is dropped"
                         : "Stop what's going on: a request or a placement")));
         if (stopsWork) stopButton.danger();
         addRenderableWidget(stopButton.build());
         addRenderableWidget(GlassButton.builder(Component.literal("Status"), b -> run("justbuild status"))
                 .bounds(left + 3 * (w + 2), y, w, 20).build());
+    }
+
+    /** A completed preview offers the two placement paths together, separate from sending a prompt. */
+    private void initBuildChoices(ClientState.Preview preview) {
+        int y = contentBottom - 20, buildWidth = Math.min(96, (panelWidth - 168) / 2);
+        addRenderableWidget(GlassButton.builder(Component.literal("Instant Build"), b -> run("justbuild confirm"))
+                .bounds(left, y, buildWidth, 20).primary()
+                .tooltip(Tooltip.create(Component.literal("Place this preview immediately using the normal build permissions."))).build());
+        addRenderableWidget(GlassButton.builder(Component.literal("Guided Build"), b -> minecraft.gui.setScreen(new ConstructionSetupScreen(this)))
+                .bounds(left + buildWidth + 4, y, buildWidth, 20).primary()
+                .tooltip(Tooltip.create(Component.literal(preview.movable() ? "Choose Guide, Assist, or Cobble and build with real materials."
+                        : "Guided Build is available for new buildings and design copies."))).build()).active = preview.movable();
+        String undoTarget = ClientState.undoTarget();
+        addRenderableWidget(GlassButton.builder(Component.literal("Undo"), b -> run("justbuild undo"))
+                .bounds(left + panelWidth - 156, y, 44, 20)
+                .tooltip(Tooltip.create(Component.literal(undoTarget == null ? "Nothing to undo" : "Undo your latest change: “" + undoTarget + "” (asks first)")))
+                .build()).active = undoTarget != null;
+        addRenderableWidget(GlassButton.builder(Component.literal("Status"), b -> run("justbuild status"))
+                .bounds(left + panelWidth - 108, y, 48, 20).build());
+        addRenderableWidget(GlassButton.builder(Component.literal("Discard"), b -> run("justbuild preview discard"))
+                .bounds(left + panelWidth - 56, y, 56, 20).danger()
+                .tooltip(Tooltip.create(Component.literal("Discard the waiting preview (kept 30 minutes: Retry saved plan brings it back)"))).build());
     }
 
     private boolean firstBuildHelp() {
@@ -668,7 +696,8 @@ public final class JustBuildScreen extends FormScreen {
         if (text.startsWith("/")) {
             error = text.length() > 256 || text.contains("\n") ? "Chat commands must fit on one line (256 characters)." : null;
             if (error == null) run(text.substring(1));
-        } else error = PromptSender.send(selectedId, ClientState.question(), optionCount, text);
+        } else if (ConstructionClient.active()) error = "A Guided Build project is open. End it in the construction panel before sending new requests.";
+        else error = PromptSender.send(selectedId, ClientState.question(), optionCount, text);
         if (error != null) { ClientState.addLine(Chat.error(error)); return; }
         optionCount = 1;
         PromptDrafts.put(draftFor, "");
@@ -771,11 +800,13 @@ public final class JustBuildScreen extends FormScreen {
             y += 3;
         }
         String status = ClientState.status();
-        if (!status.isEmpty()) {
-            graphics.text(font, font.plainSubstrByWidth(status.substring(STATUS_PREFIX.length()), panelWidth), left, y, GOLD);
+        int bottom = contentBottom - 26;
+        if (!status.isEmpty() && y + font.lineHeight <= bottom) {
+            // The action bar names the panel key; here the panel is already open.
+            String shown = status.substring(STATUS_PREFIX.length()).replace(JustBuildClient.panelKey() + " → ", "").replace("Right Shift → ", "");
+            graphics.text(font, font.plainSubstrByWidth(shown, panelWidth), left, y, GOLD);
             y += font.lineHeight + 4;
         }
-        int bottom = contentBottom - 26;
         List<Component> lines = ClientState.lines();
         if (lines.isEmpty() && status.isEmpty()) {
             for (var line : font.split(Component.literal("Describe a build above, or choose a starting point from Templates."), panelWidth)) {
