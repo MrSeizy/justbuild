@@ -60,6 +60,21 @@ public final class JustBuildMod implements ModInitializer {
             }
         });
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(ChatAnswerCapture::allow);
+        PayloadTypeRegistry.clientboundPlay().registerLarge(dev.justbuild.net.ConstructionStatePayload.TYPE,
+                dev.justbuild.net.ConstructionStatePayload.CODEC, dev.justbuild.net.ConstructionStatePayload.MAX_BYTES);
+        PayloadTypeRegistry.clientboundPlay().registerLarge(dev.justbuild.net.ConstructionGhostPayload.TYPE,
+                dev.justbuild.net.ConstructionGhostPayload.CODEC, GhostPreviewPayload.MAX_BYTES);
+        PayloadTypeRegistry.serverboundPlay().register(dev.justbuild.net.ConstructionAssistPayload.TYPE,
+                dev.justbuild.net.ConstructionAssistPayload.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(dev.justbuild.net.ConstructionAssistPayload.TYPE, (payload, context) ->
+                withManager(context.server(), m -> m.construction().assist(context.player(), payload)));
+        // An armed Link chest takes the next chest or barrel the player opens; the container still opens.
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
+            BuildSessionManager current = manager;
+            if (current != null && !level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)
+                current.construction().used(serverPlayer, hit.getBlockPos());
+            return net.minecraft.world.InteractionResult.PASS;
+        });
         PayloadTypeRegistry.clientboundPlay().registerLarge(StatePayload.TYPE, StatePayload.CODEC, StatePayload.MAX_BYTES);
         PayloadTypeRegistry.clientboundPlay().register(ModelsPayload.TYPE, ModelsPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(dev.justbuild.net.DoctorPayload.TYPE, dev.justbuild.net.DoctorPayload.CODEC);
@@ -119,6 +134,7 @@ public final class JustBuildMod implements ModInitializer {
             if (current != null) {
                 current.giveStarterWand(handler.getPlayer());
                 current.sendState(handler.getPlayer());
+                current.construction().syncNow(handler.getPlayer());
             }
         });
         // The panel's tools and build list depend on the player's dimension.
@@ -126,6 +142,8 @@ public final class JustBuildMod implements ModInitializer {
             BuildSessionManager current = manager;
             if (current != null) {
                 current.sendState(player);
+                current.construction().left(player, "after you changed dimension");
+                current.construction().syncNow(player);
             }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {

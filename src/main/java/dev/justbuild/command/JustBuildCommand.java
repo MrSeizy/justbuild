@@ -27,7 +27,7 @@ public final class JustBuildCommand {
     /** The literal subcommands of /justbuild (JustBuildCommandTest checks this against the tree). */
     private static final java.util.Set<String> SUBCOMMANDS = java.util.Set.of(
             "add", "again", "alternatives", "answer", "autobuild", "box", "build", "cancel", "checkpoint", "confirm", "connect",
-            "constraints", "design", "detail", "doctor", "edit", "help", "history", "inspect", "interior", "link", "lock", "materials",
+            "constraints", "construction", "design", "detail", "doctor", "edit", "help", "history", "inspect", "interior", "link", "lock", "materials",
             "model", "models", "new", "playerai", "preview", "profile", "profiles", "project", "provider", "reload", "rename",
             "quality", "release", "repair", "retry", "select", "status", "style", "template", "templates", "undo", "unlock",
             "usage", "walkability", "zone");
@@ -61,6 +61,11 @@ public final class JustBuildCommand {
                                         CommandHelp.suggestions(builder.getRemaining()), builder))
                                 .executes(ctx -> CommandHelp.show(ctx.getSource(), StringArgumentType.getString(ctx, "topic_or_page")))))
                 .then(Commands.literal("new").executes(ctx -> run(ctx, BuildSessionManager::deselectBuild)))
+                .then(Commands.literal("construction").executes(ctx -> run(ctx, (m, s) -> m.constructionCommand(s, "status")))
+                        .then(Commands.argument("action", StringArgumentType.greedyString())
+                                .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(List.of("start guide", "start assist", "start cobble",
+                                        "guide", "assist", "cobble", "pause", "resume", "layer", "chest", "unlink", "finish"), builder))
+                                .executes(ctx -> run(ctx, (m, s) -> m.constructionCommand(s, StringArgumentType.getString(ctx, "action"))))))
                 .then(Commands.literal("build").then(Commands.argument("description", StringArgumentType.greedyString())
                         .executes(ctx -> run(ctx, (m, s) -> m.start(s, StringArgumentType.getString(ctx, "description"))))))
                 .then(Commands.literal("add").then(Commands.argument("name", StringArgumentType.greedyString())
