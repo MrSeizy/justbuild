@@ -34,6 +34,7 @@ import com.mojang.blaze3d.platform.InputConstants;
  */
 public final class RelayTest implements FabricClientGameTest {
     private static final String EDITOR_REQUEST = "a tiny stone platform\n" + "Keep the path open and use stone. ".repeat(100).stripTrailing();
+    private static final String REVISION = "add a low stone wall around the platform";
     static final String PLAN = """
             {"kind":"build","question":null,"options":null,"title":"Relay Test Platform",
              "summary":"A 3x3 stone platform with a torch.",
@@ -262,6 +263,25 @@ public final class RelayTest implements FabricClientGameTest {
             String capped = relay(context, manager, player, started);
             check(!capped.startsWith("ANSWERED") && auth.size() == 8, "local session limit reached the provider");
             context.runOnClient(mc -> dev.justbuild.client.ResponseReviewChecks.limits(0, 0));
+
+            // A revision of an unplaced preview: typed, it reaches the AI as a proposal; untyped, it is refused first.
+            context.runOnClient(mc -> mc.player.connection.sendCommand("justbuild revise " + REVISION));
+            context.waitTicks(10);
+            overrideReply = PLAN;
+            int beforeRevision = auth.size();
+            CompletableFuture<String> revision = startRelay(manager, player, PromptSpec.revision("minecraft:overworld",
+                    "minecraft:plains", null, "a tiny stone platform", List.of(), PLAN, REVISION, List.of(), 0, null, 1000));
+            context.waitForScreen(ResponseReviewScreen.class);
+            context.clickScreenButton("Send to server");
+            String revised = await(context, revision);
+            check(revised.startsWith("ANSWERED"), "the revision was not planned: " + revised);
+            check(auth.size() == beforeRevision + 1
+                    && bodies.getLast().contains("You are revising a proposed build that has not been placed yet"),
+                    "the revision did not reach the AI as an unplaced proposal");
+            String untyped = relay(context, manager, player, PromptSpec.revision("minecraft:overworld", "minecraft:plains",
+                    null, "a tiny stone platform", List.of(), PLAN, "turn it into a casino", List.of(), 0, null, 1000));
+            check(untyped.contains("asks for something you didn't ask for") && auth.size() == beforeRevision + 1,
+                    "an untyped revision reached the player's AI: " + untyped);
 
             // Escape withholds questions too; the local-only decline explanation is never in the viewer or copy.
             overrideReply = "{\"kind\":\"question\",\"question\":\"Unsent question?\",\"options\":[\"Yes\",\"No\"]}";
