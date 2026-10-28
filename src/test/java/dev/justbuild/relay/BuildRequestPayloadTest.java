@@ -30,6 +30,8 @@ class BuildRequestPayloadTest {
     @Test void rejectsInvalidTargetsActionsAndSizesBeforeDispatch() {
         assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("op", "", 1, "player", ""));
         assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("edit", "", 1, "roof", ""));
+        assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("answer", "", 2, "yes",
+                BuildRequestPayload.questionKey("How big?")));
         assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("edit", "#1234567", 1, "roof", ""));
         assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("build", "12345678", 1, "roof", ""));
         assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("build", "", 4, "roof", ""));
