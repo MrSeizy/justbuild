@@ -104,7 +104,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         film.type(c, "Request", "Design two cozy cottages with different roofs.", "Choose two options, then describe what they should share.");
         DemoFixture.Answer first = ai.answer(cottage(false), true); ai.answer(cottage(true));
         hold(c, "Each option uses separate AI calls; both wait for approval.", "Options: 2", 20);
-        c.clickScreenButton("Build ×2"); close(c);
+        c.clickScreenButton("Send ×2"); close(c);
         String actor = c.computeOnClient(mc -> mc.player.getUUID().toString());
         c.waitFor(mc -> BuilderBots.position(actor) != null && BuilderBots.working(actor), 600);
         faceBot(c, actor); hold(c, "Meet Cobble. He hammers while the AI works on your request.", null, 38);
@@ -115,8 +115,8 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         camera(c, world, player, base, 10, 8, 14);
         hold(c, "Option 1 waits as a ghost preview. Cobble rests.", null, 22);
         command(c, "preview option 2"); hold(c, "Switch to option 2 without making another AI call.", null, 22);
-        open(c, "Create"); hold(c, "Build it places only the currently selected option.", "Build it", 20);
-        c.clickScreenButton("Build it"); close(c); idle(c);
+        open(c, "Create"); hold(c, "Instant Build places only the currently selected option.", "Instant Build", 20);
+        c.clickScreenButton("Instant Build"); close(c); idle(c);
         String id = selected(c); hold(c, "The chosen cottage is saved. Cobble leaves when done.", null, 24);
         film.snapshot(c, "builder-alternatives"); finish(); return id;
     }
@@ -125,11 +125,11 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         command(c, "new"); area(c, base.east(25), 2); camera(c, world, player, base.east(25), 10, 7, 14);
         film.begin("15-cancel-retry-undo", "STOP, RETRY, AND UNDO");
         DemoFixture.Answer waiting = ai.answer(cottage(false), true);
-        open(c, "Create"); setField(c, "Request", "Build another cottage."); c.clickScreenButton("Build");
+        open(c, "Create"); setField(c, "Request", "Build another cottage."); c.clickScreenButton("Send");
         c.waitFor(mc -> ClientState.planning() != null && waiting.started().getCount() == 0, 500);
         hold(c, "Stop request cancels planning before blocks are placed.", "Stop request", 20);
         c.clickScreenButton("Stop request"); waiting.release().countDown(); c.waitFor(mc -> ClientState.planning() == null, 500);
-        ai.answer(cottage(false)); setField(c, "Request", "Build another cottage."); c.clickScreenButton("Build");
+        ai.answer(cottage(false)); setField(c, "Request", "Build another cottage."); c.clickScreenButton("Send");
         c.waitFor(mc -> ClientState.string("retainedPlan", null) != null, 1200);
         hold(c, "This plan is wider than the small selected area.", "Retry saved plan", 24);
         int calls = ai.calls.get(); command(c, "zone expand 8");
@@ -138,7 +138,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         hold(c, "Retry rechecks the same plan without another AI call.", null, 22);
         open(c, "Create"); c.clickScreenButton("Discard"); c.waitFor(mc -> ClientState.preview() == null);
         hold(c, "Discard leaves the world intact and keeps the plan for Retry.", "Retry saved plan", 22);
-        c.clickScreenButton("Retry saved plan"); preview(c); c.clickScreenButton("Build it"); close(c); idle(c);
+        c.clickScreenButton("Retry saved plan"); preview(c); c.clickScreenButton("Instant Build"); close(c); idle(c);
         check(ai.calls.get() == calls, "Retry unexpectedly called AI");
         open(c, "Create"); chooseMaterial(c, "Undo"); c.waitFor(mc -> ClientState.undoWaiting() != null);
         hold(c, "Undo asks first and names the action it will reverse.", "Confirm undo", 25);
@@ -178,12 +178,12 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         c.clickScreenButton("Preview interior"); preview(c); open(c, "Create"); c.clickScreenButton("Floors");
         for(int i=0;i<2;i++) c.clickScreenButton("Lower layer");
         hold(c, "Inspect the proposed furnishings before applying them.", null, 24);
-        film.snapshot(c, "interior-planning"); c.clickScreenButton("Back"); c.clickScreenButton("Build it"); close(c); idle(c);
+        film.snapshot(c, "interior-planning"); c.clickScreenButton("Back"); c.clickScreenButton("Instant Build"); close(c); idle(c);
         open(c, "Create"); c.clickScreenButton("Manage build");
         hold(c, "The Original building checkpoint is available for restoration.", "Restore: Original building", 22);
         c.clickScreenButton("Restore: Original building"); preview(c); open(c, "Create");
-        hold(c, "Build it confirms the restore, which also remains undoable.", "Build it", 20);
-        c.clickScreenButton("Build it"); close(c); idle(c); finish(); return id;
+        hold(c, "Instant Build confirms the restore, which also remains undoable.", "Instant Build", 20);
+        c.clickScreenButton("Instant Build"); close(c); idle(c); finish(); return id;
     }
 
     private void protection(ClientGameTestContext c, String id) {
@@ -222,7 +222,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         for(int i=0;i<30 && !c.computeOnClient(mc -> buttonEnabled(mc.gui.screen(),"Preview repair"));i++) c.clickScreenButton("Next");
         c.clickScreenButton("Preview repair"); c.waitFor(mc -> ClientState.flag("qualityUndo"));
         hold(c,"The repair changes only the proposal. Revert is available.","Revert repair suggestion",22);
-        film.snapshot(c,"quality-repair"); close(c); open(c,"Create"); c.clickScreenButton("Build it"); close(c); idle(c);
+        film.snapshot(c,"quality-repair"); close(c); open(c,"Create"); c.clickScreenButton("Instant Build"); close(c); idle(c);
         workshopHere(c); c.clickScreenButton("Walkability"); c.waitFor(mc -> ClientState.route()!=null);
         hold(c,"Walkability checks routes and headroom without an AI call.","View markers",26);
         film.snapshot(c,"walkability"); c.clickScreenButton("View markers");
@@ -250,7 +250,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         hold(c,"Choose A and B, then describe a path between their entrances.","Preview connection",26);
         c.clickScreenButton("Preview connection"); preview(c); camera(c,world,player,base.east(12),25,18,30);
         hold(c,"The connector previews as its own editable build.",null,26);
-        open(c,"Create"); c.clickScreenButton("Build it"); close(c); idle(c);
+        open(c,"Create"); c.clickScreenButton("Instant Build"); close(c); idle(c);
         hold(c,"Both buildings remain intact, joined by the new path.",null,26); finish(); command(c,"project clear");
     }
 
@@ -259,11 +259,11 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         film.begin("20-templates-and-autobuild","START FROM A TEMPLATE OR AUTO-BUILD");
         open(c,"Templates"); hold(c,"Templates put an editable starting request into Create.",null,24);
         c.clickScreenButton("Country cottage"); c.clickScreenButton("Create");
-        c.waitTicks(4); hold(c,"Change the template text before deciding to send it.","Build",24);
+        c.waitTicks(4); hold(c,"Change the template text before deciding to send it.","Send",24);
         open(c,"Settings"); hold(c,"Auto-build places ordinary AI results as soon as they are ready.","Auto-build: Off",24);
         c.clickScreenButton("Auto-build: Off"); ai.answer(plan("Garden seat",Operation.fill("spruce_planks",new Cell(-2,0,0),new Cell(2,0,1),false),
                 Operation.fill("spruce_fence",new Cell(-2,1,1),new Cell(2,1,1),false)));
-        open(c,"Create"); setField(c,"Request","Build a small garden seat."); c.clickScreenButton("Build"); close(c); idle(c);
+        open(c,"Create"); setField(c,"Request","Build a small garden seat."); c.clickScreenButton("Send"); close(c); idle(c);
         c.waitFor(mc -> ClientState.string("selectedTitle","").equals("Garden seat"),600);
         hold(c,"The result places directly. Undo is still available.",null,26);
         open(c,"Settings"); c.clickScreenButton("Auto-build: On");
@@ -281,7 +281,7 @@ public final class ReadmeExtrasDemo implements FabricClientGameTest {
         int calls=ai.calls.get(); c.clickScreenButton("Preview reroll"); c.waitTicks(10); close(c);
         hold(c,"Reroll changes the mix pattern without calling the AI.",null,22);
         check(ai.calls.get()==calls,"Texture reroll called AI");
-        open(c,"Create"); c.clickScreenButton("Build it"); close(c); idle(c);
+        open(c,"Create"); c.clickScreenButton("Instant Build"); close(c); idle(c);
         workshopHere(c); c.clickScreenButton("AI usage");
         setField(c,"Maximum calls","20"); setField(c,"Maximum reported tokens","50000");
         hold(c,"Review calls, reported tokens, and time before setting limits.","Apply limits",25);

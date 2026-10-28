@@ -129,7 +129,7 @@ public final class RelayTest implements FabricClientGameTest {
                         && box.getMessage().getString().equals("Request")).map(c -> (net.minecraft.client.gui.components.EditBox) c)
                         .findFirst().orElseThrow().setValue(EDITOR_REQUEST);
             });
-            context.clickScreenButton("Build");
+            context.clickScreenButton("Send");
             context.runOnClient(mc -> mc.gui.setScreen(null));
             int builds = 0;
             for (int i = 0; i < 60 && builds == 0; i++) {

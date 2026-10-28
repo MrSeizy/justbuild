@@ -34,7 +34,7 @@ Anthropic-compatible API (see the [changelog](CHANGELOG.md)).
 ### Describe it, preview it, build it
 
 Type what you want. The plan appears as a ghost preview you can walk around, raise, lower, or rotate before
-choosing **Build it** or **Discard**.
+choosing **Instant Build** or **Discard**.
 
 https://github.com/user-attachments/assets/0c271b24-1ef3-477d-a592-ab5fda1a7f0c
 
@@ -137,8 +137,8 @@ Press **Right Shift → Guide** for an in-game walkthrough, or follow these step
 2. **Mark the area.** You get a Builder Wand when you join a world. Left-click one ground corner, then right-click
    the opposite corner.
 3. **Describe the build.** On the **Create** tab, type something like
-   *"A small medieval cottage with a steep spruce roof and a stone foundation"* and press **Build**.
-4. **Check the preview.** Walk around it, then choose **Build it** or **Discard**.
+   *"A small medieval cottage with a steep spruce roof and a stone foundation"* and press **Send**.
+4. **Check the preview.** Walk around it, then choose **Instant Build** or **Discard**.
 5. **Change it.** Sneak-right-click the building with the wand, describe the change, and press **Apply**.
 
 Everything is also available as commands. `/jb` is short for `/justbuild`.

@@ -64,15 +64,15 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
             c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
             PreviewControlsGameTest.aim(c, PreviewControls.Control.BUILD);
             film.hold(c, "Use /justbuild retry to bring the discarded preview back.", null, 24);
-            film.hold(c, "To place it, aim at Build it and right-click.", null, 26);
+            film.hold(c, "To place it, aim at Instant Build and right-click.", null, 26);
             click(c, PreviewControls.Control.BUILD);
             c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
-            film.hold(c, "Build it places the approved preview into the world.", null, 32);
+            film.hold(c, "Instant Build places the approved preview into the world.", null, 32);
             c.waitFor(mc -> ClientState.preview() == null && ClientState.placing() == null
                     && ClientState.string("selectedBuild", null) != null, 1200);
             if (world.getServer().computeOnServer(s -> JustBuildMod.manager().savedBuildCount()) != 1
                     || !world.getServer().computeOnServer(s -> s.overworld().getBlockState(origin.below()).is(Blocks.COBBLESTONE)))
-                throw new AssertionError("The in-world Build it control did not place the cottage");
+                throw new AssertionError("The in-world Instant Build control did not place the cottage");
             if (ai.calls.get() != 1) throw new AssertionError("Preview controls or retry called the AI");
             c.runOnClient(mc -> mc.options.fov().set(originalFov));
             camera(c, world, player, base, 10, 8, 16);
@@ -112,7 +112,7 @@ public final class ReadmeWorldControlsDemo implements FabricClientGameTest {
         c.waitTicks(5);
         if (!origin(c).equals(expected)) throw new AssertionError(control + " moved to " + origin(c) + ", expected " + expected);
         c.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
-        film.hold(c, "The preview moves; the world stays unchanged until Build it.", null, 12);
+        film.hold(c, "The preview moves; the world stays unchanged until Instant Build.", null, 12);
     }
 
     private static void click(ClientGameTestContext c, PreviewControls.Control control) {

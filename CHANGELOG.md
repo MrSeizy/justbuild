@@ -4,7 +4,9 @@ User-visible changes are recorded here. Unreleased entries describe development 
 
 ## Unreleased
 
-No unreleased changes.
+### Changed
+
+- The chat button and panel action **[Build it]** are now **[Instant Build]**, and the prompt's **Build** button is now **Send**.
 
 ## [0.2.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.2.0) — 2026-10-23
 

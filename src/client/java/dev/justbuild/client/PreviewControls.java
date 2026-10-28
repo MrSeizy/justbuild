@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Controls floating at a waiting preview, pressed by looking at one and right-clicking (no tool needed): switch
- * between alternatives, Build it, Discard, and, for new builds, move (a ◀ ▲ ▼ ▶ pad at its base; 1 block or 5 while
+ * between alternatives, Instant Build, Discard, and, for new builds, move (a ◀ ▲ ▼ ▶ pad at its base; 1 block or 5 while
  * sneaking), Up, Down, Rotate, and Snap (onto the ground). They send /justbuild commands, like the panel's
  * buttons.
  */
@@ -76,7 +76,7 @@ final class PreviewControls {
         // Keep every control together outside the near face, at the base even for tall or wide previews.
         Vec3 front = side(box, near, box.minY + 0.9);
         Vec3 row1 = front.add(0, 1.05, 0);
-        pair(next, row1, right, Control.BUILD, "Build it", Glass.PRIMARY_TEXT, Control.DISCARD, "Discard", 0xFFFF7777);
+        pair(next, row1, right, Control.BUILD, "Instant Build", Glass.PRIMARY_TEXT, Control.DISCARD, "Discard", 0xFFFF7777);
         double top = row1.y + 0.6;
         if (preview.options().size() > 1) {
             String label = "Option " + (preview.option() + 1) + " of " + preview.options().size();

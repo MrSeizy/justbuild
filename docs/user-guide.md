@@ -217,7 +217,7 @@ hammer, and idles while a question or preview waits for your response. He leaves
 cancelled. Nearby players with the mod can see him; his animation does not change blocks or collide with players.
 
 Use **Guide** at the top of the panel for a four-step walkthrough: choose an AI and test its connection, select an optional
-work area, write a request, and inspect its preview before choosing **Build it**. An empty Create tab also offers
+work area, write a request, and inspect its preview before choosing **Instant Build**. An empty Create tab also offers
 **Start your first build**. The guide reflects current state and warns when Auto-build is enabled; navigation never sends
 a planning request.
 
@@ -228,7 +228,7 @@ Press **Right Shift** (rebindable under Controls → JustBuild) to open the pane
 (except subtitles) while open; **×** or Esc closes it. It doesn't pause the game, so builds keep going while it's open.
 Two more keys, unbound until you set them, build or discard a waiting preview without opening the panel.
 
-- **Create:** type a request and press Enter or **Build**. A line under the tabs says what the next request does: a new
+- **Create:** type a request and press Enter or **Send**. A line under the tabs says what the next request does: a new
   build or editing the selected one, inside which zone, and how many options. When a build is selected, **Apply**
   edits it; each building keeps its own draft on this computer. **New build** leaves editing mode (and drops the area that
   came with the last build, keeping a zone you drew yourself). While the AI waits for an answer, the button becomes
@@ -241,7 +241,7 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
   `config/justbuild-drafts.json` for up to 64 player/build/world contexts, including across game restarts. Drafts
   save periodically while typing and when leaving the editor. They are local to this computer, separate from saved
   prompts, and never send a request or grant AI consent by themselves.
-  The bottom row follows what's waiting: **Build it** for a preview, **Confirm undo** for an undo, **Discard** or
+  The bottom row follows what's waiting: **Instant Build** for a preview, **Confirm undo** for an undo, **Discard** or
   **Stop request**, and **Undo** names what it would undo. Build and confirmation buttons share the same mint styling.
   Buttons in the panel's messages can be clicked. A
   rejected or discarded plan gets **Retry saved plan** (no new AI call) and **Equip wand: Zone** to move corners before retrying. **Workshop** is here too.
@@ -264,7 +264,7 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
   that updates as each server profile finishes its install, login, or endpoint check. Scroll with the mouse wheel,
   drag the scrollbar, or focus the results and use the arrow/Page Up/Page Down keys. **Copy results** copies the report.
   **Auto-build** is your own choice: when on, AI results place as soon as they're ready,
-  without Build it (undo still works; alternatives, saved plans, and design copies still preview). **Manage profiles…** opens the profile editor:
+  without Instant Build (undo still works; alternatives, saved plans, and design copies still preview). **Manage profiles…** opens the profile editor:
   - the profiles on the left (★ is the one builds use) with New, Copy, and Delete;
   - name, provider, and model (**Pick…** asks the backend: Codex via `codex debug models`, Grok Build via `grok models`, HTTP APIs via
     `GET /models` with that profile's key, Claude from a built-in list because its CLI cannot list models);
@@ -317,7 +317,7 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild zone adjust corner <index> <x> <z>` | Move a rectangle corner or polygon vertex; indices start at 0 |
 | `/justbuild zone adjust polygon <start\|add\|undo\|finish\|cancel>` | Draw a polygon using the wand or the current target |
 | `/justbuild inspect` | Summarize loaded block states in the zone, at the spot you point at, or around a build you point at; no AI call or block changes |
-| `/justbuild confirm` | Place the waiting preview (or click `[Build it]`); undo has its own confirmation command |
+| `/justbuild confirm` | Place the waiting preview (or click `[Instant Build]`); undo has its own confirmation command |
 | `/justbuild preview discard` | Discard only the waiting build preview, keeping its plan available for Retry |
 | `/justbuild preview move <x> <y> <z>`, `/justbuild preview rotate <degrees>`, `/justbuild preview snap` | Move a new-build or copy preview, rotate clockwise by 90/180/270°, or snap its origin to the ground; no AI call |
 | `/justbuild alternatives build <2\|3> <description>`, `/justbuild alternatives edit <2\|3> <change>` | Generate separate options; all wait for your choice and confirmation |
@@ -487,7 +487,7 @@ still affect neighboring blocks.
 
 Controls float at the base of a waiting preview, along the side nearest you: look at one and right-click it (no tool needed; the click does nothing
 else). Floating controls and labels have dark drop shadows for contrast against the world.
-A control turns yellow and gains brackets when you aim at it. The mint **Build it** places the approved preview;
+A control turns yellow and gains brackets when you aim at it. The mint **Instant Build** places the approved preview;
 **Discard** cancels the waiting preview without placing blocks. Both are always there; with alternatives,
 **◀ Option 2 of 3 ▶** switches between them.
 New builds and design copies also get a compact directional pad: **◀** and **▶** sit beside **▲** (away) and **▼**
@@ -506,7 +506,7 @@ confirmation unless Auto-build or direct placement with `previewAbove: -1` is en
 Each located warning has **Highlight location** and, where a local repair is available, **Preview repair**.
 Suggestions clear door/stair obstructions or add short supports down to solid ground, up to 16 blocks below.
 They obey the zone, selected part, locks, other buildings, container protection, and build requirements. A rejected
-suggestion keeps the preview unchanged. **Revert repair suggestion** returns to the original proposal; **Build it** applies
+suggestion keeps the preview unchanged. **Revert repair suggestion** returns to the original proposal; **Instant Build** applies
 the chosen preview. These tools make no AI call and do not guarantee that a structure is architecturally correct.
 
 **Floors → Before / After** compares current blocks with the proposed result in a top-down section. Cycle **Filter**
@@ -518,7 +518,7 @@ and affected positions, not every surrounding world block.
 
 Choose **Options: 2** or **Options: 3** on Create before submitting a build or edit. The AI plans each option in
 sequence, with separate model calls and normal review rounds. Nothing is placed during generation. Once ready,
-switch with **◀ ▶** at the base of the preview (or `/justbuild preview option <n>`), then **Build it** to apply only the
+switch with **◀ ▶** at the base of the preview (or `/justbuild preview option <n>`), then **Instant Build** to apply only the
 displayed option. Moving a preview or switching options makes no additional AI call. If a later option fails,
 completed options remain available.
 
@@ -574,7 +574,7 @@ the difference and creates a new version, so you can undo the restore. Changes s
 existing protection for containers and other blocks holding player data.
 
 **Workshop → Version history** shows thumbnails of up to 32 recent retained versions. Choose **Preview restore**,
-then **Compare** to inspect before/after changes. **Build it** creates a new undoable version. Original plans and
+then **Compare** to inspect before/after changes. **Instant Build** creates a new undoable version. Original plans and
 versions needed by another player's undo history are retained separately; versions already pruned by older releases
 cannot be recovered by this screen.
 
@@ -667,11 +667,11 @@ untouched, so use the section viewer to see beneath an existing roof. A fresh or
 Completed previews and alternatives save automatically in the world. After reconnecting or reopening the world,
 choose **Create → Retry saved plan** (or `/justbuild retry`). The selected alternative, position, rotation, requirements,
 part selection, and protected connection areas are retained. Resume rebuilds all completed options against current
-world state, loaded chunks, limits, ownership, and locks, then waits for **Build it**, even with Auto-build enabled.
+world state, loaded chunks, limits, ownership, and locks, then waits for **Instant Build**, even with Auto-build enabled.
 It never makes another AI request. If an edited building changed versions while you were away, the saved edit is
 refused. Move back to its area or fix a temporary limit before retrying; failed checks keep the saved plan.
 
-Each player has one saved preview set per world. A newly completed preview replaces it; **Build it** or **Discard**
+Each player has one saved preview set per world. A newly completed preview replaces it; **Instant Build** or **Discard**
 removes it from disk. A discarded preview can still be retried for 30 minutes in the current session. **Cancel** also
 removes a saved set that has not been resumed. An interrupted alternatives request keeps only options already
 completed; in-flight AI calls and unanswered questions stop on disconnect and do not restart automatically.
@@ -750,7 +750,7 @@ uses the economical quick workflow without guide selection.
 - **Leaves stay:** leaves a build places count as player-placed, so bushes, hedges, and hand-built tree canopies
   away from logs don't decay (a plan can still ask for `persistent=false`).
 
-- **Previews:** every new AI build waits for `[Build it]` by default (`previewAbove`, 0). Auto-build places fresh AI
+- **Previews:** every new AI build waits for `[Instant Build]` by default (`previewAbove`, 0). Auto-build places fresh AI
   builds, edits, and connections immediately. Alternatives, retained-plan retries, checkpoint restores, design copies,
   repairs, and material swaps still preview. Translucent block models show
   additions, gold marks replacements, and red crosses mark removals; the cyan frame shows the whole change area.
@@ -759,7 +759,7 @@ uses the economical quick workflow without guide selection.
   an older mod version) and 4,096 distinct states, with an explicit message if truncated. Inside a removed volume
   only its outer surface is outlined, and at most 40,000 outlines are drawn at once; when that limit is reached, a
   line says how many nearby changes are outlined. Players without the mod see a particle outline. Previews have no time
-  limit during the current world session: inspect or pause as long as needed, then choose `[Build it]` or `[Discard]`.
+  limit during the current world session: inspect or pause as long as needed, then choose `[Instant Build]` or `[Discard]`.
   Confirmation rechecks current limits, loaded chunks, and protected areas. Leaving the world clears pending previews.
 - **Block limit:** a plan may cover at most `maxBlocks` cells (250,000 by default), counting the air that clears the
   inside of hollow shapes. This is the mod's limit, not Minecraft's: it stops a runaway plan from burying an area and

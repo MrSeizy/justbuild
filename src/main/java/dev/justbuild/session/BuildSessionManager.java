@@ -1541,8 +1541,8 @@ public final class BuildSessionManager {
             if (!first.isNew()) busy.add(first.record().id());
             offer(first, true);
             if (playerSession(actor).preview.current == first) {
-                send(source, Chat.info(batch.choices.size() == 1 ? "Only 1 option is ready; Build it places it."
-                        : batch.choices.size() + " options ready. Use ◀ ▶ at the base of the preview (or /justbuild preview option <n>) to compare; Build it places only the displayed option."));
+                send(source, Chat.info(batch.choices.size() == 1 ? "Only 1 option is ready; Instant Build places it."
+                        : batch.choices.size() + " options ready. Use ◀ ▶ at the base of the preview (or /justbuild preview option <n>) to compare; Instant Build places only the displayed option."));
             }
         }
         if (batch.current != null) sendStateTo(batch.current.source);
@@ -2447,7 +2447,7 @@ public final class BuildSessionManager {
             } else {
                 savePreview(actor, source);
                 send(source, Chat.info("Resumed " + count(saved.choices().size(), "saved option")
-                        + " with fresh world checks. Review the preview, then Build it. No AI call was made."));
+                        + " with fresh world checks. Review the preview, then Instant Build. No AI call was made."));
             }
             sendStateTo(source);
         }
@@ -2526,7 +2526,7 @@ public final class BuildSessionManager {
         String what = p.isNew() ? "“" + p.title() + "” would place " + count(p.placements().size(), "block")
                 : "This change to “" + p.title() + "” would replace " + count(p.placements().size(), "block");
         send(p.source(), Chat.preview(p.ready() + what + " in a space " + width + " wide, " + height + " tall, and "
-                + depth + " deep. Ghost blocks show additions; gold marks replacements, red crosses mark removals. Build it?"));
+                + depth + " deep. Ghost blocks show additions; gold marks replacements, red crosses mark removals. Instant Build?"));
         for (String warning : p.quality()) send(p.source(), Chat.info("Check: " + warning));
         drawOutline(p);
         showPreview(p, true);
@@ -3223,7 +3223,7 @@ public final class BuildSessionManager {
         for (PendingPlacement p : waitingPreviews()) {
             drawOutline(p);
             showPreview(p, true);
-            bar(p.source(), StatusText.BAR + "Preview of “" + p.title() + "” is waiting: press Right Shift, then Build it or Discard");
+            bar(p.source(), StatusText.BAR + "Preview of “" + p.title() + "” is waiting: press Right Shift, then Instant Build or Discard");
         }
         for (ActiveRequest request : planningRequests()) {
             RequestStatus status = request.status;

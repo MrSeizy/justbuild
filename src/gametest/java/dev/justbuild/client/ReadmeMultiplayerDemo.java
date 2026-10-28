@@ -56,7 +56,7 @@ public final class ReadmeMultiplayerDemo implements FabricClientGameTest {
             film.hold(c,"Optional response review lets you inspect each outgoing reply.","Review before sending: On",24);
             film.snapshot(c,"multiplayer-ai-settings");
             open(c,"Create"); setField(c,"Request","Build a small stone cottage for this village."); ai.answer(cottage(false));
-            c.clickScreenButton("Build"); c.waitForScreen(ResponseReviewScreen.class);
+            c.clickScreenButton("Send"); c.waitForScreen(ResponseReviewScreen.class);
             film.hold(c,"This response is still local. Inspect it before sending.","Send to server",28);
             film.snapshot(c,"multiplayer-response-review"); c.clickScreenButton("Send to server");
             for(int round=0;round<6;round++) {
@@ -67,7 +67,7 @@ public final class ReadmeMultiplayerDemo implements FabricClientGameTest {
             }
             c.waitFor(mc -> ClientState.preview()!=null,1200); close(c); camera(c,server);
             film.hold(c,"The server validates the reply and sends a normal build preview.",null,25);
-            open(c,"Create"); c.clickScreenButton("Build it"); close(c);
+            open(c,"Create"); c.clickScreenButton("Instant Build"); close(c);
             c.waitFor(mc -> ClientState.preview()==null && ClientState.placing()==null && ClientState.string("selectedBuild",null)!=null,1200);
             String house=c.computeOnClient(mc -> ClientState.string("selectedBuild",null));
             film.hold(c,"The server places the blocks using your approved plan.",null,26); film.finish();

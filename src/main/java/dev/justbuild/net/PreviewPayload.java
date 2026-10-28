@@ -8,7 +8,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
 /**
- * Server → game: a plan waiting for [Build it] covers min..max (inclusive) in that dimension, or, with show false, the
+ * Server → game: a plan waiting for [Instant Build] covers min..max (inclusive) in that dimension, or, with show false, the
  * preview is gone. Sent when it starts, once a second while it waits, and when it is built or cancelled.
  */
 public record PreviewPayload(boolean show, String dimension, BlockPos min, BlockPos max, String title)

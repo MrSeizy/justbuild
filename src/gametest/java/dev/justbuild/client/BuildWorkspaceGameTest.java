@@ -61,7 +61,7 @@ public final class BuildWorkspaceGameTest implements FabricClientGameTest {
             replies.add(ORIGINAL);
             openCreate(context);
             text(context, "Request", "design a small test cottage");
-            context.clickScreenButton("Build");
+            context.clickScreenButton("Send");
             awaitCalls(context, 1);
             context.runOnClient(mc -> mc.gui.screen().onClose());
             command(context, "another request while the preview is pending");

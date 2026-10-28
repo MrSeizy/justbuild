@@ -29,6 +29,6 @@ final class QualityScreen extends ToolScreen {
         }
         var issue=issues.get(Math.min(page,issues.size()-1));
         int next=text(g,(page+1)+" / "+issues.size()+" · "+issue.message(),52,height-142,Glass.TEXT);
-        text(g,"Suggestion: "+issue.repair()+" Confirm with Build it after checking the preview.",Math.max(next+10,height-132),height-88,Glass.MUTED);
+        text(g,"Suggestion: "+issue.repair()+" Confirm with Instant Build after checking the preview.",Math.max(next+10,height-132),height-88,Glass.MUTED);
     }
 }
