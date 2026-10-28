@@ -338,27 +338,37 @@ public final class BuildSessionManager {
             int changedSince, int kept) {
     }
 
-    /** A plan ready to place; durable recipes are rebuilt through current checks after reconnect. */
+    /**
+     * A plan ready to place; durable recipes are rebuilt through current checks after reconnect. {@code revisions} is
+     * the session-only history that Revise and Previous use.
+     */
     private record PendingPlacement(String actor, CommandSourceStack source, ServerLevel level, BuildRecord record,
             boolean isNew, BuildRecord.Version version, Map<BlockPos, BlockState> placements,
             Map<BlockPos, BlockState> ours, String title, String summary, String ready, String aiSummary,
             Instant requestStarted, BlockPos min, BlockPos max, BuildZone zone,
             BuildRegion focus, List<BuildRegion> guards, List<String> quality, BuildPlan sourcePlan, boolean restoreLive, String projectId,
-            ChangePreview.Counts counts) {
+            ChangePreview.Counts counts, PreviewRevisions revisions) {
         PendingPlacement(String actor, CommandSourceStack source, ServerLevel level, BuildRecord record,
                 boolean isNew, BuildRecord.Version version, Map<BlockPos, BlockState> placements,
                 Map<BlockPos, BlockState> ours, String title, String summary, String ready, String aiSummary,
                 Instant requestStarted, BlockPos min, BlockPos max, BuildZone zone,
-                BuildRegion focus, List<BuildRegion> guards, List<String> quality, BuildPlan sourcePlan, boolean restoreLive, String projectId) {
+                BuildRegion focus, List<BuildRegion> guards, List<String> quality, BuildPlan sourcePlan, boolean restoreLive, String projectId,
+                PreviewRevisions revisions) {
             this(actor, source, level, record, isNew, version, placements, ours, title, summary, ready, aiSummary,
                     requestStarted, min, max, zone, focus, guards, quality, sourcePlan, restoreLive, projectId,
                     ChangePreview.counts(Protection.filter(placements, owned(record, ours), level::getBlockEntity,
-                            level::getBlockState).placements(), pos -> readLoaded(level, pos)));
+                            level::getBlockState).placements(), pos -> readLoaded(level, pos)), revisions);
         }
         PendingPlacement withSource(CommandSourceStack currentSource) {
             return new PendingPlacement(actor, currentSource, level, record, isNew, version, placements, ours,
                     title, summary, ready, aiSummary, requestStarted, min, max,
-                    zone, focus, guards, quality, sourcePlan, restoreLive, projectId, counts);
+                    zone, focus, guards, quality, sourcePlan, restoreLive, projectId, counts, revisions);
+        }
+        /** The same preview after an AI revision, with its history and ready text. */
+        PendingPlacement withRevisions(PreviewRevisions value, String readyText) {
+            return new PendingPlacement(actor, source, level, record, isNew, version, placements, ours,
+                    title, summary, readyText, aiSummary, requestStarted, min, max,
+                    zone, focus, guards, quality, sourcePlan, restoreLive, projectId, counts, value);
         }
     }
 
@@ -2490,7 +2500,7 @@ public final class BuildSessionManager {
                         : planReady(request, plan), aiSummary(request),
                 request.status == null ? Instant.now() : request.status.started,
                 new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), request.zone,
-                request.focus, List.copyOf(request.guards), BuildQuality.inspect(placements, p -> readLoaded(request.level, p)), plan, request.restoreLive, request.projectId);
+                request.focus, List.copyOf(request.guards), BuildQuality.inspect(placements, p -> readLoaded(request.level, p)), plan, request.restoreLive, request.projectId, PreviewRevisions.NONE);
     }
 
     /** Places the plan now, or holds it as a preview with an outline when it is larger than previewAbove. */
@@ -2632,7 +2642,7 @@ public final class BuildSessionManager {
             PendingPlacement moved = new PendingPlacement(actor, source, old.level(), record, true, null, placements,
                     Map.of(), old.title(), old.summary(), "Adjusted preview (no AI call). ", old.aiSummary(), old.requestStarted(),
                     box.min(), box.max(), old.zone(), old.focus(), old.guards(),
-                    BuildQuality.inspect(placements, p -> readLoaded(old.level(), p)), sourcePlan, old.restoreLive(), old.projectId());
+                    BuildQuality.inspect(placements, p -> readLoaded(old.level(), p)), sourcePlan, old.restoreLive(), old.projectId(), old.revisions());
             playerSession(actor).preview.take();
             showPreview(old, false);
             Alternatives batch = playerSession(actor).alternatives;
@@ -3771,7 +3781,8 @@ public final class BuildSessionManager {
                 options == null ? List.of() : options.choices.stream().map(PendingPlacement::title).toList(), options == null ? 0 : options.selected,
                 preview.record().origin().toShortString() + " · " + preview.record().facing().getName(),
                 preview.max().getX() - preview.min().getX() + 1, preview.max().getY() - preview.min().getY() + 1,
-                preview.max().getZ() - preview.min().getZ() + 1, preview.counts());
+                preview.max().getZ() - preview.min().getZ() + 1, preview.counts(), preview.isNew(),
+                preview.revisions().count(), preview.revisions().hasPrevious());
         var view = new PanelStateBuilder.View(actor, dimension, manage, ai, editing, selection, workshop, activity, summary,
                 options != null && options.collecting ? "Planning option " + options.index + " of " + options.count : null,
                 session.usage.snapshot(), preview == null ? List.of() : qualityIssues(preview),
@@ -4049,7 +4060,7 @@ public final class BuildSessionManager {
             var changed = new PendingPlacement(actor, source, old.level(), record, old.isNew(), version, changes, old.ours(), old.title(),
                     old.summary(), description + " (no AI call). ", old.aiSummary(), old.requestStarted(), bounds.min(), bounds.max(),
                     old.zone(), old.focus(), old.guards(), BuildQuality.inspect(changes, p -> readLoaded(old.level(), p)), plan,
-                    old.restoreLive(), old.projectId());
+                    old.restoreLive(), old.projectId(), old.revisions());
             QualityUndo prior = playerSession(actor).qualityUndo;
             playerSession(actor).qualityUndo = new QualityUndo(changed, prior != null && prior.repaired() == old ? prior.original() : old);
             replaceQualityPreview(old, changed);

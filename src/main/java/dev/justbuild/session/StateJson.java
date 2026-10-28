@@ -27,9 +27,10 @@ public final class StateJson {
 
     public record LockSummary(String id, String name, BuildRegion region, boolean mine) { }
     public record PreviewSummary(String title, boolean movable, List<String> quality, List<String> options,
-            int option, String position, int width, int height, int depth, dev.justbuild.world.ChangePreview.Counts counts) {
+            int option, String position, int width, int height, int depth, dev.justbuild.world.ChangePreview.Counts counts,
+            boolean revisable, int revisions, boolean previous) {
         public PreviewSummary(String title, boolean movable, List<String> quality, List<String> options,
-                int option, String position) { this(title, movable, quality, options, option, position, 0, 0, 0, null); }
+                int option, String position) { this(title, movable, quality, options, option, position, 0, 0, 0, null, false, 0, false); }
     }
     public record Tools(BuildRegion part, boolean selectingPart, boolean partWand, List<LockSummary> locks,
             String connectionA, String connectionB, List<String> libraryFiles, PreviewSummary preview, String planningOptions,
@@ -119,6 +120,9 @@ public final class StateJson {
             value.addProperty("title", preview.title()); value.addProperty("movable", preview.movable());
             value.add("quality", strings(preview.quality())); value.add("options", strings(preview.options()));
             value.addProperty("option", preview.option()); value.addProperty("position", preview.position());
+            // Older games ignore these; a panel that never sees "revisable" never offers Revise.
+            value.addProperty("revisable", preview.revisable()); value.addProperty("revisions", preview.revisions());
+            value.addProperty("previous", preview.previous());
             if (preview.counts() != null) {
                 value.addProperty("width", preview.width()); value.addProperty("height", preview.height()); value.addProperty("depth", preview.depth());
                 value.addProperty("added", preview.counts().added()); value.addProperty("replaced", preview.counts().replaced());
