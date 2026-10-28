@@ -49,4 +49,18 @@ class BuildRequestPayloadTest {
         assertNull(PromptCheck.check(PromptCheckTest.spec(option, List.of()), new PromptCheck.Seen(Set.of(option), Set.of(), Set.of())).problem());
         assertNotNull(PromptCheck.check(PromptCheckTest.spec(option, List.of()), new PromptCheck.Seen(Set.of(text), Set.of(), Set.of())).problem());
     }
+
+    @Test void revisingAPreviewIsOneTypedRequestWithoutATarget() {
+        dev.justbuild.world.McBootstrap.init();
+        var payload = new BuildRequestPayload("revise", "", 1, "make the roof steeper", "");
+        assertEquals("justbuild revise make the roof steeper", payload.consentCommand());
+        assertEquals(List.of("make the roof steeper"), TypedRequests.of(payload.consentCommand()).requests());
+        var buf = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), net.minecraft.core.RegistryAccess.EMPTY);
+        try { BuildRequestPayload.CODEC.encode(buf, payload); assertEquals(payload, BuildRequestPayload.CODEC.decode(buf)); }
+        finally { buf.release(); }
+        assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("revise", "0123abcd", 1, "roof", ""));
+        assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("revise", "", 2, "roof", ""));
+        assertThrows(IllegalArgumentException.class, () -> new BuildRequestPayload("revise", "", 1, "roof",
+                BuildRequestPayload.questionKey("How big?")));
+    }
 }

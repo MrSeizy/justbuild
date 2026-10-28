@@ -35,6 +35,7 @@ public final class TypedRequests {
         switch (sub) {
             case "build", "connect" -> requests.add(after);
             case "edit" -> requests.add(EditTarget.parse(after).change());
+            case "revise" -> requests.add(after);
             case "answer" -> {
                 return after.isBlank() ? Typed.NONE : new Typed(List.of(), after);
             }

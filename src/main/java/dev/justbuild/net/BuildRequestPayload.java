@@ -18,10 +18,11 @@ public record BuildRequestPayload(String action, String target, int options, Str
             ByteBufCodecs.stringUtf8(64), BuildRequestPayload::question, BuildRequestPayload::new);
 
     public BuildRequestPayload {
-        if (action == null || !java.util.Set.of("build", "edit", "answer").contains(action) || target == null || text == null || question == null
+        if (action == null || !java.util.Set.of("build", "edit", "answer", "revise").contains(action) || target == null || text == null || question == null
                 || options < 1 || options > 3 || !target.isEmpty() && !target.matches("[0-9a-f]{8}")
                 || action.equals("edit") != !target.isEmpty() || !action.equals("answer") && !question.isEmpty()
-                || action.equals("answer") && (options != 1 || !question.matches("[0-9a-f]{64}"))) {
+                || (action.equals("answer") || action.equals("revise")) && options != 1
+                || action.equals("answer") && !question.matches("[0-9a-f]{64}")) {
             throw new IllegalArgumentException("Invalid build request");
         }
         text = text.strip();
