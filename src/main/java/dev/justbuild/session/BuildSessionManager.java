@@ -1510,8 +1510,11 @@ public final class BuildSessionManager {
         PlayerSession session = playerSession(actor);
         PendingPlacement preview = session.preview.current;
         String change = text.strip();
-        if (preview == null || !preview.isNew()) {
+        if (preview == null) {
             send(source, Chat.error("Revise changes a waiting new-build or design-copy preview. Send a request first.")); return;
+        }
+        if (!preview.isNew()) {
+            send(source, Chat.error("Edit previews can't be revised; apply or discard this one first.")); return;
         }
         if (!preview.level().dimension().equals(source.getLevel().dimension())) {
             send(source, Chat.error("Return to the preview's dimension first.")); return;
@@ -2228,9 +2231,6 @@ public final class BuildSessionManager {
                 PendingPlacement revised = next.withRevisions(revisions, "Revised (revision " + revisions.count() + "). ");
                 forgetQuality(old);
                 replacePreview(old, revised);
-                // The replacement can still be refused (a survival project opened, or its area unloaded); offer says so.
-                if (playerSession(request.actor).preview.current == revised) send(request.source,
-                        Chat.info("Revised “" + revised.title() + "” (revision " + revisions.count() + ")."));
                 return;
             }
             offer(next, request.forcePreview, autoBuilds(request));

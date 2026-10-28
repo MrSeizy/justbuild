@@ -378,7 +378,7 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild answer <text>` | Answer the AI's question. You can also type the answer in chat or click an option. |
 | `/justbuild undo` | Undo your last action: an edit goes back one version, a new build is removed (10 steps). Shows what will change and asks you to confirm first. Run it near the build, in its dimension |
 | `/justbuild undo confirm`, `/justbuild undo cancel` | Confirm or cancel a pending undo |
-| `/justbuild cancel` | Stop a request or a build in progress |
+| `/justbuild cancel` | Stop a request or a build in progress; during a revision, stop only the revision |
 | `/justbuild profile [name]` | List AI profiles (click `[Use]`); add a name to switch to one |
 | `/justbuild model [name\|default]` | List the active profile's models; add a name to choose one, or `default` to reset |
 | `/justbuild provider <claude\|codex\|grok\|openai\|anthropic>` | Switch to the first profile using that backend (adds one if none does) |
@@ -538,7 +538,7 @@ The AI changes the unplaced plan at the preview's current position and rotation.
 **Instant Build** or **Guided Build**.
 
 While the AI works, the preview stays visible, and placement and preview controls wait. **Stop** ends only the
-revision; **Discard** ends both. If the AI asks a question, its answer buttons appear in the preview section. If the
+revision; **Discard** ends both. If the AI asks a question, answer it in the request box or with its option buttons in the preview section. If the
 revised plan fails a check, such as crossing the zone, the current preview stays and chat explains why. Auto-build
 never places a revision.
 
