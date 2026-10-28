@@ -37,6 +37,7 @@
       "dev.justbuild.client.PreviewBenchmarkGameTest",
       "dev.justbuild.client.CoBuildGameTest",
       "dev.justbuild.client.PreviewControlsGameTest",
+      "dev.justbuild.client.PreviewRevisionGameTest",
       "dev.justbuild.client.AutoBuildGameTest",
       "dev.justbuild.client.WorkflowUpgradeGameTest",
       "dev.justbuild.client.CornerRelocationGameTest",
