@@ -147,9 +147,33 @@ class PromptBuilderTest {
         assertTrue(content.contains("You are revising a proposed build that has not been placed yet. "
                 + "World samples show the site without it.\nOriginal request: a hut\nEarlier changes:\n- steeper roof"
                 + "\nCurrent plan:\n{plan}\n\nRequested change: add a chimney\n"));
-        assertTrue(content.contains("Keep the plan's origin and return the complete revised plan"));
+        assertTrue(content.contains("When you build, keep the plan's origin and return the complete revised plan,"));
+        assertTrue(content.indexOf(terrain.format()) < content.indexOf("You are revising"), "terrain comes first");
         assertTrue(content.endsWith("You asked: Brick?\nPlayer answered: yes"));
         assertFalse(content.contains("existing build"));
+    }
+
+    @Test
+    void proposalSystemPromptSaysThePlanIsNotPlaced() {
+        PlanLimits limits = new PlanLimits(2000, 50000, 96);
+        String proposal = PromptBuilder.systemPrompt(limits, Guidance.DetailLevel.DETAILED, false, 0, true);
+        assertTrue(proposal.contains("you are revising a proposed build that has not been placed yet."));
+        assertFalse(proposal.contains("revising an existing build"));
+        String ordinary = PromptBuilder.systemPrompt(limits, Guidance.DetailLevel.DETAILED, false, 0);
+        assertTrue(ordinary.contains("you are revising an existing build."));
+        assertEquals(ordinary, PromptBuilder.systemPrompt(limits, Guidance.DetailLevel.DETAILED, false, 0, false));
+    }
+
+    @Test
+    void ordinaryEditReviewKeepsItsExactWording() {
+        String content = PromptBuilder.reviewContent(new BuildContext("d", "b"), "add a door", "a hut", List.of(),
+                List.of(), "{plan}", "views", 1, 1);
+        assertTrue(content.contains("\nThis is an edit to an existing build.\nOriginal build request: a hut\n"
+                + "Requested change: add a door\nThe candidate below is the COMPLETE replacement plan for the existing "
+                + "build, including unchanged parts. Omitted cells revert to their pre-build state; returning only "
+                + "furniture or a patch can erase the walls, floors, roof and doors. Preserve existing structure the "
+                + "draft retains, keep the removals already made for the requested edit, and keep usable entrances and "
+                + "routes. Review may refine the candidate, not start a different edit."));
     }
 
     @Test
