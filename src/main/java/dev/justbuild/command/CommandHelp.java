@@ -83,6 +83,7 @@ final class CommandHelp {
             e("preview snap", "Snap a new-build/copy preview to the ground."),
             e("preview option <number>", "Show a completed alternative, numbered 1–3."),
             e("revise <change>", "Ask the AI to change the waiting new-build or copy preview before building."),
+            e("preview previous", "Return to the version before the preview's latest revision; no AI call."),
             e("alternatives build <2|3> <description>", "Generate separate new-build previews to choose from."),
             e("alternatives edit <2|3> <change>", "Generate separate edit previews for the selected build."),
             e("history", "List your recent builds, with edit and rebuild actions."),
