@@ -101,6 +101,15 @@ class PlanParserTest {
         return "{\"kind\":\"build\",\"operations\":[" + operation + "]}";
     }
 
+    @Test
+    void visibleTextDropsInvisibleCharactersAndCountsCodePoints() {
+        assertEquals("a b", PlanParser.visible("a\u200b\u0007  b", 10));
+        assertEquals("\ud83d\ude42\ud83d\ude42", PlanParser.visible("\ud83d\ude42\ud83d\ude42\ud83d\ude42", 2), "limits count code points, not chars");
+        assertEquals("", PlanParser.visible(null, 5));
+        String once = PlanParser.visible("  Door\tblocked   now ", 9);
+        assertEquals(once, PlanParser.visible(once, 9), "cleaning is idempotent");
+    }
+
     private static void assertMessage(String expected, String json) {
         PlanException e = assertThrows(PlanException.class, () -> PlanParser.parse(json));
         assertTrue(e.getMessage().contains(expected), () -> "message was: " + e.getMessage());

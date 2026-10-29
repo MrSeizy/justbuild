@@ -425,6 +425,14 @@ public final class PlanParser {
         return s.length() <= maxLength ? s : s.substring(0, maxLength).strip();
     }
 
+    /** Keep international text, but remove invisible formatting/control characters before counting visible text. */
+    public static String visible(String text, int limit) {
+        String clean = clean(text, Integer.MAX_VALUE)
+                .replaceAll("[\\p{C}\\p{Z}]+", " ").replaceAll(" +", " ").strip();
+        int count = clean.codePointCount(0, clean.length());
+        return count <= limit ? clean : clean.substring(0, clean.offsetByCodePoints(0, limit)).strip();
+    }
+
     /** A nether portal's opening must be flat (one x or one z) and within Minecraft's size limits. */
     private static void netherOpening(Cell from, Cell to) throws PlanException {
         if (to == null) {
