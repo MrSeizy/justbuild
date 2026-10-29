@@ -311,6 +311,23 @@ public final class PromptBuilder {
         return sb.toString();
     }
 
+    public static String criticPrompt() {
+        return "";
+    }
+
+    public static String critiqueContent(BuildContext context, String request, String originalRequest,
+            List<String> earlierChanges, List<Exchange> exchanges, String candidatePlanJson, String views, int round,
+            int rounds, boolean proposal, dev.justbuild.plan.CritiqueNote previous) {
+        return "";
+    }
+
+    public static String reviewContent(BuildContext context, String request, String originalRequest,
+            List<String> earlierChanges, List<Exchange> exchanges, String currentPlanJson, String views, int round,
+            int rounds, boolean proposal, dev.justbuild.plan.CritiqueNote critique) {
+        return reviewContent(context, request, originalRequest, earlierChanges, exchanges, currentPlanJson, views, round,
+                rounds, proposal);
+    }
+
     /** A self-review round: the AI sees its own plan drawn from three sides and returns an improved one. */
     public static String reviewContent(BuildContext context, String request, String originalRequest,
             List<String> earlierChanges, List<Exchange> exchanges,

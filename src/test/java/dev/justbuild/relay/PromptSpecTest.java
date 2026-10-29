@@ -12,9 +12,15 @@ import dev.justbuild.prompt.TerrainSummary;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class PromptSpecTest {
+    @BeforeAll
+    static void bootstrap() {
+        dev.justbuild.world.McBootstrap.init();
+    }
+
     static final String PLAN = "{\"kind\":\"build\",\"question\":null,\"options\":null,\"title\":\"Hut\",\"summary\":\"s\","
             + "\"operations\":[{\"op\":\"fill\",\"block\":\"minecraft:stone\",\"from\":[0,0,-4],\"to\":[2,2,-2],"
             + "\"radius\":null,\"height\":null,\"hollow\":null}]}";
@@ -197,5 +203,63 @@ class PromptSpecTest {
                 .withWorld(null, List.of(snapshot), 0).userContent();
         assertTrue(edit.contains("the saved plan describes intent and may differ from the world. Preserve unrelated work."));
         assertFalse(edit.contains("before the proposed build is placed"));
+    }
+
+    static dev.justbuild.plan.Critique critique() throws Exception {
+        var plan = ((dev.justbuild.plan.PlanResponse.Build) dev.justbuild.plan.PlanParser.parse(PLAN)).plan();
+        return dev.justbuild.plan.CritiqueParser.parse("{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":["
+                + "{\"severity\":\"should_fix\",\"category\":\"access\",\"operations\":[0],\"cell\":null,"
+                + "\"problem\":\"The door is blocked.\",\"fix\":\"Clear the cell in front of the door.\"}],"
+                + "\"keep\":[\"the stone floor\"]}", plan, PromptCheck.planKey(PLAN));
+    }
+
+    static PromptSpec base() {
+        return PromptSpec.newBuild("minecraft:overworld", "minecraft:plains", PromptSpec.Placement.FRONT, "nordic",
+                null, "a fishing hut", List.of(), 2, terrain(), 50000);
+    }
+
+    @Test
+    void critiqueRoundsAskNothingAndRoundTrip() throws Exception {
+        PromptSpec spec = base().withGuides(true, List.of("windows")).critiqueRound(PLAN, 1, 2, null);
+        assertEquals(PromptSpec.Kind.CRITIQUE, spec.kind());
+        assertEquals(0, spec.remaining());
+        assertEquals(0, spec.inspectionRemaining());
+        assertFalse(spec.offerGuides());
+        assertEquals(List.of("windows"), spec.guides(), "selected references survive into the critique");
+        assertNull(spec.critique());
+        assertEquals(dev.justbuild.plan.CritiqueSchema.JSON, spec.schemaJson());
+        assertEquals(dev.justbuild.plan.BuildPlanSchema.JSON, base().schemaJson());
+        String json = spec.toJson().toString();
+        assertEquals(json, PromptSpec.parse(json).toJson().toString());
+        assertFalse(json.contains("\"critique\":{"), "no note is written when there is none");
+    }
+
+    @Test
+    void critiqueNotesSurviveEveryCopy() throws Exception {
+        var note = new dev.justbuild.plan.CritiqueNote(critique(), dev.justbuild.plan.RepairOutcome.REJECTED_ROUTE);
+        PromptSpec spec = base().critiqueRound(PLAN, 2, 2, note);
+        for (PromptSpec copy : List.of(spec.withGuides(false, List.of()), spec.withFeedback(dev.justbuild.prompt.PlanningFeedback.EMPTY),
+                spec.withWorld(null, List.of(), 0), spec.withAreas(dev.justbuild.prompt.PlanningAreas.EMPTY),
+                spec.withTheme(dev.justbuild.prompt.ProjectTheme.EMPTY), spec.withConstraints(dev.justbuild.prompt.BuildConstraints.NONE),
+                PromptSpec.parse(spec.toJson().toString()))) {
+            assertEquals(note, copy.critique());
+        }
+        var repair = new dev.justbuild.plan.CritiqueNote(critique(), null);
+        assertEquals(repair, base().review(PLAN, 1, 1, repair).critique());
+        assertEquals(repair, PromptSpec.parse(base().review(PLAN, 1, 1, repair).toJson().toString()).critique());
+        assertNull(base().review(PLAN, 1, 1).critique(), "the builder's own review carries no critique");
+        assertNull(base().review(PLAN, 1, 1, repair).shrink(PLAN).critique(), "a smaller-plan request never carries one");
+    }
+
+    @Test
+    void critiqueAndRepairRequestsGetTheFacades() throws Exception {
+        var volume = dev.justbuild.prompt.VoxelVolume.capture(new dev.justbuild.plan.InspectionRequest(
+                new dev.justbuild.plan.Cell(0, 0, 0), new dev.justbuild.plan.Cell(0, 0, 0)), 1, true, c -> "minecraft:stone");
+        var feedback = new dev.justbuild.prompt.PlanningFeedback(PromptCheck.planKey(PLAN), List.of(), volume, volume, null, null);
+        java.util.function.Function<PromptSpec, Integer> images = spec -> new dev.justbuild.provider.PlanRequest("S", "U",
+                spec.schemaJson(), "", java.time.Duration.ofSeconds(1), spec.withFeedback(feedback)).images().size();
+        assertEquals(2, images.apply(base().review(PLAN, 1, 1)));
+        assertEquals(3, images.apply(base().critiqueRound(PLAN, 1, 1, null)));
+        assertEquals(3, images.apply(base().review(PLAN, 1, 1, new dev.justbuild.plan.CritiqueNote(critique(), null))));
     }
 }

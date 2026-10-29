@@ -10,8 +10,11 @@ import java.time.Duration;
  */
 public record PlanRequest(String systemPrompt, String userContent, String schemaJson, String model, Duration timeout,
         PromptSpec spec) {
+    /** Block-color evidence; the separate reviewer and its repair also see the candidate's four facades. */
     public java.util.List<byte[]> images() {
-        return spec == null ? java.util.List.of() : dev.justbuild.prompt.PlanImages.render(spec.feedback());
+        if (spec == null) return java.util.List.of();
+        boolean reviewer = spec.kind() == PromptSpec.Kind.CRITIQUE || spec.critique() != null;
+        return dev.justbuild.prompt.PlanImages.render(spec.feedback(), reviewer);
     }
     public PlanRequest(String systemPrompt, String userContent, String schemaJson, String model, Duration timeout) {
         this(systemPrompt, userContent, schemaJson, model, timeout, null);
