@@ -15,6 +15,12 @@ import net.minecraft.world.level.block.state.BlockState;
 /** Compare actual candidate overlays before accepting a replacement. Never mutates the world. */
 public final class ReviewCheck {
     public record Verdict(boolean accepted, String reason, RepairOutcome outcome) {
+        public Verdict {
+            if (outcome == null) throw new IllegalArgumentException("a verdict needs an outcome");
+            if (accepted != (outcome == RepairOutcome.ACCEPTED))
+                throw new IllegalArgumentException("accepted must match the outcome " + outcome);
+            if (!accepted && reason == null) throw new IllegalArgumentException("a rejected verdict needs a reason");
+        }
         private static final Verdict ACCEPT = new Verdict(true, null, RepairOutcome.ACCEPTED);
         private static Verdict reject(String reason, RepairOutcome outcome) { return new Verdict(false, reason, outcome); }
     }

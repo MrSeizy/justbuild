@@ -95,6 +95,14 @@ class ReviewCheckTest {
         assertFalse(compare(platform, divided, Map.of()).accepted(), "Re-anchoring must still detect a split route");
     }
 
+    @Test void verdictsMustBeInternallyConsistent() {
+        assertThrows(IllegalArgumentException.class, () -> new ReviewCheck.Verdict(true, null, RepairOutcome.REJECTED_ROUTE));
+        assertThrows(IllegalArgumentException.class, () -> new ReviewCheck.Verdict(false, "x", RepairOutcome.ACCEPTED));
+        assertThrows(IllegalArgumentException.class, () -> new ReviewCheck.Verdict(false, "x", null));
+        assertThrows(IllegalArgumentException.class, () -> new ReviewCheck.Verdict(false, null, RepairOutcome.FAILED));
+        assertDoesNotThrow(() -> new ReviewCheck.Verdict(false, "x", RepairOutcome.REJECTED_LIMIT));
+    }
+
     @Test void unknownOrOversizedRouteGraphsDoNotClaimARegression() {
         var empty = new PlanningCheck.Result(PlanningFeedback.EMPTY, Map.of());
         var far = new PlanningCheck.Result(PlanningFeedback.EMPTY,
