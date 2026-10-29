@@ -4,8 +4,9 @@ import com.google.gson.JsonObject;
 
 /**
  * JSON Schema a reviewer must answer with: findings only, no geometry. Every field is required (nullable where
- * optional) and objects are closed, like BuildPlanSchema, so Claude --json-schema, Codex --output-schema and OpenAI
- * strict json_schema all accept it. Counts and lengths are enforced by CritiqueParser, not the schema.
+ * optional) and objects are closed, like BuildPlanSchema, so Claude --json-schema, Codex --output-schema, OpenAI
+ * strict json_schema and the Anthropic-compatible provider all accept it. Counts and lengths are enforced by
+ * CritiqueParser, not the schema.
  */
 public final class CritiqueSchema {
     public static final String JSON = schema().toString();

@@ -3,6 +3,7 @@ package dev.justbuild.plan;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.util.Arrays;
@@ -31,7 +32,51 @@ class CritiqueSchemaTest {
         JsonObject fields = problem.getAsJsonObject("properties");
         assertEquals(Arrays.stream(Critique.Category.values()).map(c -> c.name().toLowerCase(Locale.ROOT)).toList(),
                 strings(fields.getAsJsonObject("category").getAsJsonArray("enum")));
-        assertEquals(List.of("must_fix", "should_fix", "minor"), strings(fields.getAsJsonObject("severity").getAsJsonArray("enum")));
+        assertEquals(List.of("must_fix", "should_fix", "minor"),
+                strings(fields.getAsJsonObject("severity").getAsJsonArray("enum")));
         assertEquals(List.of("object", "null"), strings(fields.getAsJsonObject("cell").getAsJsonArray("type")));
+    }
+
+    @Test
+    void everyObjectSchemaIsStrictAtEveryDepth() {
+        assertStrict(JsonParser.parseString(CritiqueSchema.JSON).getAsJsonObject(), "$");
+    }
+
+    private static void assertStrict(JsonObject schema, String path) {
+        JsonElement type = schema.get("type");
+        boolean isObject = type != null && (type.isJsonArray()
+                ? strings(type.getAsJsonArray()).contains("object") : type.getAsString().equals("object"));
+        if (isObject) {
+            assertNotNull(schema.get("additionalProperties"), path + " additionalProperties");
+            assertFalse(schema.get("additionalProperties").getAsBoolean(), path + " additionalProperties");
+            assertEquals(List.copyOf(schema.getAsJsonObject("properties").keySet()),
+                    strings(schema.getAsJsonArray("required")), path + " required");
+        }
+        if (schema.has("properties")) {
+            schema.getAsJsonObject("properties").entrySet()
+                    .forEach(e -> assertStrict(e.getValue().getAsJsonObject(), path + "." + e.getKey()));
+        }
+        if (schema.has("items")) {
+            assertStrict(schema.getAsJsonObject("items"), path + "[]");
+        }
+    }
+
+    @Test
+    void leafTypesAreIntegersAndStrings() {
+        JsonObject root = JsonParser.parseString(CritiqueSchema.JSON).getAsJsonObject();
+        JsonObject properties = root.getAsJsonObject("properties");
+        assertEquals("string", properties.getAsJsonObject("keep").getAsJsonObject("items").get("type").getAsString());
+        JsonObject fields = properties.getAsJsonObject("problems").getAsJsonObject("items")
+                .getAsJsonObject("properties");
+        assertEquals("string", fields.getAsJsonObject("problem").get("type").getAsString());
+        assertEquals("string", fields.getAsJsonObject("fix").get("type").getAsString());
+        assertEquals("integer",
+                fields.getAsJsonObject("operations").getAsJsonObject("items").get("type").getAsString());
+        JsonObject cell = fields.getAsJsonObject("cell");
+        assertEquals(List.of("x", "y", "z"), strings(cell.getAsJsonArray("required")));
+        for (String axis : List.of("x", "y", "z")) {
+            assertEquals("integer",
+                    cell.getAsJsonObject("properties").getAsJsonObject(axis).get("type").getAsString());
+        }
     }
 }
