@@ -13,9 +13,14 @@ import net.minecraft.world.level.EmptyBlockGetter;
 public final class PlanImages {
     private PlanImages() { }
     public static List<byte[]> render(PlanningFeedback feedback) {
+        return render(feedback, false);
+    }
+    /** {@code elevations} adds the candidate's four facades, for the separate reviewer and its repair. */
+    public static List<byte[]> render(PlanningFeedback feedback, boolean elevations) {
         List<byte[]> images=new ArrayList<>();
         if(feedback.source()!=null)images.add(render(feedback.source(),"ORIGINAL source"));
         if(feedback.candidate()!=null)images.add(render(feedback.candidate(),"CANDIDATE draft"));
+        if(elevations&&feedback.candidate()!=null)images.add(elevations(feedback.candidate()));
         return List.copyOf(images);
     }
     public static byte[] render(VoxelVolume volume,String label) {
@@ -28,11 +33,7 @@ public final class PlanImages {
             var from=volume.box().from();var to=volume.box().to();
             g.drawString("x "+from.x()+".."+to.x()+"  y "+from.y()+".."+to.y()+"  z "+from.z()+".."+to.z(),14,39);
             g.drawString("Dark background = air or unknown; unsampled gaps are unknown. +x east, +y up, +z south.",14,57);
-            Map<String,Color> colors=new HashMap<>();
-            for(String state:volume.palette()) {
-                int rgb=dev.justbuild.world.BlockResolver.parse(state).map(s->s.getMapColor(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).col).orElse(0x888888);
-                colors.put(state,new Color(rgb==0?0x888888:rgb&0xffffff));
-            }
+            Map<String,Color> colors=colors(volume);
             g.drawString("Isometric from southeast",14,83);
             double scale=Math.min(340.0/(volume.nx()+volume.nz()),220.0/(volume.ny()+(volume.nx()+volume.nz())*.25));
             int cx=190,cy=295;
@@ -56,6 +57,53 @@ public final class PlanImages {
                 for(int z=0;z<volume.nz();z++){String s=volume.at(midX,y,z);if(!empty(s))rect(g,colors.get(s),400+z*sz,370+(volume.ny()-1-y)*sz,sz);}
             }
         } finally {g.dispose();}
+        return png(image);
+    }
+    /** Four straight-on facades of a volume: the first block seen from each side, darker the farther it is set back. */
+    public static byte[] elevations(VoxelVolume volume) {
+        BufferedImage image=new BufferedImage(768,640,BufferedImage.TYPE_INT_RGB);
+        Graphics2D g=image.createGraphics();
+        try {
+            g.setColor(new Color(0x151b23));g.fillRect(0,0,768,640);
+            g.setFont(new Font(Font.MONOSPACED,Font.PLAIN,12));g.setColor(Color.WHITE);
+            g.drawString("CANDIDATE facades | block-color, darker = set back | sample spacing "+volume.step(),14,21);
+            Map<String,Color> colors=colors(volume);
+            String[] names={"South (seen from +z)","East (seen from +x)","North (seen from -z)","West (seen from -x)"};
+            for(int side=0;side<4;side++) {
+                int ox=side%2==0?14:400,oy=side<2?40:340;
+                g.setColor(Color.WHITE);g.drawString(names[side],ox,oy+12);
+                facade(g,volume,side,colors,ox,oy+20);
+            }
+        } finally {g.dispose();}
+        return png(image);
+    }
+    /** side 0..3 = south, east, north, west; columns run left to right as a viewer outside that side sees them. */
+    private static void facade(Graphics2D g,VoxelVolume v,int side,Map<String,Color> colors,int ox,int oy) {
+        boolean alongX=side%2==0;
+        int width=alongX?v.nx():v.nz(),deep=alongX?v.nz():v.nx();
+        int[][] depth=new int[width][v.ny()];String[][] seen=new String[width][v.ny()];int nearest=Integer.MAX_VALUE;
+        for(int u=0;u<width;u++)for(int y=0;y<v.ny();y++)for(int k=0;k<deep;k++) {
+            int x=switch(side){case 0->u;case 1->v.nx()-1-k;case 2->v.nx()-1-u;default->k;};
+            int z=switch(side){case 0->v.nz()-1-k;case 1->v.nz()-1-u;case 2->k;default->u;};
+            String s=v.at(x,y,z);
+            if(!empty(s)){seen[u][y]=s;depth[u][y]=k;nearest=Math.min(nearest,k);break;}
+        }
+        double scale=Math.min(354.0/width,270.0/v.ny());
+        for(int u=0;u<width;u++)for(int y=0;y<v.ny();y++) {
+            if(seen[u][y]==null)continue;
+            Color c=colors.get(seen[u][y]);double f=Math.max(0.35,1.0-0.15*(depth[u][y]-nearest));
+            rect(g,new Color((int)(c.getRed()*f),(int)(c.getGreen()*f),(int)(c.getBlue()*f)),ox+u*scale,oy+(v.ny()-1-y)*scale,scale);
+        }
+    }
+    private static Map<String,Color> colors(VoxelVolume volume) {
+        Map<String,Color> colors=new HashMap<>();
+        for(String state:volume.palette()) {
+            int rgb=dev.justbuild.world.BlockResolver.parse(state).map(s->s.getMapColor(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).col).orElse(0x888888);
+            colors.put(state,new Color(rgb==0?0x888888:rgb&0xffffff));
+        }
+        return colors;
+    }
+    private static byte[] png(BufferedImage image) {
         try {ByteArrayOutputStream out=new ByteArrayOutputStream();ImageIO.write(image,"png",out);return out.toByteArray();}
         catch(IOException e){throw new IllegalStateException("Could not render planning image",e);}
     }
