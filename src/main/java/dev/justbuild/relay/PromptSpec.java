@@ -82,7 +82,7 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
         feedback = feedback == null ? PlanningFeedback.EMPTY : feedback;
     }
 
-    /** Every request without a critique. */
+    /** Every request without a critique. Copy methods must use the full constructor so they keep the note. */
     public PromptSpec(Kind kind, String dimension, String biome, Placement placement, String style,
             String direction, String request, List<Exchange> exchanges, int remaining, TerrainSummary terrain,
             String originalRequest, List<String> earlierChanges, String planJson, int round, int rounds, int maxBlocks,
@@ -186,9 +186,7 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
 
     /** A repair: the builder applies {@code note}'s critique to its candidate (null is the builder's own review). */
     public PromptSpec review(String plan, int reviewRound, int reviewRounds, CritiqueNote note) {
-        return new PromptSpec(Kind.REVIEW, dimension, biome, placement, style, direction, request, exchanges, 0,
-                terrain, originalRequest, earlierChanges, plan, reviewRound, reviewRounds, maxBlocks, false, guides, zone,
-                inspections, 0, areas, theme, constraints, feedback, proposal, note);
+        return asking(Kind.REVIEW, plan, reviewRound, reviewRounds, note);
     }
 
     /**
@@ -196,15 +194,21 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
      * earlier round's critique and its repair outcome, only in round 2.
      */
     public PromptSpec critiqueRound(String plan, int reviewRound, int reviewRounds, CritiqueNote previous) {
-        return new PromptSpec(Kind.CRITIQUE, dimension, biome, placement, style, direction, request, exchanges, 0,
+        return asking(Kind.CRITIQUE, plan, reviewRound, reviewRounds, previous);
+    }
+
+    /** A review-shaped request: no questions, guide menu or inspection allowance; everything else is kept. */
+    private PromptSpec asking(Kind asked, String plan, int reviewRound, int reviewRounds, CritiqueNote note) {
+        return new PromptSpec(asked, dimension, biome, placement, style, direction, request, exchanges, 0,
                 terrain, originalRequest, earlierChanges, plan, reviewRound, reviewRounds, maxBlocks, false, guides, zone,
-                inspections, 0, areas, theme, constraints, feedback, proposal, previous);
+                inspections, 0, areas, theme, constraints, feedback, proposal, note);
     }
 
     /** A request for a smaller version of {@code planJson}, made from this new-build or edit spec (no guides). */
     public PromptSpec shrink(String plan) {
         return new PromptSpec(Kind.SHRINK, dimension, biome, placement, style, direction, request, exchanges, 0,
-                terrain, originalRequest, earlierChanges, plan, 0, 0, maxBlocks, false, List.of(), zone, inspections, 0, areas, theme, constraints, feedback, proposal);
+                terrain, originalRequest, earlierChanges, plan, 0, 0, maxBlocks, false, List.of(), zone, inspections, 0, areas, theme, constraints, feedback, proposal,
+                null); // A smaller-plan request never carries a critique.
     }
 
     /** The same spec offering the guide menu or carrying the guides read (ids from prompt.GuideLibrary). */
@@ -253,7 +257,7 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
 
     /** The system prompt for this request, made the same way on the server and in a player's game. */
     public String systemPrompt(PlanLimits limits, Guidance.DetailLevel detail) {
-        if (kind == Kind.CRITIQUE) return PromptBuilder.criticPrompt();
+        if (kind == Kind.CRITIQUE) return PromptBuilder.criticPrompt(limits);
         return PromptBuilder.systemPrompt(limits, detail, offerGuides, inspectionRemaining, proposal);
     }
 
@@ -302,7 +306,10 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
             text += "\n\n" + snapshot.format();
         }
         if (!inspections.isEmpty()) {
-            text += proposal
+            text += kind == Kind.CRITIQUE
+                    ? "\nThese live samples show the site the candidate must fit; judge the candidate against them. "
+                            + "Later overlapping samples supersede earlier samples."
+                    : proposal
                     ? "\nThese live samples show the site before the proposed build is placed; fit the plan to them. "
                             + "Later overlapping samples supersede earlier samples."
                     : "\nUse these live samples to guide changes; the saved plan describes intent and may differ from "
@@ -314,7 +321,8 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
 
     /** A rejected draft can still receive repair guidance without trying to draw unsafe geometry. */
     private String reviewViews() {
-        String unavailable = "Text views unavailable: the draft exceeds safe rendering limits. Correct the reported diagnostics and return a bounded plan.";
+        String unavailable = "Text views unavailable: the draft exceeds safe rendering limits."
+                + (kind == Kind.CRITIQUE ? "" : " Correct the reported diagnostics and return a bounded plan.");
         if (feedback.problems().stream().anyMatch(p -> p.kind() == PlanningFeedback.Kind.LIMIT)) return unavailable;
         try {
             BuildPlan draft = plan();

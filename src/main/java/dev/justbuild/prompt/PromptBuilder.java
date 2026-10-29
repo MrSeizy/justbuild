@@ -311,7 +311,7 @@ public final class PromptBuilder {
         return sb.toString();
     }
 
-    public static String criticPrompt() {
+    public static String criticPrompt(dev.justbuild.plan.PlanLimits limits) {
         return "";
     }
 
