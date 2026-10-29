@@ -44,18 +44,18 @@ public record RelayOutput(String json, String question, String planKey, String l
             }
             case PlanResponse.Build build -> {
                 BuildPlan plan = PlanSanitizer.sanitize(build.plan(), PromptCheck::knownBlock);
-                String title = visibleText(plan.title(), MAX_TITLE);
+                String title = PlanParser.visible(plan.title(), MAX_TITLE);
                 String json = PlanWriter.write(new BuildPlan(title.isEmpty() ? "Untitled build" : title,
-                        visibleText(plan.summary(), MAX_SUMMARY), plan.operations(), plan.texture()));
+                        PlanParser.visible(plan.summary(), MAX_SUMMARY), plan.operations(), plan.texture()));
                 yield new RelayOutput(json, null, PromptCheck.planKey(json));
             }
             case PlanResponse.Question q -> {
                 JsonObject o = base("question");
-                String question = visibleText(q.question(), MAX_QUESTION);
+                String question = PlanParser.visible(q.question(), MAX_QUESTION);
                 if (question.isEmpty()) throw new PlanException("the AI returned an empty question");
                 o.addProperty("question", question);
                 JsonArray options = new JsonArray();
-                q.options().stream().map(option -> visibleText(option, MAX_OPTION)).filter(option -> !option.isEmpty())
+                q.options().stream().map(option -> PlanParser.visible(option, MAX_OPTION)).filter(option -> !option.isEmpty())
                         .forEach(options::add);
                 o.add("options", options);
                 yield new RelayOutput(o.toString(), question, null);
@@ -66,7 +66,7 @@ public record RelayOutput(String json, String question, String planKey, String l
                 o.add("options", JsonNull.INSTANCE);
                 o.addProperty("summary", DECLINED);
                 yield new RelayOutput(o.toString(), null, null, "Your AI declined this build: "
-                        + visibleText(d.reason(), 400));
+                        + PlanParser.visible(d.reason(), 400));
             }
             case PlanResponse.Guides g -> {
                 JsonObject o = base("guides");
@@ -93,14 +93,6 @@ public record RelayOutput(String json, String question, String planKey, String l
             failure.initCause(e);
             throw failure;
         }
-    }
-
-    /** Keep international text, but remove invisible formatting/control characters before counting visible text. */
-    private static String visibleText(String text, int limit) {
-        String clean = PlanParser.clean(text, Integer.MAX_VALUE)
-                .replaceAll("[\\p{C}\\p{Z}]+", " ").replaceAll(" +", " ").strip();
-        int count = clean.codePointCount(0, clean.length());
-        return count <= limit ? clean : clean.substring(0, clean.offsetByCodePoints(0, limit)).strip();
     }
 
     private static JsonObject base(String kind) {
