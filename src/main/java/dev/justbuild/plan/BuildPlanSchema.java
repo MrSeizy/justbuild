@@ -141,7 +141,7 @@ public final class BuildPlanSchema {
         };
     }
 
-    private static JsonObject object(JsonObject properties) {
+    static JsonObject object(JsonObject properties) {
         JsonObject o = type("object");
         o.addProperty("additionalProperties", false);
         JsonArray required = new JsonArray();
@@ -151,7 +151,7 @@ public final class BuildPlanSchema {
         return o;
     }
 
-    private static JsonObject nullableObject(JsonObject... props) {
+    static JsonObject nullableObject(JsonObject... props) {
         JsonObject properties = new JsonObject();
         for (JsonObject p : props) {
             p.entrySet().forEach(e -> properties.add(e.getKey(), e.getValue()));
@@ -161,13 +161,13 @@ public final class BuildPlanSchema {
         return o;
     }
 
-    private static JsonObject property(String name, JsonObject schema) {
+    static JsonObject property(String name, JsonObject schema) {
         JsonObject p = new JsonObject();
         p.add(name, schema);
         return p;
     }
 
-    private static JsonObject type(String type) {
+    static JsonObject type(String type) {
         JsonObject o = new JsonObject();
         o.addProperty("type", type);
         return o;
@@ -185,7 +185,7 @@ public final class BuildPlanSchema {
         return a;
     }
 
-    private static JsonObject enumOf(String type, String... values) {
+    static JsonObject enumOf(String type, String... values) {
         JsonObject o = type(type);
         o.add("enum", strings(values));
         return o;
@@ -199,7 +199,7 @@ public final class BuildPlanSchema {
         return o;
     }
 
-    private static JsonArray strings(String... values) {
+    static JsonArray strings(String... values) {
         JsonArray a = new JsonArray();
         for (String v : values) {
             a.add(v);
