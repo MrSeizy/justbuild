@@ -6,7 +6,10 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.justbuild.plan.BuildPlan;
+import dev.justbuild.plan.BuildPlanSchema;
 import dev.justbuild.plan.Cell;
+import dev.justbuild.plan.CritiqueNote;
+import dev.justbuild.plan.CritiqueSchema;
 import dev.justbuild.plan.PlanException;
 import dev.justbuild.plan.PlanLimits;
 import dev.justbuild.plan.PlanParser;
@@ -40,15 +43,17 @@ import java.util.Map;
  * instructions. Placement, style, review views, and the shrink count are all derived here, never sent as text.
  * Guides travel as ids ({@code offerGuides}: the system prompt lists the menu; {@code guides}: the ones the AI read,
  * whose text comes from the game's own copy). {@code proposal} marks an edit whose plan is a waiting preview nobody
- * has placed (a revision).
+ * has placed (a revision). {@code critique} is the separate reviewer's findings a repair applies, or in a second
+ * critique round the earlier round's findings and what their repair did.
  */
 public record PromptSpec(Kind kind, String dimension, String biome, Placement placement, String style,
         String direction, String request, List<Exchange> exchanges, int remaining, TerrainSummary terrain,
         String originalRequest, List<String> earlierChanges, String planJson, int round, int rounds, int maxBlocks,
         boolean offerGuides, List<String> guides, BuildArea zone, List<WorldSnapshot> inspections, int inspectionRemaining,
-        PlanningAreas areas, ProjectTheme theme, BuildConstraints constraints, PlanningFeedback feedback, boolean proposal) {
+        PlanningAreas areas, ProjectTheme theme, BuildConstraints constraints, PlanningFeedback feedback, boolean proposal,
+        CritiqueNote critique) {
 
-    public enum Kind { NEW, EDIT, REVIEW, SHRINK }
+    public enum Kind { NEW, EDIT, REVIEW, SHRINK, CRITIQUE }
 
     /** Where (0, 0, 0) is: in front of the player ({@link #FRONT}), or at a spot they pointed at {@code distance} away. */
     public record Placement(int distance, int x, int y, int z) {
@@ -75,6 +80,17 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
         theme = theme == null ? ProjectTheme.EMPTY : theme;
         constraints = constraints == null ? BuildConstraints.NONE : constraints;
         feedback = feedback == null ? PlanningFeedback.EMPTY : feedback;
+    }
+
+    /** Every request without a critique. */
+    public PromptSpec(Kind kind, String dimension, String biome, Placement placement, String style,
+            String direction, String request, List<Exchange> exchanges, int remaining, TerrainSummary terrain,
+            String originalRequest, List<String> earlierChanges, String planJson, int round, int rounds, int maxBlocks,
+            boolean offerGuides, List<String> guides, BuildArea zone, List<WorldSnapshot> inspections, int inspectionRemaining,
+            PlanningAreas areas, ProjectTheme theme, BuildConstraints constraints, PlanningFeedback feedback, boolean proposal) {
+        this(kind, dimension, biome, placement, style, direction, request, exchanges, remaining, terrain,
+                originalRequest, earlierChanges, planJson, round, rounds, maxBlocks, offerGuides, guides, zone,
+                inspections, inspectionRemaining, areas, theme, constraints, feedback, proposal, null);
     }
 
     /** Every request except a revision of an unplaced preview. */
@@ -163,10 +179,26 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
                 PlanningAreas.EMPTY, ProjectTheme.EMPTY, BuildConstraints.NONE, PlanningFeedback.EMPTY, true);
     }
 
-    /** A self-review of a complete candidate, retaining the new-build or edit context and guides. */
+    /** The builder's own review of a complete candidate, retaining the new-build or edit context and guides. */
     public PromptSpec review(String plan, int reviewRound, int reviewRounds) {
+        return review(plan, reviewRound, reviewRounds, null);
+    }
+
+    /** A repair: the builder applies {@code note}'s critique to its candidate (null is the builder's own review). */
+    public PromptSpec review(String plan, int reviewRound, int reviewRounds, CritiqueNote note) {
         return new PromptSpec(Kind.REVIEW, dimension, biome, placement, style, direction, request, exchanges, 0,
-                terrain, originalRequest, earlierChanges, plan, reviewRound, reviewRounds, maxBlocks, false, guides, zone, inspections, 0, areas, theme, constraints, feedback, proposal);
+                terrain, originalRequest, earlierChanges, plan, reviewRound, reviewRounds, maxBlocks, false, guides, zone,
+                inspections, 0, areas, theme, constraints, feedback, proposal, note);
+    }
+
+    /**
+     * The separate reviewer's look at a candidate: no questions, guide menu or inspection. {@code previous} is the
+     * earlier round's critique and its repair outcome, only in round 2.
+     */
+    public PromptSpec critiqueRound(String plan, int reviewRound, int reviewRounds, CritiqueNote previous) {
+        return new PromptSpec(Kind.CRITIQUE, dimension, biome, placement, style, direction, request, exchanges, 0,
+                terrain, originalRequest, earlierChanges, plan, reviewRound, reviewRounds, maxBlocks, false, guides, zone,
+                inspections, 0, areas, theme, constraints, feedback, proposal, previous);
     }
 
     /** A request for a smaller version of {@code planJson}, made from this new-build or edit spec (no guides). */
@@ -179,49 +211,55 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
     public PromptSpec withGuides(boolean offer, List<String> read) {
         return new PromptSpec(kind, dimension, biome, placement, style, direction, request, exchanges, remaining,
                 terrain, originalRequest, earlierChanges, planJson, round, rounds, maxBlocks, offer, read,
-                zone, inspections, inspectionRemaining, areas, theme, constraints, feedback, proposal);
+                zone, inspections, inspectionRemaining, areas, theme, constraints, feedback, proposal, critique);
     }
 
     /** The same spec with the plan replaced (PromptCheck uses it to put in a re-written copy). */
     PromptSpec withPlan(String plan) {
         return new PromptSpec(kind, dimension, biome, placement, style, direction, request, exchanges, remaining,
                 terrain, originalRequest, earlierChanges, plan, round, rounds, maxBlocks, offerGuides, guides,
-                zone, inspections, inspectionRemaining, areas, theme, constraints, feedback, proposal);
+                zone, inspections, inspectionRemaining, areas, theme, constraints, feedback, proposal, critique);
     }
 
     public PromptSpec withFeedback(PlanningFeedback value) {
         return new PromptSpec(kind, dimension, biome, placement, style, direction, request, exchanges, remaining,
                 terrain, originalRequest, earlierChanges, planJson, round, rounds, maxBlocks, offerGuides, guides,
-                zone, inspections, inspectionRemaining, areas, theme, constraints, value, proposal);
+                zone, inspections, inspectionRemaining, areas, theme, constraints, value, proposal, critique);
     }
 
     public PromptSpec withWorld(BuildArea area, List<WorldSnapshot> snapshots, int readsLeft) {
         return new PromptSpec(kind, dimension, biome, placement, style, direction, request, exchanges, remaining,
                 terrain, originalRequest, earlierChanges, planJson, round, rounds, maxBlocks, offerGuides, guides,
-                area, snapshots, readsLeft, areas, theme, constraints, feedback, proposal);
+                area, snapshots, readsLeft, areas, theme, constraints, feedback, proposal, critique);
     }
 
     public PromptSpec withAreas(PlanningAreas value) {
         return new PromptSpec(kind, dimension, biome, placement, style, direction, request, exchanges, remaining,
                 terrain, originalRequest, earlierChanges, planJson, round, rounds, maxBlocks, offerGuides, guides,
-                zone, inspections, inspectionRemaining, value, theme, constraints, feedback, proposal);
+                zone, inspections, inspectionRemaining, value, theme, constraints, feedback, proposal, critique);
     }
 
     public PromptSpec withTheme(ProjectTheme value) {
         return new PromptSpec(kind, dimension, biome, placement, style, direction, request, exchanges, remaining,
                 terrain, originalRequest, earlierChanges, planJson, round, rounds, maxBlocks, offerGuides, guides,
-                zone, inspections, inspectionRemaining, areas, value, constraints, feedback, proposal);
+                zone, inspections, inspectionRemaining, areas, value, constraints, feedback, proposal, critique);
     }
 
     public PromptSpec withConstraints(BuildConstraints value) {
         return new PromptSpec(kind, dimension, biome, placement, style, direction, request, exchanges, remaining,
                 terrain, originalRequest, earlierChanges, planJson, round, rounds, maxBlocks, offerGuides, guides,
-                zone, inspections, inspectionRemaining, areas, theme, value, feedback, proposal);
+                zone, inspections, inspectionRemaining, areas, theme, value, feedback, proposal, critique);
     }
 
     /** The system prompt for this request, made the same way on the server and in a player's game. */
     public String systemPrompt(PlanLimits limits, Guidance.DetailLevel detail) {
+        if (kind == Kind.CRITIQUE) return PromptBuilder.criticPrompt();
         return PromptBuilder.systemPrompt(limits, detail, offerGuides, inspectionRemaining, proposal);
+    }
+
+    /** The JSON Schema the answer to this request must match. */
+    public String schemaJson() {
+        return kind == Kind.CRITIQUE ? CritiqueSchema.JSON : BuildPlanSchema.JSON;
     }
 
     BuildContext context() {
@@ -244,14 +282,16 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
                     : PromptBuilder.editContent(context(),
                             new EditContext(originalRequest, earlierChanges, planJson, request), exchanges, remaining);
             case REVIEW -> PromptBuilder.reviewContent(context(), request, originalRequest, earlierChanges, exchanges, planJson,
-                    reviewViews(), round, rounds, proposal);
+                    reviewViews(), round, rounds, proposal, critique);
+            case CRITIQUE -> PromptBuilder.critiqueContent(context(), request, originalRequest, earlierChanges, exchanges,
+                    planJson, reviewViews(), round, rounds, proposal, critique);
             case SHRINK -> {
                 int cap = (int) Math.min(4L * maxBlocks, 1_000_000L);
                 yield PromptBuilder.shrinkContent(context(), request, originalRequest, earlierChanges, exchanges, planJson,
                         PlanSize.describe(PlanSize.blocks(plan(), cap), cap), maxBlocks, proposal);
             }
         };
-        if (terrain != null && (kind == Kind.REVIEW || kind == Kind.SHRINK)) text += "\n\n" + terrain.format();
+        if (terrain != null && (kind == Kind.REVIEW || kind == Kind.SHRINK || kind == Kind.CRITIQUE)) text += "\n\n" + terrain.format();
         if (zone != null) {
             text += "\n\n" + zone.format();
         }
@@ -368,6 +408,7 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
         o.add("feedback", feedback.toJson());
         // Written only when set, so ordinary requests stay byte-for-byte what 0.2.0 games read.
         if (proposal) o.addProperty("proposal", true);
+        if (critique != null) o.add("critique", critique.toJson());
         return o;
     }
 
@@ -437,7 +478,8 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
                     o.get("theme") instanceof JsonObject theme ? ProjectTheme.parse(theme) : ProjectTheme.EMPTY,
                     o.get("constraints") instanceof JsonObject constraints ? BuildConstraints.parse(constraints) : BuildConstraints.NONE,
                     o.get("feedback") instanceof JsonObject feedback ? PlanningFeedback.parse(feedback) : PlanningFeedback.EMPTY,
-                    o.has("proposal") && o.get("proposal").getAsBoolean());
+                    o.has("proposal") && o.get("proposal").getAsBoolean(),
+                    o.get("critique") instanceof JsonObject note ? CritiqueNote.parse(note) : null);
         } catch (RuntimeException e) {
             throw new SpecException("Could not read the request: " + e);
         }
