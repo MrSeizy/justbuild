@@ -9,7 +9,8 @@ import java.util.Map;
 /**
  * JSON Schema every backend must answer with. Each operation type is its own anyOf variant listing only the fields
  * it uses; all fields are required (nullable where optional) so Claude --json-schema, Codex --output-schema, and
- * OpenAI strict json_schema all accept it.
+ * OpenAI strict json_schema all accept it. The helpers object, nullableObject, property, type, enumOf and strings are
+ * shared with CritiqueSchema, so changes to them must keep both schemas strict.
  */
 public final class BuildPlanSchema {
     /** Fields of each operation type, after "op" and before "repeat" and "mirror". PlanWriter writes the same set. */
