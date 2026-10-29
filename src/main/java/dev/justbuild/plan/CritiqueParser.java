@@ -64,8 +64,13 @@ public final class CritiqueParser {
             String problem = PlanParser.visible(string(p.get("problem")), Critique.MAX_PROBLEM_TEXT);
             String fix = PlanParser.visible(string(p.get("fix")), Critique.MAX_FIX_TEXT);
             if (problem.isEmpty() || fix.isEmpty()) throw new PlanException("a critique problem needs a problem and a fix");
-            problems.add(new Critique.Problem(choice(p.get("severity"), Critique.Severity.class, "severity"),
-                    choice(p.get("category"), Critique.Category.class, "category"), indices, cell(p.get("cell")), problem, fix));
+            Critique.Severity severity = choice(p.get("severity"), Critique.Severity.class, "severity");
+            Critique.Category category = choice(p.get("category"), Critique.Category.class, "category");
+            try {
+                problems.add(new Critique.Problem(severity, category, indices, cell(p.get("cell")), problem, fix));
+            } catch (IllegalArgumentException e) {
+                throw new PlanException("the critique is not in normalized form");
+            }
         }
         JsonArray keepList = array(root.get("keep"), "keep");
         if (keepList.size() > Critique.MAX_KEEP) throw new PlanException("the critique keeps too many items");
@@ -76,10 +81,11 @@ public final class CritiqueParser {
             String item = PlanParser.visible(text, Critique.MAX_KEEP_TEXT);
             if (!item.isEmpty()) keep.add(item);
         }
+        if (planKey == null || !planKey.matches("[0-9a-f]{64}")) throw new PlanException("the critique is not about a known plan");
         try {
             return new Critique(planKey, verdict, problems, keep);
         } catch (IllegalArgumentException e) {
-            throw new PlanException("the critique is not about a known plan");
+            throw new PlanException("the critique is not in normalized form");
         }
     }
 
