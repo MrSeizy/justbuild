@@ -149,6 +149,12 @@ class CritiqueParserTest {
         assertThrows(IllegalArgumentException.class, () -> new Critique.Problem(
                 Critique.Severity.MINOR, Critique.Category.ROOF, List.of(), null, "  p\u0007 ", "f"));
         assertThrows(IllegalArgumentException.class, () -> new Critique(KEY, Critique.Verdict.OK, null, List.of()));
+        assertThrows(IllegalArgumentException.class, () -> new Critique.Problem(
+                Critique.Severity.MINOR, Critique.Category.ROOF, List.of(1, 1), null, "p", "f"));
+        assertThrows(IllegalArgumentException.class, () -> new Critique.Problem(
+                Critique.Severity.MINOR, Critique.Category.ROOF, List.of(), new Cell(4097, 0, 0), "p", "f"));
+        assertThrows(IllegalArgumentException.class, () -> new Critique(KEY, Critique.Verdict.OK, List.of(), List.of(" dirty\u0007")));
+        assertThrows(IllegalArgumentException.class, () -> new Critique(KEY, Critique.Verdict.OK, List.of(), List.of("")));
     }
 
     @Test
@@ -180,7 +186,9 @@ class CritiqueParserTest {
         assertThrows(IllegalArgumentException.class, () -> CritiqueNote.parse(
                 JsonParser.parseString("{\"critique\":{\"kind\":\"critique\"},\"outcome\":null}").getAsJsonObject()));
         for (String bad : new String[] {"{}", "{\"critique\":null}", "{\"critique\":" + c.toJson() + ",\"outcome\":{}}",
-                "{\"critique\":" + c.toJson() + ",\"outcome\":[\"ACCEPTED\"]}"}) {
+                "{\"critique\":" + c.toJson() + ",\"outcome\":[\"ACCEPTED\"]}",
+                "{\"critique\":" + c.toJson() + ",\"outcome\":\"accepted\"}",
+                "{\"critique\":" + c.toJson() + ",\"outcome\":1}"}) {
             assertThrows(IllegalArgumentException.class, () -> CritiqueNote.parse(JsonParser.parseString(bad).getAsJsonObject()), bad);
         }
     }
