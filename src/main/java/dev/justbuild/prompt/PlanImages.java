@@ -66,7 +66,7 @@ public final class PlanImages {
         try {
             g.setColor(new Color(0x151b23));g.fillRect(0,0,768,640);
             g.setFont(new Font(Font.MONOSPACED,Font.PLAIN,12));g.setColor(Color.WHITE);
-            g.drawString("CANDIDATE facades | block-color, darker = set back | sample spacing "+volume.step(),14,21);
+            g.drawString("CANDIDATE facades | block-color, darker = set back; unknown cells drawn as empty | sample spacing "+volume.step(),14,21);
             Map<String,Color> colors=colors(volume);
             String[] names={"South (seen from +z)","East (seen from +x)","North (seen from -z)","West (seen from -x)"};
             for(int side=0;side<4;side++) {
@@ -77,7 +77,8 @@ public final class PlanImages {
         } finally {g.dispose();}
         return png(image);
     }
-    /** side 0..3 = south, east, north, west; columns run left to right as a viewer outside that side sees them. */
+    /** side 0..3 = south, east, north, west; columns run left to right as a viewer outside that side sees them.
+     *  Depth is counted in samples from the viewer's side, and shading is relative to the facade's nearest block. */
     private static void facade(Graphics2D g,VoxelVolume v,int side,Map<String,Color> colors,int ox,int oy) {
         boolean alongX=side%2==0;
         int width=alongX?v.nx():v.nz(),deep=alongX?v.nz():v.nx();
@@ -91,10 +92,12 @@ public final class PlanImages {
         double scale=Math.min(354.0/width,270.0/v.ny());
         for(int u=0;u<width;u++)for(int y=0;y<v.ny();y++) {
             if(seen[u][y]==null)continue;
-            Color c=colors.get(seen[u][y]);double f=Math.max(0.35,1.0-0.15*(depth[u][y]-nearest));
+            Color c=lift(colors.get(seen[u][y]));double f=0.45+0.55/(1+0.4*(depth[u][y]-nearest));
             rect(g,new Color((int)(c.getRed()*f),(int)(c.getGreen()*f),(int)(c.getBlue()*f)),ox+u*scale,oy+(v.ny()-1-y)*scale,scale);
         }
     }
+    /** Near-black block colors would vanish into the background, so dark ones are blended halfway toward grey. */
+    private static Color lift(Color c){return 0.299*c.getRed()+0.587*c.getGreen()+0.114*c.getBlue()<80?new Color((c.getRed()+0xa0)/2,(c.getGreen()+0xa0)/2,(c.getBlue()+0xa0)/2):c;}
     private static Map<String,Color> colors(VoxelVolume volume) {
         Map<String,Color> colors=new HashMap<>();
         for(String state:volume.palette()) {
