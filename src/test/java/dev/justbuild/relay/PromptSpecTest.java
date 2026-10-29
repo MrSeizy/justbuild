@@ -220,7 +220,8 @@ class PromptSpecTest {
 
     @Test
     void critiqueRoundsAskNothingAndRoundTrip() throws Exception {
-        PromptSpec spec = base().withGuides(true, List.of("windows")).critiqueRound(PLAN, 1, 2, null);
+        PromptSpec spec = base().withWorld(null, List.of(), 2).withGuides(true, List.of("windows"))
+                .critiqueRound(PLAN, 1, 2, null);
         assertEquals(PromptSpec.Kind.CRITIQUE, spec.kind());
         assertEquals(0, spec.remaining());
         assertEquals(0, spec.inspectionRemaining());
@@ -231,7 +232,9 @@ class PromptSpecTest {
         assertEquals(dev.justbuild.plan.BuildPlanSchema.JSON, base().schemaJson());
         String json = spec.toJson().toString();
         assertEquals(json, PromptSpec.parse(json).toJson().toString());
-        assertFalse(json.contains("\"critique\":{"), "no note is written when there is none");
+        assertFalse(spec.toJson().has("critique"), "no note is written when there is none");
+        assertFalse(base().toJson().has("critique"));
+        assertFalse(base().review(PLAN, 1, 1).toJson().has("critique"));
     }
 
     @Test
@@ -239,7 +242,7 @@ class PromptSpecTest {
         var note = new dev.justbuild.plan.CritiqueNote(critique(), dev.justbuild.plan.RepairOutcome.REJECTED_ROUTE);
         PromptSpec spec = base().critiqueRound(PLAN, 2, 2, note);
         for (PromptSpec copy : List.of(spec.withGuides(false, List.of()), spec.withFeedback(dev.justbuild.prompt.PlanningFeedback.EMPTY),
-                spec.withWorld(null, List.of(), 0), spec.withAreas(dev.justbuild.prompt.PlanningAreas.EMPTY),
+                spec.withPlan(PLAN), spec.withWorld(null, List.of(), 0), spec.withAreas(dev.justbuild.prompt.PlanningAreas.EMPTY),
                 spec.withTheme(dev.justbuild.prompt.ProjectTheme.EMPTY), spec.withConstraints(dev.justbuild.prompt.BuildConstraints.NONE),
                 PromptSpec.parse(spec.toJson().toString()))) {
             assertEquals(note, copy.critique());
@@ -261,5 +264,26 @@ class PromptSpecTest {
         assertEquals(2, images.apply(base().review(PLAN, 1, 1)));
         assertEquals(3, images.apply(base().critiqueRound(PLAN, 1, 1, null)));
         assertEquals(3, images.apply(base().review(PLAN, 1, 1, new dev.justbuild.plan.CritiqueNote(critique(), null))));
+    }
+
+    @Test
+    void malformedNotesAreSpecErrors() throws Exception {
+        var spec = base().critiqueRound(PLAN, 1, 1, null);
+        var o = spec.toJson();
+        var bad = new com.google.gson.JsonObject();
+        bad.addProperty("critique", "nope");
+        o.add("critique", bad);
+        assertThrows(PromptSpec.SpecException.class, () -> PromptSpec.parse(o));
+        var withNote = base().critiqueRound(PLAN, 2, 2,
+                new dev.justbuild.plan.CritiqueNote(critique(), dev.justbuild.plan.RepairOutcome.REJECTED_ROUTE)).toJson();
+        withNote.getAsJsonObject("critique").addProperty("outcome", "BOGUS");
+        assertThrows(PromptSpec.SpecException.class, () -> PromptSpec.parse(withNote));
+    }
+
+    @Test
+    void critiqueRoundsCarryTerrainAcrossTheRelay() throws Exception {
+        PromptSpec spec = base().critiqueRound(PLAN, 1, 1, null);
+        assertTrue(spec.userContent().contains(terrain().format()));
+        assertEquals(spec.userContent(), PromptSpec.parse(spec.toJson().toString()).userContent());
     }
 }
