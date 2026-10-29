@@ -2,7 +2,7 @@ package dev.justbuild.prompt;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.justbuild.plan.PlanLimits;
+import dev.justbuild.plan.*;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -236,5 +236,55 @@ class PromptBuilderTest {
     void zeroQuestionsRemainingDemandsABuild() {
         String content = PromptBuilder.userContent(new BuildContext("d", "b"), "x", List.of(), 0);
         assertTrue(content.contains("Questions remaining: 0 (no more clarifying questions; use offered tools or return the build)"));
+    }
+
+    static Critique critique() throws Exception {
+        BuildPlan plan = new BuildPlan("Hut", "A hut", List.of(Operation.set("minecraft:stone", new Cell(0, 0, 0))));
+        return CritiqueParser.parse("{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":["
+                + "{\"severity\":\"should_fix\",\"category\":\"access\",\"operations\":[0],\"cell\":{\"x\":0,\"y\":1,\"z\":-2},"
+                + "\"problem\":\"The door is blocked.\",\"fix\":\"Clear the cell in front of the door.\"},"
+                + "{\"severity\":\"minor\",\"category\":\"facade\",\"operations\":[],\"cell\":null,"
+                + "\"problem\":\"Tiny polish.\",\"fix\":\"Add a sill.\"}],\"keep\":[\"the stone floor\"]}", plan, "a".repeat(64));
+    }
+
+    static final BuildContext CONTEXT = new BuildContext("minecraft:overworld", "minecraft:plains", null, null, null);
+
+    @Test
+    void theCriticHasItsOwnPromptAndReturnsFindingsOnly() {
+        String system = PromptBuilder.criticPrompt(new PlanLimits(2000, 250000, 96));
+        assertTrue(system.contains("independent reviewer") && system.contains("never return a plan"));
+        assertTrue(system.contains("at most 2000 operations, 250000 blocks"), "fixes must fit the size limits");
+        assertTrue(system.contains("Plain, minimal, symmetric"), "restraint rules carry over");
+        assertFalse(system.contains("Operations are applied in order"), "not the builder's prompt");
+    }
+
+    @Test
+    void critiqueContentShowsTheCandidateAndTheEarlierRound() throws Exception {
+        String first = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 2,
+                false, null);
+        assertTrue(first.contains("Independent review (round 1 of 2)") && first.contains("{plan}") && first.contains("VIEWS"));
+        assertTrue(first.contains("Player request: a hut") && first.contains("four facades"));
+        assertFalse(first.contains("Questions remaining"), "the reviewer cannot ask questions");
+        String second = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 2, 2,
+                false, new CritiqueNote(critique(), RepairOutcome.REJECTED_ROUTE));
+        assertTrue(second.contains("The door is blocked.") && second.contains("Tiny polish."), "round 2 sees every earlier finding");
+        assertTrue(second.contains("blocked a doorway or route"));
+    }
+
+    @Test
+    void aRepairAppliesTheCritiqueInsteadOfCritiquingItsOwnDesign() throws Exception {
+        String own = PromptBuilder.reviewContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 1, false, null);
+        assertEquals(PromptBuilder.reviewContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 1, false), own,
+                "the earlier overload is unchanged");
+        assertTrue(own.contains("reviewing your own plan") && own.contains("Then critique the design"));
+        String repair = PromptBuilder.reviewContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 1, false,
+                new CritiqueNote(critique(), null));
+        assertFalse(repair.contains("Then critique the design"));
+        assertTrue(repair.contains("after an independent review (round 1 of 1)"));
+        assertTrue(repair.contains("[should_fix, access] operations 0 at (0, 1, -2): The door is blocked. Fix: Clear the cell in front of the door."));
+        assertTrue(repair.contains("Keep: the stone floor"));
+        assertFalse(repair.contains("Tiny polish."), "minor problems stay out of the repair");
+        assertTrue(repair.contains("Check the plan against the request"), "the functional checklist stays");
+        assertTrue(repair.contains("Return the complete improved plan"));
     }
 }

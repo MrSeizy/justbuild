@@ -56,7 +56,7 @@ public final class JustBuildConfig {
     /** New AI builds above this threshold preview; 0 previews each, -1 places directly. Edits and saved plans always preview. */
     /** Every new build previews first unless a server owner raises this (blocks) or sets -1 (place directly). */
     public int previewAbove = 0;
-    /** quick, detailed, or masterpiece (prompt depth and self-review rounds). */
+    /** quick, detailed, or masterpiece (prompt depth and review rounds). */
     public String detail = "detailed";
     /** auto (the AI picks) or one of the named styles in Guidance.Style. */
     public String style = "auto";
