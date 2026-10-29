@@ -29,12 +29,14 @@ class ReviewCheckTest {
             var verdict = compare(fixture(name + "-draft"), fixture(name + "-review"), source);
             assertFalse(verdict.accepted(), name);
             assertTrue(verdict.reason().contains("existing structure"), verdict.reason());
+            assertEquals(RepairOutcome.REJECTED_REMOVAL, verdict.outcome(), name);
         }
     }
 
     @Test void acceptsUnchangedDraftAndMaterialReplacement() throws Exception {
         var shell = fixture("source"); var source = placements(shell);
         assertTrue(compare(shell, shell, source).accepted());
+        assertEquals(RepairOutcome.ACCEPTED, compare(shell, shell, source).outcome());
         var brick = add(shell, Operation.replace("bricks", "oak_planks", new Cell(0, 0, 0), new Cell(8, 8, 6)));
         assertTrue(compare(shell, brick, source).accepted());
     }
@@ -55,6 +57,7 @@ class ReviewCheckTest {
         var verdict = compare(shell, blocked, Map.of());
         assertFalse(verdict.accepted());
         assertTrue(verdict.reason().contains("floor space") || verdict.reason().contains("doorway"), verdict.reason());
+        assertEquals(RepairOutcome.REJECTED_ROUTE, verdict.outcome());
         var partitioned = add(shell, Operation.fill("stone", new Cell(1, 1, 3), new Cell(7, 3, 3), false));
         assertFalse(compare(shell, partitioned, Map.of()).accepted());
         var furniture = add(shell, Operation.set("crafting_table", new Cell(1, 1, 1)));
@@ -69,6 +72,7 @@ class ReviewCheckTest {
         assertTrue(compare(invalid, supported, Map.of()).accepted());
         var huge = new BuildPlan("Huge", "", List.of(Operation.fill("stone", new Cell(0, 0, 0), new Cell(64, 64, 64), false)));
         assertFalse(compare(invalid, huge, Map.of()).accepted(), "Fixing one technical category cannot pay for another");
+        assertEquals(RepairOutcome.REJECTED_TECHNICAL, compare(invalid, huge, Map.of()).outcome());
     }
 
     @Test void fixingAnInvalidBlockMustNotAllowShellRemoval() throws Exception {
