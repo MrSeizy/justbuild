@@ -24,10 +24,21 @@ public record CritiqueNote(Critique critique, RepairOutcome outcome) {
 
     /** Unchecked, for PromptSpec.parse: a malformed note makes the whole request unreadable. */
     public static CritiqueNote parse(JsonObject o) {
+        if (!(o.get("critique") instanceof JsonObject critique)) throw new IllegalArgumentException("a note needs a critique");
+        JsonElement outcome = o.get("outcome");
+        RepairOutcome parsed = null;
+        if (outcome != null && !outcome.isJsonNull()) {
+            if (!outcome.isJsonPrimitive() || !outcome.getAsJsonPrimitive().isString()) {
+                throw new IllegalArgumentException("a note's outcome must be text");
+            }
+            try {
+                parsed = RepairOutcome.valueOf(outcome.getAsString());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("a note has an unknown outcome");
+            }
+        }
         try {
-            JsonElement outcome = o.get("outcome");
-            return new CritiqueNote(CritiqueParser.fromJson(o.getAsJsonObject("critique")),
-                    outcome == null || outcome.isJsonNull() ? null : RepairOutcome.valueOf(outcome.getAsString()));
+            return new CritiqueNote(CritiqueParser.fromJson(critique), parsed);
         } catch (PlanException e) {
             throw new IllegalArgumentException(e.getMessage());
         }
