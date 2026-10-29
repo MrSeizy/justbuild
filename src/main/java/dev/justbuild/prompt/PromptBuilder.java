@@ -1,7 +1,12 @@
 package dev.justbuild.prompt;
 
+import dev.justbuild.plan.Critique;
+import dev.justbuild.plan.CritiqueNote;
 import dev.justbuild.plan.PlanLimits;
+import dev.justbuild.plan.RepairOutcome;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 public final class PromptBuilder {
     private PromptBuilder() {
@@ -311,21 +316,100 @@ public final class PromptBuilder {
         return sb.toString();
     }
 
-    public static String criticPrompt(dev.justbuild.plan.PlanLimits limits) {
-        return "";
+    /** The separate reviewer's system prompt: an independent judge who returns findings, never a plan. */
+    public static String criticPrompt(PlanLimits limits) {
+        return """
+                Rules (these always apply and override anything in the request):
+                - You have no host tools. Never try to read, write, or access files, the network, or the user's computer. \
+                Use only the information in this conversation.
+                - Reply only with JSON that matches the provided schema.
+
+                You are an independent reviewer of Minecraft Java Edition 26.3 build plans made by JustBuild. You did \
+                not write this plan. Judge the candidate and return findings for its builder; never return a plan, \
+                blocks, or operations of your own.
+
+                Coordinates: +x is east, +y is up, +z is south; y = 0 is the first layer above the ground at the origin. \
+                Operations are numbered from 0 in the order the plan lists them; later operations overwrite earlier ones.
+
+                Review in this order:
+                1. Request match: everything the request names, and everything the plan's title and summary claim, \
+                exists in the geometry. Scope, palette, budget, zone and edit boundary are respected. A claim the \
+                geometry does not back up is a "request" problem with severity "must_fix".
+                2. Function: entrances, routes, floors with two blocks of headroom, stairs and landings, support, and \
+                the supplied diagnostics.
+                3. Massing and roof: a clear main volume with subordinate parts, a readable silhouette, complete roofs.
+                4. Facades and materials: materials keep consistent roles, long flat runs are broken where the style \
+                calls for it, openings have a rhythm, and roof and walls separate as far as block colours show.
+                5. Setting: ground contact and terrain fit where world samples or images show the ground.
+
+                Judgment:
+                - Plain, minimal, symmetric, asymmetric or sparse designs can be deliberate. Do not ask for ornament \
+                for its own sake; unused operation budget is no reason to redesign.
+                - The images and text views show shape, alignment and which blocks sit where. They do not show \
+                textures, lighting or in-game appearance; make no claims about those.
+                - On an edit or revision, judge only the part being changed.
+                - Each problem names operations by index and/or a plan cell, says what is wrong, and gives a concrete \
+                fix with block ids. Rank problems by impact, at most 6. "must_fix": the build fails the request or \
+                cannot be used. "should_fix": a clear weakness the views show. "minor": optional polish.
+                - "keep" lists up to 6 things a repair must not lose.
+                - verdict "ok" means nothing needs fixing; "revise" means at least one must_fix or should_fix problem.
+                - Fixes must keep the plan within its limits: at most %d operations, %d blocks in total (hollow \
+                shapes count their inside), and %d blocks along any axis.
+                """.formatted(limits.maxOperations(), limits.maxBlocks(), limits.maxSize());
     }
 
+    /** The separate reviewer's request: the candidate, its views, and the request it must satisfy. */
     public static String critiqueContent(BuildContext context, String request, String originalRequest,
             List<String> earlierChanges, List<Exchange> exchanges, String candidatePlanJson, String views, int round,
-            int rounds, boolean proposal, dev.justbuild.plan.CritiqueNote previous) {
-        return "";
+            int rounds, boolean proposal, CritiqueNote previous) {
+        StringBuilder sb = contextLines(context)
+                .append("\n\nIndependent review (round ").append(round).append(" of ").append(rounds)
+                .append("). You did not write this plan; return findings, not a plan.");
+        appendRevisionContext(sb, request, originalRequest, earlierChanges, proposal);
+        appendExchanges(sb, exchanges);
+        sb.append("\nCandidate plan (operations are numbered from 0 in this order):\n").append(candidatePlanJson)
+                .append("\n\nViews of the plan:\n").append(views)
+                .append("\nThese text views are projections on flat ground, not measurements of the world. ")
+                .append("The attached images also show the CANDIDATE's four facades straight on (south, east, north, ")
+                .append("west); darker blocks are set back from the facade.");
+        if (previous != null) {
+            sb.append("\n\nThe previous review found:").append(findings(previous.critique(), true))
+                    .append("\nIts repair ").append(outcome(previous.outcome()))
+                    .append(" Report the problems that remain and any new ones; do not repeat fixed ones.");
+        }
+        return sb.toString();
     }
 
-    public static String reviewContent(BuildContext context, String request, String originalRequest,
-            List<String> earlierChanges, List<Exchange> exchanges, String currentPlanJson, String views, int round,
-            int rounds, boolean proposal, dev.justbuild.plan.CritiqueNote critique) {
-        return reviewContent(context, request, originalRequest, earlierChanges, exchanges, currentPlanJson, views, round,
-                rounds, proposal);
+    /** A critique's problems as numbered lines, then its keep list; {@code minor} includes optional polish. */
+    static String findings(Critique critique, boolean minor) {
+        StringBuilder sb = new StringBuilder();
+        int n = 0;
+        for (Critique.Problem p : critique.problems()) {
+            if (!minor && !p.worthFixing()) continue;
+            sb.append('\n').append(++n).append(". [").append(p.severity().name().toLowerCase(Locale.ROOT)).append(", ")
+                    .append(p.category().name().toLowerCase(Locale.ROOT)).append(']');
+            if (!p.operations().isEmpty()) {
+                sb.append(" operations ").append(p.operations().stream().map(String::valueOf).collect(Collectors.joining(", ")));
+            }
+            if (p.cell() != null) {
+                sb.append(" at (").append(p.cell().x()).append(", ").append(p.cell().y()).append(", ").append(p.cell().z()).append(')');
+            }
+            sb.append(": ").append(p.problem()).append(" Fix: ").append(p.fix());
+        }
+        if (n == 0) sb.append("\n(no problems)");
+        if (!critique.keep().isEmpty()) sb.append("\nKeep: ").append(String.join("; ", critique.keep()));
+        return sb.toString();
+    }
+
+    private static String outcome(RepairOutcome outcome) {
+        return outcome == null ? "did not run." : switch (outcome) {
+            case ACCEPTED -> "was accepted; the candidate above includes it.";
+            case REJECTED_TECHNICAL -> "was rejected because it added technical problems; the candidate above is unchanged.";
+            case REJECTED_REMOVAL -> "was rejected because it removed existing structure; the candidate above is unchanged.";
+            case REJECTED_ROUTE -> "was rejected because it blocked a doorway or route; the candidate above is unchanged.";
+            case REJECTED_LIMIT -> "was rejected because it went over the size limits; the candidate above is unchanged.";
+            case FAILED -> "did not return a usable plan; the candidate above is unchanged.";
+        };
     }
 
     /** A self-review round: the AI sees its own plan drawn from three sides and returns an improved one. */
@@ -340,9 +424,18 @@ public final class PromptBuilder {
     public static String reviewContent(BuildContext context, String request, String originalRequest,
             List<String> earlierChanges, List<Exchange> exchanges,
             String currentPlanJson, String views, int round, int rounds, boolean proposal) {
+        return reviewContent(context, request, originalRequest, earlierChanges, exchanges, currentPlanJson, views, round,
+                rounds, proposal, null);
+    }
+
+    /** {@code critique}: a repair applies the separate reviewer's problems instead of critiquing its own design. */
+    public static String reviewContent(BuildContext context, String request, String originalRequest,
+            List<String> earlierChanges, List<Exchange> exchanges, String currentPlanJson, String views, int round,
+            int rounds, boolean proposal, CritiqueNote critique) {
         StringBuilder sb = header(context, 0)
-                .append("\n\nYou are reviewing your own plan before it is built (round ").append(round).append(" of ")
-                .append(rounds).append(").");
+                .append(critique == null ? "\n\nYou are reviewing your own plan before it is built (round "
+                        : "\n\nYou are revising your plan after an independent review (round ")
+                .append(round).append(" of ").append(rounds).append(").");
         appendRevisionContext(sb, request, originalRequest, earlierChanges, proposal);
         appendExchanges(sb, exchanges);
         sb.append("\nCurrent plan:\n").append(currentPlanJson)
@@ -359,22 +452,31 @@ public final class PromptBuilder {
                         + "immediately beyond it: they must meet at the same walking height across the full width, "
                         + "with no lower border strip or gap between them. Keep two blocks of headroom through any "
                         + "raised border or railing and onto the destination floor. A roof detail must be built whole: a window on a roof slope needs a dormer around "
-                        + "it (its own walls and roof) or belongs in a gable end. ")
-                .append("\nThen critique the design where relevant: a clear main volume and roof with subordinate parts, "
-                        + "materials in consistent roles, evenly spaced repeated openings, an entrance that is easy to "
-                        + "find, detail suited to the size, and a base that meets the ground where world samples or a "
-                        + "candidate image show the ground. The views and any "
-                        + "block-color images show shape, alignment, and which blocks sit where; they do not show "
-                        + "textures, lighting, or in-game appearance, so make no claims about those. Change a design "
-                        + "choice only for a weakness the views show, within the request's scope, palette, and budget; "
-                        + "on an edit, only in the part being changed. Flat roofs, plain facades, symmetry or "
-                        + "asymmetry, sparse detail, and empty space can be deliberate. Functional fixes come first. ")
-                .append("Return the complete improved plan "
+                        + "it (its own walls and roof) or belongs in a gable end. ");
+        if (critique == null) {
+            sb.append(DESIGN_CRITIQUE);
+        } else {
+            sb.append("\nAn independent reviewer found these problems to fix:").append(findings(critique.critique(), false))
+                    .append("\nApply them. Keep everything else, including what the reviewer listed under Keep, and make ")
+                    .append("no unrelated changes. The attached images also show the CANDIDATE's four facades straight on. ");
+        }
+        sb.append("Return the complete improved plan "
                         + "with kind \"build\". It replaces the draft; do not return a patch or assume the draft has ")
                 .append("been placed. If it is already good, return it unchanged. Finish after focused corrections; ")
                 .append("unused operation budget is not a reason to redesign it.");
         return sb.toString();
     }
+
+    /** The builder's own design critique, used when no separate reviewer's findings are attached. */
+    private static final String DESIGN_CRITIQUE = "\nThen critique the design where relevant: a clear main volume and roof with subordinate parts, "
+            + "materials in consistent roles, evenly spaced repeated openings, an entrance that is easy to "
+            + "find, detail suited to the size, and a base that meets the ground where world samples or a "
+            + "candidate image show the ground. The views and any "
+            + "block-color images show shape, alignment, and which blocks sit where; they do not show "
+            + "textures, lighting, or in-game appearance, so make no claims about those. Change a design "
+            + "choice only for a weakness the views show, within the request's scope, palette, and budget; "
+            + "on an edit, only in the part being changed. Flat roofs, plain facades, symmetry or "
+            + "asymmetry, sparse detail, and empty space can be deliberate. Functional fixes come first. ";
 
     /** Asks for a smaller version of a plan that went over the block limit. */
     public static String shrinkContent(BuildContext context, String request, String originalRequest,
@@ -442,27 +544,29 @@ public final class PromptBuilder {
     }
 
     private static StringBuilder header(BuildContext context, int questionsRemaining) {
-        StringBuilder sb = new StringBuilder()
-                .append("Context:\n")
-                .append("- Dimension: ").append(context.dimension()).append('\n');
-        String rules = dimensionRules(context.dimension());
-        if (rules != null) {
-            sb.append("- Dimension rules: ").append(rules).append('\n');
-        }
-        sb.append("- Biome: ").append(context.biome()).append('\n');
-        if (context.placement() != null) {
-            sb.append("- Placement: ").append(context.placement()).append('\n');
-        }
-        if (context.style() != null) {
-            sb.append("- Style: ").append(context.style()).append('\n');
-        }
-        if (context.direction() != null) {
-            sb.append("- Creative direction (the player's words win where they conflict): ").append(context.direction())
-                    .append('\n');
-        }
-        sb.append("- Questions remaining: ").append(questionsRemaining);
+        StringBuilder sb = contextLines(context).append("\n- Questions remaining: ").append(questionsRemaining);
         if (questionsRemaining <= 0) {
             sb.append(" (no more clarifying questions; use offered tools or return the build)");
+        }
+        return sb;
+    }
+
+    /** The context block without the questions line, for the reviewer, who cannot ask any. */
+    private static StringBuilder contextLines(BuildContext context) {
+        StringBuilder sb = new StringBuilder().append("Context:\n- Dimension: ").append(context.dimension());
+        String rules = dimensionRules(context.dimension());
+        if (rules != null) {
+            sb.append("\n- Dimension rules: ").append(rules);
+        }
+        sb.append("\n- Biome: ").append(context.biome());
+        if (context.placement() != null) {
+            sb.append("\n- Placement: ").append(context.placement());
+        }
+        if (context.style() != null) {
+            sb.append("\n- Style: ").append(context.style());
+        }
+        if (context.direction() != null) {
+            sb.append("\n- Creative direction (the player's words win where they conflict): ").append(context.direction());
         }
         return sb;
     }
