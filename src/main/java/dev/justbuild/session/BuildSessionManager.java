@@ -2015,7 +2015,8 @@ public final class BuildSessionManager {
      */
     private Reviewed review(ActiveRequest active, BuildProvider provider, PlanRequest original, BuildPlan plan, String raw, int rounds,
             JustBuildConfig cfg, CancellationToken token, RequestStatus status) throws ProviderException {
-        // Set before the first check, so the evidence the first review sees includes route findings.
+        // Set before the first check, so the evidence the first review sees includes route findings. Written on this
+        // worker thread; planningRead's server.execute queue hands it to the server thread that reads it.
         active.routeChecks = rounds > 0;
         PlanningFeedback evidence = checkForRequest(active, token, plan, cfg);
         // Chosen once per request, and only with review rounds: quick mode never resolves a reviewer or posts its note.

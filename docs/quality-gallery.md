@@ -83,7 +83,8 @@ draft is removed, or a bounded route comparison detects a newly blocked doorway 
 Each critique and repair is a separate provider call; `*-reviews.json` lists every call with its stage and time, and
 `*-review-rounds.json` each round's critique, whether it repaired, and the outcome.
 The gallery saves the first draft, its checks and screenshots, every review prompt/response, acceptance status and
-timing, and the final plan. Source blocks are restored and their hash verified after photographing the draft.
+timing, and the final plan. `<key>-evidence.txt` is the text of the first draft's checks as the reviewer receives them,
+including the route findings reviewed requests get, and each row's `evidenceMillis` is how long those checks took. Source blocks are restored and their hash verified after photographing the draft.
 Fixture reviews answer with a fixed one-problem critique and replay the fixture plan locally. They are labeled
 `fixture replay` and never call an AI.
 
@@ -93,6 +94,10 @@ detail level's draft prompt, no reviews), copy each case's `<scenario>.json` and
 `JUSTBUILD_GALLERY_PLANS=<that directory>`, a provider, a detail level above quick, and
 `JUSTBUILD_GALLERY_REVIEW=self` or `separate`. Both modes' reviews then see the same guide text; without a guides file
 an imported draft carries no guide selection.
+
+Importing drafts with `JUSTBUILD_GALLERY_REVIEW=none` is a dry pass: with the fixture provider, each case writes
+`<key>-evidence.txt` and `evidenceMillis` for the imported draft and renders it, with no provider call. Use it to read
+the review evidence, such as the route findings, before spending live reviews.
 
 Use `JUSTBUILD_GALLERY_CASES=cottage,interior,bridge` to select scenes and `JUSTBUILD_GALLERY_REPEATS=2` for repeated
 independent attempts (1–5, default 1). The same source location, daylight, weather and camera are used throughout.
@@ -135,7 +140,7 @@ JUSTBUILD_GALLERY_PLANS=/absolute/path/to/plans JUSTBUILD_GALLERY_LABEL=imported
 
 An imported run's recorded prompt describes the scenario; it does not claim to be the prompt used to produce those
 external plans. Keep external model and prompt provenance alongside those files. Imported plans can be reviewed by a live
-provider at detailed or masterpiece detail; at quick detail they are only rendered and checked. These checks
+provider at detailed or masterpiece detail; at quick detail they are only rendered and checked, and their evidence is written. These checks
 supplement the permission, cancellation, undo and relay tests; they do not replace them.
 
 ## Large castle test
