@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.EmptyBlockGetter;
@@ -26,11 +27,12 @@ public final class Walkability {
         public Result { lines = List.copyOf(lines); markers = List.copyOf(markers); }
     }
     private record Column(int x, int z) { }
-    private record Node(BlockPos pos, double feet, Direction stairs) { }
+    /** A standing space: where the feet are, the block they stand on, and that block's facing when it is a stair. */
+    record Node(BlockPos pos, BlockPos floor, double feet, Direction stairs) { }
     record Routes(Result report, Set<BlockPos> standing, Set<BlockPos> reached, Set<BlockPos> doors,
-            BlockPos start, boolean complete) {
+            BlockPos start, boolean complete, Map<BlockPos, Node> nodes) {
         Routes {
-            standing = Set.copyOf(standing); reached = Set.copyOf(reached); doors = Set.copyOf(doors);
+            standing = Set.copyOf(standing); reached = Set.copyOf(reached); doors = Set.copyOf(doors); nodes = Map.copyOf(nodes);
         }
     }
     private Walkability() { }
@@ -45,7 +47,7 @@ public final class Walkability {
         long volume = (long) (bounds.max().getX() - bounds.min().getX() + 3)
                 * (bounds.max().getY() - bounds.min().getY() + 3) * (bounds.max().getZ() - bounds.min().getZ() + 3);
         if (volume > MAX_CELLS) return new Routes(new Result(List.of("This area is too large for a route check. Select a smaller part first."),
-                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, false);
+                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, false, Map.of());
         Map<BlockPos, BlockState> cache = new HashMap<>();
         Function<BlockPos, BlockState> live = p -> {
             if (!cache.containsKey(p)) cache.put(p.immutable(), read.apply(p));
@@ -69,11 +71,11 @@ public final class Walkability {
             // Roof surfaces are omitted: this check concerns rooms beneath the recorded top boundary.
             if (feet > bounds.max().getY() - 1 || !headroom(p.getX(), feet, p.getZ(), live)) continue;
             BlockPos pos = BlockPos.containing(p.getX(), feet + 0.001, p.getZ());
-            Node node = new Node(pos, feet, state.getBlock() instanceof StairBlock ? state.getValue(StairBlock.FACING) : null);
+            Node node = new Node(pos, p, feet, state.getBlock() instanceof StairBlock ? state.getValue(StairBlock.FACING) : null);
             if (nodes.putIfAbsent(pos, node) == null) columns.computeIfAbsent(new Column(pos.getX(), pos.getZ()), k -> new ArrayList<>()).add(node);
         }
         if (nodes.isEmpty()) return new Routes(new Result(List.of("No standing spaces with enough headroom were found. Check floors and ceilings."),
-                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, cache.values().stream().noneMatch(s -> s == null));
+                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, cache.values().stream().noneMatch(s -> s == null), Map.of());
         List<String> lines = new ArrayList<>(); List<BlockPos> blocked = new ArrayList<>();
         entrances.sort(Comparator.<BlockPos>comparingInt(p -> p.getY()).thenComparingInt(BlockPos::getX).thenComparingInt(BlockPos::getZ));
         Node start = null;
@@ -104,8 +106,7 @@ public final class Walkability {
                 }
             }
         }
-        List<BlockPos> interior = nodes.keySet().stream().filter(p -> p.getX() > bounds.min().getX() && p.getX() < bounds.max().getX()
-                && p.getZ() > bounds.min().getZ() && p.getZ() < bounds.max().getZ()).sorted(Comparator.<BlockPos>comparingInt(p -> p.getY())
+        List<BlockPos> interior = nodes.keySet().stream().filter(p -> isInterior(bounds, p)).sorted(Comparator.<BlockPos>comparingInt(p -> p.getY())
                         .thenComparingInt(BlockPos::getX).thenComparingInt(BlockPos::getZ)).toList();
         List<BlockPos> unreachable = interior.stream().filter(p -> !reached.contains(p)).toList();
         int reachable = interior.size() - unreachable.size();
@@ -125,7 +126,40 @@ public final class Walkability {
         }
         return new Routes(new Result(lines, markers, interior.size(), reachable, unreachable.size()), nodes.keySet(), reached,
                 entrances.stream().filter(reached::contains).collect(java.util.stream.Collectors.toSet()),
-                start == null ? null : start.pos(), cache.values().stream().noneMatch(s -> s == null));
+                start == null ? null : start.pos(), cache.values().stream().noneMatch(s -> s == null), nodes);
+    }
+
+    /** Strictly inside the region's columns: the edge columns may be outside walls or terrain. */
+    static boolean isInterior(BuildRegion bounds, BlockPos p) {
+        return p.getX() > bounds.min().getX() && p.getX() < bounds.max().getX()
+                && p.getZ() > bounds.min().getZ() && p.getZ() < bounds.max().getZ();
+    }
+
+    /** Unreached counted spaces, grouped into areas a player could walk around inside by the same step rules. */
+    static List<List<Node>> unreachedAreas(Routes routes, Predicate<Node> counted) {
+        Map<Column, List<Node>> columns = new HashMap<>();
+        List<Node> ordered = new ArrayList<>();
+        for (Node n : routes.nodes().values()) if (!routes.reached().contains(n.pos()) && counted.test(n)) {
+            columns.computeIfAbsent(new Column(n.pos().getX(), n.pos().getZ()), k -> new ArrayList<>()).add(n);
+            ordered.add(n);
+        }
+        ordered.sort(Comparator.<Node>comparingInt(n -> n.pos().getY()).thenComparingInt(n -> n.pos().getX())
+                .thenComparingInt(n -> n.pos().getZ()));
+        Set<BlockPos> seen = new HashSet<>(); List<List<Node>> areas = new ArrayList<>();
+        for (Node first : ordered) {
+            if (!seen.add(first.pos())) continue;
+            List<Node> area = new ArrayList<>(); ArrayDeque<Node> queue = new ArrayDeque<>(List.of(first));
+            while (!queue.isEmpty()) {
+                Node at = queue.removeFirst(); area.add(at);
+                for (Direction direction : Direction.Plane.HORIZONTAL) {
+                    BlockPos next = at.pos().relative(direction);
+                    for (Node candidate : columns.getOrDefault(new Column(next.getX(), next.getZ()), List.of()))
+                        if (!seen.contains(candidate.pos()) && connected(at, candidate, direction)) { seen.add(candidate.pos()); queue.addLast(candidate); }
+                }
+            }
+            areas.add(area);
+        }
+        return areas;
     }
 
     private static boolean connected(Node a, Node b, Direction direction) {
