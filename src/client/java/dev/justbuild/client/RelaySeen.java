@@ -1,6 +1,7 @@
 package dev.justbuild.client;
 
 import dev.justbuild.relay.PromptCheck;
+import dev.justbuild.relay.RelayRecording;
 import dev.justbuild.relay.TypedRequests;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -8,7 +9,8 @@ import java.util.Set;
 /**
  * What this game has seen, for checking a server's AI requests (relay.PromptCheck): the requests the player started
  * with /justbuild (this session, plus the ones they typed earlier on this computer), the questions this game's own AI
- * asked, the player's answers, and the plans and critiques its AI returned. Client thread only; the session sets clear when joining
+ * asked, the player's answers, the plans and critiques its AI returned, and the repairs it ran (which critique a
+ * returned plan answered). Client thread only; the session sets clear when joining
  * or leaving a server.
  */
 final class RelaySeen {
@@ -55,7 +57,16 @@ final class RelaySeen {
 
     /** A repair that carried this critique returned this plan, so a second critique round may cite the critique for it. */
     static void repair(String critiqueKey, String planKey) {
+        if (critiqueKey == null || critiqueKey.isBlank() || planKey == null || planKey.isBlank()) return;
         add(repairs, critiqueKey + ">" + planKey);
+    }
+
+    /** Remembers what a sent response authorizes ({@link RelayRecording#of} decides what that is). */
+    static void apply(RelayRecording recording) {
+        add(questions, recording.question());
+        add(plans, recording.planKey());
+        add(repairs, recording.repairPair());
+        add(critiques, recording.critiqueKey());
     }
 
     static PromptCheck.Seen snapshot() {

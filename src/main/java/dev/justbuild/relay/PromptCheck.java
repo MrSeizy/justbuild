@@ -253,7 +253,9 @@ public final class PromptCheck {
     /**
      * A repair's critique is about the plan it repairs. A second review's earlier critique is about the candidate
      * (a rejected or failed repair leaves the plan unchanged), or, after an accepted repair, this game recorded that a
-     * repair carrying that critique returned the candidate.
+     * repair carrying that critique returned the candidate. Accepted risk: this game records that pair when it sends the
+     * repair's plan, even if the server's own check later rejects the plan. Both artifacts are the AI's, and the outcome
+     * only picks one of six fixed sentences.
      */
     private static String critiqueBindingProblem(PromptSpec spec, Seen seen, String candidateKey) {
         CritiqueNote note = spec.critique();

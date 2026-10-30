@@ -84,6 +84,14 @@ public final class RelayGate {
         return true;
     }
 
+    /** Whether the hourly ceiling is what is stopping calls right now. */
+    public synchronized boolean hourlyUsedUp(Instant now) {
+        while (!recent.isEmpty() && !recent.peekFirst().isAfter(now.minus(Duration.ofHours(1)))) {
+            recent.removeFirst();
+        }
+        return recent.size() >= HOURLY;
+    }
+
     /** Whether the last allowed call was the first since the player started something (worth telling them about). */
     public synchronized boolean lastWasFirst() {
         return lastWasFirst;
