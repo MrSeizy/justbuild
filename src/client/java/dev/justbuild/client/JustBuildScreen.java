@@ -541,6 +541,10 @@ public final class JustBuildScreen extends FormScreen {
         Button reviewer = cycle("Reviewer", "reviewer", "reviewerChoices", y + 24, w - reviewWidth - 4, null);
         reviewer.setX(left + reviewWidth + 4);
         reviewer.active = manage;
+        if (!manage) {
+            reviewer.setTooltip(Tooltip.create(Component.literal(
+                    "Only operators or the singleplayer world owner can change the reviewer")));
+        }
         addRenderableWidget(reviewer);
         addRenderableWidget(cycle("Style", "style", "styles", y + 48, (w - 4) / 2, null));
         addRenderableWidget(autoBuildToggle(y + 48, w));
@@ -655,14 +659,14 @@ public final class JustBuildScreen extends FormScreen {
                 .bounds(left, y + 124, half, 20).tooltip(Tooltip.create(Component.literal(
                         "Hold each response from your AI for Send or Cancel, including guide, inspection, and review rounds. "
                                 + "Saved on this computer for all servers; off by default."))).build());
-        addRenderableWidget(GlassButton.builder(Component.literal("Reviewer: "
-                + local.reviewer().map(p -> p.name).orElse("Same as builder")), b -> changeLocal(c -> {
-                    List<String> names = c.profileNames();
-                    int next = c.reviewer().map(p -> names.indexOf(p.name) + 1).orElse(0);
-                    c.reviewerProfile = next < names.size() ? names.get(next) : "";
-                })).bounds(left + half + 4, y + 124, w - half - 4, 20).tooltip(Tooltip.create(Component.literal(
+        Button localReviewer = GlassButton.builder(Component.literal("Reviewer: "
+                + local.reviewer().map(p -> p.name).orElse("Same as builder")),
+                b -> changeLocal(c -> c.reviewerProfile = c.nextReviewer()))
+                .bounds(left + half + 4, y + 124, w - half - 4, 20).tooltip(Tooltip.create(Component.literal(
                         "The profile on this computer that checks each draft before it is built. Same as builder uses "
-                                + "your planning profile."))).build());
+                                + "your planning profile."))).build();
+        localReviewer.active = local.reviewerChoices().size() >= 2;
+        addRenderableWidget(localReviewer);
     }
 
     private Button serverAiSettings(int x, int y, int w) {

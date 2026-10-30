@@ -140,7 +140,7 @@ public final class StateJson {
         o.addProperty("aiLabel", ai.label() != null ? ai.label() : active.name);
         o.add("profileNames", strings(config.profileNames()));
         List<String> reviewers = new java.util.ArrayList<>(List.of("same"));
-        reviewers.addAll(config.profileNames());
+        reviewers.addAll(config.reviewerChoices());
         o.add("reviewerChoices", strings(reviewers));
         JsonArray profiles = new JsonArray();
         for (JustBuildConfig.ModelProfile p : config.profiles) {
