@@ -140,4 +140,24 @@ class RelayOutputTest {
             assertTrue(outbound.getCause().getMessage().contains(secret), "detail remains available to the local player");
         }
     }
+
+    @Test
+    void critiquesAreRewrittenToBoundedFindings() throws Exception {
+        PromptSpec spec = PromptSpecTest.base().critiqueRound(PromptSpecTest.PLAN, 1, 1, null);
+        String raw = "```json\n{\"kind\":\"critique\",\"verdict\":\"revise\",\"secret\":\"exfiltrated text\",\"problems\":["
+                + "{\"severity\":\"must_fix\",\"category\":\"request\",\"operations\":[0, 7],\"cell\":null,"
+                + "\"problem\":\"No door.\",\"fix\":\"Add an oak door.\",\"extra\":\"sk-123\"}],\"keep\":[]}\n```";
+        RelayOutput out = RelayOutput.critique(raw, spec);
+        assertFalse(out.json().contains("exfiltrated") || out.json().contains("sk-123"), out.json());
+        assertNull(out.planKey());
+        assertNull(out.question());
+        var echoed = dev.justbuild.plan.CritiqueParser.fromJson(
+                com.google.gson.JsonParser.parseString(out.json()).getAsJsonObject());
+        assertEquals(out.critiqueKey(), echoed.key(), "the server's echo has the same key");
+        assertEquals(PromptCheck.planKey(PromptSpecTest.PLAN), echoed.planKey());
+        assertEquals(java.util.List.of(0), echoed.problems().get(0).operations());
+        assertThrows(dev.justbuild.plan.PlanException.class, () -> RelayOutput.critique(PromptSpecTest.PLAN, spec),
+                "a plan is not a critique");
+        assertNull(RelayOutput.normalize(PromptSpecTest.PLAN).critiqueKey());
+    }
 }
