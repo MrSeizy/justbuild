@@ -845,8 +845,9 @@ check after a revision. The reviewer gets its own instructions, the request, dia
 candidate's four facades, and text views. It returns a short list of problems with fixes and what to keep, never a
 plan. The builder revises only when that list has problems worth fixing or the checks find a technical failure
 (invalid blocks, limits, blocks outside the world or the zone, or a build constraint); otherwise the review ends after
-the reviewer's one short call. Each revision is another full planning call, so a reviewer profile on a faster model
-mainly shortens the check itself. The reviewer judges only what those simplified views show (massing, material
+the reviewer's one short call. Each revision is another full planning call, so a faster reviewer model shortens only
+the check itself; in testing, a smaller model misread a large castle and sent the builder on longer revisions. Choose a
+reviewer at least as capable as the builder. The reviewer judges only what those simplified views show (massing, material
 placement, facades and opening rhythm; ground contact only where world samples or images show the ground), not
 textures or lighting, and restrained designs remain valid. Edit reviews and size reductions keep the original build
 request, earlier edits and current change request, and explicitly require the complete replacement plan.
