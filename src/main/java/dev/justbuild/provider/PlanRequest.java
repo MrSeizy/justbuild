@@ -12,10 +12,7 @@ public record PlanRequest(String systemPrompt, String userContent, String schema
         PromptSpec spec) {
     /** Block-color evidence; the separate reviewer and its repair also see the candidate's four facades. */
     public java.util.List<byte[]> images() {
-        if (spec == null) return java.util.List.of();
-        boolean reviewer = spec.kind() == PromptSpec.Kind.CRITIQUE
-                || (spec.kind() == PromptSpec.Kind.REVIEW && spec.critique() != null);
-        return dev.justbuild.prompt.PlanImages.render(spec.feedback(), reviewer);
+        return spec == null ? java.util.List.of() : dev.justbuild.prompt.PlanImages.render(spec.feedback(), spec.facades());
     }
     public PlanRequest(String systemPrompt, String userContent, String schemaJson, String model, Duration timeout) {
         this(systemPrompt, userContent, schemaJson, model, timeout, null);

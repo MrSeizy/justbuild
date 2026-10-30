@@ -276,7 +276,13 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
         return new BuildContext(dimension, biome, location, styleLine, direction);
     }
 
+    /** Whether this request's images include the candidate's four facades (the reviewer and its repair, with a candidate). */
+    public boolean facades() {
+        return (kind == Kind.CRITIQUE || (kind == Kind.REVIEW && critique != null)) && feedback.candidate() != null;
+    }
+
     /** The request text for the AI, made the same way on the server and in a player's game. */
+
     public String userContent() throws PlanException {
         String text = switch (kind) {
             case NEW -> PromptBuilder.userContent(context(), request, exchanges, remaining, terrain);
@@ -316,7 +322,13 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
                             + "the world. Preserve unrelated work. Later overlapping samples supersede earlier samples.";
         }
         text += feedback.format();
-        return PromptBuilder.withGuides(text, GuideLibrary.defaults().resolve(guides));
+        if (facades()) {
+            text += "\nThe attached images also include the CANDIDATE's four facades seen straight on (south, east, north, "
+                    + "west); darker blocks are set back from the facade.\n";
+        }
+        return kind == Kind.CRITIQUE
+                ? PromptBuilder.withGuides(text, GuideLibrary.defaults().resolve(guides), "Guides the builder selected")
+                : PromptBuilder.withGuides(text, GuideLibrary.defaults().resolve(guides));
     }
 
     /** A rejected draft can still receive repair guidance without trying to draw unsafe geometry. */
