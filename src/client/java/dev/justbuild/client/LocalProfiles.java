@@ -7,11 +7,9 @@ import dev.justbuild.config.ConfigStore;
 import dev.justbuild.config.ProfileEdits;
 import dev.justbuild.net.ModelsPayload;
 import dev.justbuild.provider.CancellationToken;
-import dev.justbuild.provider.CommandLocator;
 import dev.justbuild.provider.ProviderException;
 import dev.justbuild.provider.Providers;
 import dev.justbuild.relay.RelayJson;
-import java.net.URI;
 import java.util.List;
 import java.util.Locale;
 import net.fabricmc.loader.api.FabricLoader;
@@ -117,27 +115,7 @@ final class LocalProfiles {
 
     /** Why the active profile cannot plan builds yet, or null if it can. */
     static String problem(JustBuildConfig config, JustBuildConfig.ModelProfile p) {
-        try {
-            switch (p.provider) {
-                case "codex" -> CommandLocator.resolve(config.codex.command, "codex", CommandLocator.defaultSearchDirs());
-                case "grok" -> CommandLocator.resolve(config.grok.command, "grok", CommandLocator.defaultSearchDirs());
-                case "openai", "anthropic" -> {
-                    if (p.model.isBlank()) {
-                        return "“" + p.name + "” needs a model.";
-                    }
-                    String scheme = URI.create(p.baseUrl).getScheme();
-                    if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
-                        return "“" + p.name + "” needs an http(s) base URL.";
-                    }
-                }
-                default -> CommandLocator.resolve(config.claude.command, "claude", CommandLocator.defaultSearchDirs());
-            }
-            return null;
-        } catch (ProviderException e) {
-            return e.getMessage();
-        } catch (IllegalArgumentException e) {
-            return "“" + p.name + "” has an invalid base URL.";
-        }
+        return Providers.problem(config, p);
     }
 
     /** Lists models for a draft profile on a background thread; the answer arrives like the server's would. */

@@ -2016,11 +2016,14 @@ public final class BuildSessionManager {
     private Reviewed review(ActiveRequest active, BuildProvider provider, PlanRequest original, BuildPlan plan, String raw, int rounds,
             JustBuildConfig cfg, CancellationToken token, RequestStatus status) throws ProviderException {
         PlanningFeedback evidence = checkForRequest(active, token, plan, cfg);
-        ReviewerAi reviewer = reviewerAi(active, token, provider, original, cfg);
         ReviewRounds.Caller caller = new ReviewRounds.Caller() {
+            /** Chosen on the first critique, so quick mode and drafts over the limits never make one or post its note. */
+            private ReviewerAi reviewer;
+
             @Override
             public String critique(PromptSpec spec) throws ProviderException, PlanException {
-                return complete(reviewer.provider(), reviewCall(spec, cfg, reviewer.model(), original.timeout()), token, status, true);
+                if (reviewer == null) reviewer = reviewerAi(active, token, provider, original, cfg);
+                return complete(reviewer.provider(), reviewRequest(spec, cfg, reviewer.model(), original.timeout()), token, status, true);
             }
 
             @Override
@@ -2028,11 +2031,11 @@ public final class BuildSessionManager {
                 // Repairs keep the shared read budget; critiques never inspect.
                 PromptSpec current = spec.withWorld(spec.zone(), spec.inspections(),
                         Math.max(0, InspectionRequest.MAX_ROUNDS - active.toolReads));
-                String answer = complete(provider, reviewCall(current, cfg, original.model(), original.timeout()), token, status, true);
+                String answer = complete(provider, reviewRequest(current, cfg, original.model(), original.timeout()), token, status, true);
                 PlanResponse parsed = PlanParser.parse(answer);
                 while (parsed instanceof PlanResponse.Inspect || parsed instanceof PlanResponse.Blocks) {
                     current = inspectTool(active, token, current, parsed);
-                    answer = complete(provider, reviewCall(current, cfg, original.model(), original.timeout()), token, status, true);
+                    answer = complete(provider, reviewRequest(current, cfg, original.model(), original.timeout()), token, status, true);
                     parsed = PlanParser.parse(answer);
                 }
                 return answer;
@@ -2046,11 +2049,13 @@ public final class BuildSessionManager {
 
             @Override
             public void stage(ReviewRounds.Stage stage, int round, int total) {
-                switch (stage) {
-                    case CRITIQUE -> status.critiquing(round, total);
-                    case REPAIR -> status.repairing(round, total);
-                    case REVIEW -> status.reviewing(round, total);
-                }
+                // A switch expression, so a new Stage fails to compile here.
+                Runnable begin = switch (stage) {
+                    case CRITIQUE -> () -> status.critiquing(round, total);
+                    case REPAIR -> () -> status.repairing(round, total);
+                    case REVIEW -> () -> status.reviewing(round, total);
+                };
+                begin.run();
             }
 
             @Override
@@ -2062,24 +2067,27 @@ public final class BuildSessionManager {
         };
         ReviewRounds.Result result = new ReviewRounds(REVIEW_MODE, cfg.limits(), caller)
                 .run(original.spec(), plan, raw, evidence, rounds);
-        for (ReviewRounds.Round round : result.rounds()) {
-            LOGGER.debug("Review round {}: critique {}, repaired {}, outcome {}", round.number(),
-                    round.critique() == null ? "none" : round.critique().toJson(), round.repairRan(), round.outcome());
+        if (LOGGER.isDebugEnabled()) {
+            for (ReviewRounds.Round round : result.rounds()) {
+                LOGGER.debug("Review round {}: critique {}, repaired {}, outcome {}", round.number(),
+                        round.critique() == null ? "none" : round.critique().toJson(), round.repairRan(), round.outcome());
+            }
         }
         return new Reviewed(result.plan(), result.raw());
     }
 
-    private static PlanRequest reviewCall(PromptSpec spec, JustBuildConfig cfg, String model, java.time.Duration timeout)
+    private static PlanRequest reviewRequest(PromptSpec spec, JustBuildConfig cfg, String model, Duration timeout)
             throws PlanException {
         return new PlanRequest(spec.systemPrompt(cfg.limits(), cfg.detailLevel()), spec.userContent(), spec.schemaJson(),
                 model, timeout, spec);
     }
 
+    /** The backend and model that critique a candidate. */
     private record ReviewerAi(BuildProvider provider, String model) { }
 
     /**
-     * The backend for critiques: the reviewer profile on this server, or the builder's when it is unset, the request is
-     * relayed (the player's game chooses), or the profile can't be made; the last says so once.
+     * The backend for critiques: the reviewer profile on this server, or the builder's when none is set, the request is
+     * relayed (the player's game chooses), or the profile can't plan right now; in that last case the player is told once.
      */
     private ReviewerAi reviewerAi(ActiveRequest active, CancellationToken token, BuildProvider builder, PlanRequest original,
             JustBuildConfig cfg) {
@@ -2088,11 +2096,9 @@ public final class BuildSessionManager {
         }
         var profile = cfg.reviewer();
         if (profile.isPresent()) {
-            try {
-                return new ReviewerAi(Providers.create(cfg, profile.get()), profile.get().model);
-            } catch (RuntimeException e) {
-                LOGGER.warn("Reviewer profile {} could not be used: {}", cfg.reviewerProfile, e.toString());
-            }
+            String problem = Providers.problem(cfg, profile.get());
+            if (problem == null) return new ReviewerAi(Providers.create(cfg, profile.get()), profile.get().model);
+            LOGGER.debug("Reviewer profile {} cannot plan: {}", cfg.reviewerProfile, problem);
         }
         String name = cfg.reviewerProfile;
         onServer(() -> {

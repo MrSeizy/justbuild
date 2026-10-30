@@ -1,6 +1,7 @@
 package dev.justbuild.provider;
 
 import dev.justbuild.config.JustBuildConfig;
+import java.net.URI;
 
 public final class Providers {
     private Providers() {
@@ -15,6 +16,31 @@ public final class Providers {
             case "anthropic" -> new AnthropicCompatibleProvider(profile);
             default -> new ClaudeCliProvider(config.claude.command);
         };
+    }
+
+    /** Why this profile cannot plan builds right now, or null if it can. */
+    public static String problem(JustBuildConfig config, JustBuildConfig.ModelProfile p) {
+        try {
+            switch (p.provider) {
+                case "codex" -> CommandLocator.resolve(config.codex.command, "codex", CommandLocator.defaultSearchDirs());
+                case "grok" -> CommandLocator.resolve(config.grok.command, "grok", CommandLocator.defaultSearchDirs());
+                case "openai", "anthropic" -> {
+                    if (p.model.isBlank()) {
+                        return "“" + p.name + "” needs a model.";
+                    }
+                    String scheme = URI.create(p.baseUrl).getScheme();
+                    if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                        return "“" + p.name + "” needs an http(s) base URL.";
+                    }
+                }
+                default -> CommandLocator.resolve(config.claude.command, "claude", CommandLocator.defaultSearchDirs());
+            }
+            return null;
+        } catch (ProviderException e) {
+            return e.getMessage();
+        } catch (IllegalArgumentException e) {
+            return "“" + p.name + "” has an invalid base URL.";
+        }
     }
 
     public static String displayName(String provider) {
