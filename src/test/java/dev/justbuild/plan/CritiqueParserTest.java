@@ -52,13 +52,42 @@ class CritiqueParserTest {
                 "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[" + problem.replace("should_fix", "urgent") + "],\"keep\":[]}",
                 "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[" + problem.replace("roof", "vibes") + "],\"keep\":[]}",
                 "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[" + problem.replace("\"f\"", "\"\"") + "],\"keep\":[]}",
-                "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[" + String.join(",", java.util.Collections.nCopies(7, problem)) + "],\"keep\":[]}",
-                "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[],\"keep\":[\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\"]}",
                 "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":{},\"keep\":[]}",
                 "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[" + problem.replace("[]", "[1.5]") + "],\"keep\":[]}",
                 "not json at all")) {
             assertThrows(PlanException.class, () -> parse(bad), bad);
         }
+    }
+
+    @Test
+    void overLongListsKeepTheirFirstEntries() throws Exception {
+        List<String> problems = new java.util.ArrayList<>();
+        for (int i = 0; i < Critique.MAX_PROBLEMS + 2; i++) problems.add(P.replace("\"p\"", "\"Problem " + i + ".\""));
+        List<String> keep = new java.util.ArrayList<>();
+        for (int i = 0; i < Critique.MAX_KEEP + 2; i++) keep.add("\"item " + i + "\"");
+        Critique c = parse(wrap(String.join(",", problems), "[\"\"," + String.join(",", keep) + "]"));
+        assertEquals(Critique.MAX_PROBLEMS, c.problems().size());
+        for (int i = 0; i < Critique.MAX_PROBLEMS; i++) assertEquals("Problem " + i + ".", c.problems().get(i).problem());
+        assertEquals(List.of("item 0", "item 1", "item 2", "item 3", "item 4", "item 5"), c.keep(),
+                "an empty item is dropped, not counted");
+        Critique shorter = parse(wrap(String.join(",", problems.subList(0, Critique.MAX_PROBLEMS)),
+                "[" + String.join(",", keep.subList(0, Critique.MAX_KEEP)) + "]"));
+        assertEquals(shorter, c);
+        assertEquals(shorter.key(), c.key());
+    }
+
+    @Test
+    void overLongOperationListsKeepTheirFirstIndices() throws Exception {
+        List<Operation> operations = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) operations.add(Operation.set("minecraft:stone", new Cell(i, 0, 0)));
+        BuildPlan big = new BuildPlan("Row", "A row", operations);
+        Critique c = CritiqueParser.parse(wrap(P.replace("[]", "[-1,0,0,1,2,3,4,5,6,7,8,9,10,11]"), "[]"), big, KEY);
+        assertEquals(List.of(0, 1, 2, 3, 4, 5, 6, 7), c.problems().get(0).operations(),
+                "dropped and repeated indices are not counted");
+        Critique shorter = CritiqueParser.parse(wrap(P.replace("[]", "[0,1,2,3,4,5,6,7]"), "[]"), big, KEY);
+        assertEquals(shorter.key(), c.key());
+        assertEquals(c, CritiqueParser.fromJson(JsonParser.parseString(c.toJson().toString()).getAsJsonObject()),
+                "the relayed form reads back the same");
     }
 
     @Test

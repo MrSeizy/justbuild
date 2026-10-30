@@ -374,9 +374,9 @@ public final class PromptBuilder {
                 When a problem touches them, put the fix elsewhere in the plan or leave the problem out.
                 - Each problem lists at most 8 operation indices ([] when none applies) and/or one plan cell (null \
                 when none), says what is wrong in under 200 characters, and gives a concrete fix in under 240 \
-                characters that names the operations, cell and block ids first. Longer lists are rejected and longer \
-                text is cut. Report at most 6 problems, most important first. "must_fix": the build fails the request \
-                or cannot be used. "should_fix": a clear weakness the views show. "minor": optional polish.
+                characters that names the operations, cell and block ids first. Longer lists and text are cut. Report \
+                at most 6 problems, most important first. "must_fix": the build fails the request or cannot be used. \
+                "should_fix": a clear weakness the views show. "minor": optional polish.
                 - Categories: request (missing or misdescribed parts, scope), access (entrances, routes, stairs, \
                 headroom), structure (support, floating parts), massing, roof, facade, materials, interior, setting.
                 - "keep" lists up to 6 short items (under 120 characters each) that a repair must not lose.
