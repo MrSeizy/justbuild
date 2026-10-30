@@ -6,6 +6,7 @@ import dev.justbuild.prompt.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
 import org.junit.jupiter.api.BeforeAll;
@@ -49,6 +50,28 @@ class PlanningCheckTest {
         var kinds = result.feedback().problems().stream().map(PlanningFeedback.Problem::kind).toList();
         assertTrue(kinds.contains(PlanningFeedback.Kind.UNKNOWN), kinds.toString());
         assertFalse(result.feedback().needsCorrection(), "problems reported: " + kinds);
+    }
+
+    @Test void theZoneFindingNamesItsBoxCountAndCrossingOperations() {
+        var plan = new BuildPlan("Wall", "", List.of(
+                Operation.fill("stone", new Cell(0, 0, 0), new Cell(3, 0, 0), false),
+                Operation.fill("stone", new Cell(0, 1, 0), new Cell(6, 1, 0), false)));
+        var expected = new PlanningFeedback.Problem(PlanningFeedback.Kind.ZONE, new Cell(4, 1, 0), new Cell(6, 1, 0), 3, List.of(1));
+        // Facing north the plan frame is the world; facing east the plan turns clockwise, and so does the zone.
+        var north = zoneCheck(plan, BuildZone.between(Level.OVERWORLD, new BlockPos(0, -1, -2), new BlockPos(3, -1, 2)), Direction.NORTH);
+        assertEquals(List.of(expected), zones(north));
+        var east = zoneCheck(plan, BuildZone.between(Level.OVERWORLD, new BlockPos(-2, -1, 0), new BlockPos(2, -1, 3)), Direction.EAST);
+        assertEquals(List.of(expected), zones(east));
+    }
+
+    private static List<PlanningFeedback.Problem> zones(PlanningCheck.Result result) {
+        return result.feedback().problems().stream().filter(p -> p.kind() == PlanningFeedback.Kind.ZONE).toList();
+    }
+
+    private PlanningCheck.Result zoneCheck(BuildPlan plan, BuildZone zone, Direction facing) {
+        return PlanningCheck.check(plan, BlockPos.ZERO, facing, LevelHeightAccessor.create(-64, 384),
+                p -> p.getY() < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), Map.of(), Map.of(), false,
+                p -> true, zone, BuildConstraints.NONE, new PlanLimits(100, 1000, 32));
     }
 
     private PlanningCheck.Result check(BuildPlan plan, java.util.function.Predicate<BlockPos> allowed) {
