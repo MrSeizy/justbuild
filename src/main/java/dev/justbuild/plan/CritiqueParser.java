@@ -11,9 +11,10 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Reads a reviewer's answer. Structural errors (wrong shapes or types, unknown choices, too many entries) reject the
- * whole critique; operation indices outside the plan and cells that are unusable or beyond the coordinate bounds are
- * dropped, keeping the problem. Text is cleaned with {@link PlanParser#visible}.
+ * Reads a reviewer's answer. Structural errors (wrong shapes or types, unknown choices) reject the whole critique; a
+ * list longer than its limit keeps its first entries (problems are ranked, most important first) and the rest are not
+ * read; operation indices outside the plan and cells that are unusable or beyond the coordinate bounds are dropped,
+ * keeping the problem. Text is cleaned with {@link PlanParser#visible}.
  */
 public final class CritiqueParser {
     private CritiqueParser() {
@@ -44,17 +45,17 @@ public final class CritiqueParser {
         if (!"critique".equals(string(root.get("kind")))) throw new PlanException("the response is not a critique");
         Critique.Verdict verdict = choice(root.get("verdict"), Critique.Verdict.class, "verdict");
         JsonArray list = array(root.get("problems"), "problems");
-        if (list.size() > Critique.MAX_PROBLEMS) throw new PlanException("the critique lists too many problems");
         List<Critique.Problem> problems = new ArrayList<>();
         for (JsonElement element : list) {
+            if (problems.size() == Critique.MAX_PROBLEMS) break;
             if (!element.isJsonObject()) throw new PlanException("a critique problem is not an object");
             JsonObject p = element.getAsJsonObject();
             JsonElement refsElement = p.get("operations");
             JsonArray refs = refsElement == null || refsElement.isJsonNull()
                     ? new JsonArray() : array(refsElement, "operations");
-            if (refs.size() > Critique.MAX_OPERATIONS) throw new PlanException("a critique problem names too many operations");
             List<Integer> indices = new ArrayList<>();
             for (JsonElement ref : refs) {
+                if (indices.size() == Critique.MAX_OPERATIONS) break;
                 Long index = integer(ref);
                 if (index == null) throw new PlanException("a critique operation is not an integer");
                 if (index >= 0 && index < operationCount && !indices.contains((int) (long) index)) {
@@ -73,9 +74,9 @@ public final class CritiqueParser {
             }
         }
         JsonArray keepList = array(root.get("keep"), "keep");
-        if (keepList.size() > Critique.MAX_KEEP) throw new PlanException("the critique keeps too many items");
         List<String> keep = new ArrayList<>();
         for (JsonElement element : keepList) {
+            if (keep.size() == Critique.MAX_KEEP) break;
             String text = string(element);
             if (text == null) throw new PlanException("a kept item is not text");
             String item = PlanParser.visible(text, Critique.MAX_KEEP_TEXT);
