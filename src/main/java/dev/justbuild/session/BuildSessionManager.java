@@ -2006,56 +2006,101 @@ public final class BuildSessionManager {
         return new Reviewed(plan, raw);
     }
 
+    /** Production always uses the separate reviewer; the quality gallery also runs the earlier self-review to compare. */
+    private static final ReviewRounds.Mode REVIEW_MODE = ReviewRounds.Mode.SEPARATE;
+
     /**
-     * Worker thread: shows the AI its plan as top/front/side views and asks for an improved plan, up to
-     * {@code rounds} times. A round that fails or returns something unusable keeps the previous plan.
+     * Worker thread: the review rounds after a draft (session.ReviewRounds). Critiques use the reviewer profile, repairs
+     * the builder's; through the relay both go to the player's game, which picks its own reviewer profile.
      */
     private Reviewed review(ActiveRequest active, BuildProvider provider, PlanRequest original, BuildPlan plan, String raw, int rounds,
             JustBuildConfig cfg, CancellationToken token, RequestStatus status) throws ProviderException {
         PlanningFeedback evidence = checkForRequest(active, token, plan, cfg);
-        if (rounds == 0 && evidence.needsCorrection()) rounds = 1;
-        for (int round = 1; round <= rounds; round++) {
-            status.reviewing(round, rounds);
+        ReviewerAi reviewer = reviewerAi(active, token, provider, original, cfg);
+        ReviewRounds.Caller caller = new ReviewRounds.Caller() {
+            @Override
+            public String critique(PromptSpec spec) throws ProviderException, PlanException {
+                return complete(reviewer.provider(), reviewCall(spec, cfg, reviewer.model(), original.timeout()), token, status, true);
+            }
+
+            @Override
+            public String repair(PromptSpec spec) throws ProviderException, PlanException {
+                // Repairs keep the shared read budget; critiques never inspect.
+                PromptSpec current = spec.withWorld(spec.zone(), spec.inspections(),
+                        Math.max(0, InspectionRequest.MAX_ROUNDS - active.toolReads));
+                String answer = complete(provider, reviewCall(current, cfg, original.model(), original.timeout()), token, status, true);
+                PlanResponse parsed = PlanParser.parse(answer);
+                while (parsed instanceof PlanResponse.Inspect || parsed instanceof PlanResponse.Blocks) {
+                    current = inspectTool(active, token, current, parsed);
+                    answer = complete(provider, reviewCall(current, cfg, original.model(), original.timeout()), token, status, true);
+                    parsed = PlanParser.parse(answer);
+                }
+                return answer;
+            }
+
+            @Override
+            public ReviewRounds.Compared compare(BuildPlan current, BuildPlan repaired) throws ProviderException {
+                CheckedReview checked = checkReview(active, token, current, repaired, cfg);
+                return new ReviewRounds.Compared(checked.verdict(), checked.feedback());
+            }
+
+            @Override
+            public void stage(ReviewRounds.Stage stage, int round, int total) {
+                switch (stage) {
+                    case CRITIQUE -> status.critiquing(round, total);
+                    case REPAIR -> status.repairing(round, total);
+                    case REVIEW -> status.reviewing(round, total);
+                }
+            }
+
+            @Override
+            public void say(String line) {
+                onServer(() -> {
+                    if (isCurrent(active, token)) send(active.source, Chat.progress(line));
+                });
+            }
+        };
+        ReviewRounds.Result result = new ReviewRounds(REVIEW_MODE, cfg.limits(), caller)
+                .run(original.spec(), plan, raw, evidence, rounds);
+        for (ReviewRounds.Round round : result.rounds()) {
+            LOGGER.debug("Review round {}: critique {}, repaired {}, outcome {}", round.number(),
+                    round.critique() == null ? "none" : round.critique().toJson(), round.repairRan(), round.outcome());
+        }
+        return new Reviewed(result.plan(), result.raw());
+    }
+
+    private static PlanRequest reviewCall(PromptSpec spec, JustBuildConfig cfg, String model, java.time.Duration timeout)
+            throws PlanException {
+        return new PlanRequest(spec.systemPrompt(cfg.limits(), cfg.detailLevel()), spec.userContent(), spec.schemaJson(),
+                model, timeout, spec);
+    }
+
+    private record ReviewerAi(BuildProvider provider, String model) { }
+
+    /**
+     * The backend for critiques: the reviewer profile on this server, or the builder's when it is unset, the request is
+     * relayed (the player's game chooses), or the profile can't be made; the last says so once.
+     */
+    private ReviewerAi reviewerAi(ActiveRequest active, CancellationToken token, BuildProvider builder, PlanRequest original,
+            JustBuildConfig cfg) {
+        if (builder instanceof RelayProvider || cfg.reviewerProfile == null || cfg.reviewerProfile.isBlank()) {
+            return new ReviewerAi(builder, original.model());
+        }
+        var profile = cfg.reviewer();
+        if (profile.isPresent()) {
             try {
-                // The spec draws the views itself, on flat ground at y = -1, since the worker cannot read the world.
-                PromptSpec reviewSpec = original.spec().review(PlanWriter.write(plan), round, rounds)
-                        .withFeedback(evidence).withWorld(original.spec().zone(), original.spec().inspections(),
-                                Math.max(0, InspectionRequest.MAX_ROUNDS - active.toolReads));
-                PlanRequest reviewRequest = new PlanRequest(reviewSpec.systemPrompt(cfg.limits(), cfg.detailLevel()), reviewSpec.userContent(),
-                        original.schemaJson(), original.model(), original.timeout(), reviewSpec);
-                String reviewedRaw = complete(provider, reviewRequest, token, status, true);
-                PlanResponse answer = PlanParser.parse(reviewedRaw);
-                while (answer instanceof PlanResponse.Inspect || answer instanceof PlanResponse.Blocks) {
-                    reviewSpec = inspectTool(active, token, reviewSpec, answer);
-                    reviewRequest = new PlanRequest(reviewSpec.systemPrompt(cfg.limits(), cfg.detailLevel()),
-                            reviewSpec.userContent(), original.schemaJson(), original.model(), original.timeout(), reviewSpec);
-                    reviewedRaw = complete(provider, reviewRequest, token, status, true);
-                    answer = PlanParser.parse(reviewedRaw);
-                }
-                if (answer instanceof PlanResponse.Build better) {
-                    cfg.limits().check(better.plan());
-                    if (PlanSize.blocks(better.plan(), cfg.maxBlocks) == PlanSize.OVER) {
-                        LOGGER.warn("Review round {} went over {} blocks; keeping the previous plan", round, cfg.maxBlocks);
-                        continue;
-                    }
-                    CheckedReview checked = checkReview(active, token, plan, better.plan(), cfg);
-                    evidence = checked.feedback();
-                    if (!checked.verdict().accepted()) {
-                        LOGGER.warn("Review round {} {}; keeping the previous plan", round, checked.verdict().reason());
-                        continue;
-                    }
-                    plan = better.plan();
-                    raw = reviewedRaw;
-                } else {
-                    LOGGER.warn("Review round {} did not return a build; keeping the previous plan", round);
-                }
-            } catch (CancelledException e) {
-                throw e;
-            } catch (PlanException | ProviderException e) {
-                LOGGER.warn("Review round {} failed ({}); keeping the previous plan", round, e.getMessage());
+                return new ReviewerAi(Providers.create(cfg, profile.get()), profile.get().model);
+            } catch (RuntimeException e) {
+                LOGGER.warn("Reviewer profile {} could not be used: {}", cfg.reviewerProfile, e.toString());
             }
         }
-        return new Reviewed(plan, raw);
+        String name = cfg.reviewerProfile;
+        onServer(() -> {
+            if (isCurrent(active, token)) {
+                send(active.source, Chat.progress("Reviewer profile “" + name + "” isn't available; using your builder AI."));
+            }
+        });
+        return new ReviewerAi(builder, original.model());
     }
 
     /**
