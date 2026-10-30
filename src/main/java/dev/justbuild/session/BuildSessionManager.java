@@ -300,6 +300,8 @@ public final class BuildSessionManager {
         PendingPlacement revising;
         int toolReads;
         Map<BlockPos, BlockState> candidateChanges;
+        /** Whether draft checks include route findings: only for reviewed requests (One pass, Two passes). */
+        boolean routeChecks;
         PlanningFeedback feedback = PlanningFeedback.EMPTY;
         boolean projectCaptured;
         String projectId;
@@ -1880,7 +1882,7 @@ public final class BuildSessionManager {
                 // getBlockEntity would load an unloaded chunk, bringing back an area the player has left.
                 p -> mayChange(request, p) && (!request.level.hasChunk(p.getX() >> 4, p.getZ() >> 4)
                         || request.level.getBlockEntity(p) == null),
-                request.zone, request.constraints, cfg.limits());
+                request.zone, request.constraints, cfg.limits(), request.routeChecks ? request.level.dimension() : null);
     }
 
     private PlanningFeedback retainCheck(ActiveRequest request, PlanningCheck.Result result) {
@@ -2013,6 +2015,8 @@ public final class BuildSessionManager {
      */
     private Reviewed review(ActiveRequest active, BuildProvider provider, PlanRequest original, BuildPlan plan, String raw, int rounds,
             JustBuildConfig cfg, CancellationToken token, RequestStatus status) throws ProviderException {
+        // Set before the first check, so the evidence the first review sees includes route findings.
+        active.routeChecks = rounds > 0;
         PlanningFeedback evidence = checkForRequest(active, token, plan, cfg);
         // Chosen once per request, and only with review rounds: quick mode never resolves a reviewer or posts its note.
         RelayProvider relayed = provider instanceof RelayProvider r ? r : null;
