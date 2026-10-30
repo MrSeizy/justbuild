@@ -223,6 +223,19 @@ class ReviewRoundsTest {
     }
 
     @Test
+    void anAcceptedVerdictWithFeedbackAboutAnotherPlanIsAFailedRepair() throws Exception {
+        Fake fake = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
+        fake.wrongKey = true;
+        var result = run(fake, 2);
+        assertEquals(DRAFT, result.plan());
+        assertEquals(PlanWriter.write(DRAFT), result.raw());
+        assertEquals(RepairOutcome.FAILED, result.rounds().get(0).outcome());
+        assertEquals(RepairOutcome.FAILED, fake.asked.get(2).critique().outcome());
+        assertEquals(PromptCheck.planKey(fake.asked.get(2).planJson()), fake.asked.get(2).feedback().planKey());
+        assertEquals(PlanWriter.write(DRAFT), fake.asked.get(2).planJson());
+    }
+
+    @Test
     void aWorldCheckFailureIsAFailedRepair() throws Exception {
         Fake fake = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
         fake.compareFailure = new ProviderException("the world could not be read");
@@ -266,6 +279,10 @@ class ReviewRoundsTest {
         run(failed, 2);
         assertRelayAccepts(failed, false);
         assertEquals(3, failed.asked.size());
+        Fake untrusted = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
+        untrusted.wrongKey = true;
+        run(untrusted, 2);
+        assertRelayAccepts(untrusted, false);
     }
 
     static void assertRelayAccepts(Fake fake, boolean repairReturnedRepaired) {
