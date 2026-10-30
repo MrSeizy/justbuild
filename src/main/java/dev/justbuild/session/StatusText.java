@@ -56,7 +56,7 @@ final class StatusText {
         if (note != null && !note.isBlank()) {
             doing += ": " + note.strip();
         }
-        boolean counting = round > 0 || phase == Phase.WRITING;
+        boolean counting = stage != ReviewRounds.Stage.CRITIQUE && (round > 0 || phase == Phase.WRITING);
         return doing + (!counting ? "" : operations == 1 ? ", 1 operation so far"
                 : operations > 1 ? ", " + operations + " operations so far" : "");
     }
