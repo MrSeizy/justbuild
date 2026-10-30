@@ -286,4 +286,29 @@ class PromptSpecTest {
         assertTrue(spec.userContent().contains(terrain().format()));
         assertEquals(spec.userContent(), PromptSpec.parse(spec.toJson().toString()).userContent());
     }
+
+    @Test
+    void theFacadeSentenceFollowsTheAttachedImage() throws Exception {
+        var volume = dev.justbuild.prompt.VoxelVolume.capture(new dev.justbuild.plan.InspectionRequest(
+                new dev.justbuild.plan.Cell(0, 0, 0), new dev.justbuild.plan.Cell(0, 0, 0)), 1, true, c -> "minecraft:stone");
+        var feedback = new dev.justbuild.prompt.PlanningFeedback(PromptCheck.planKey(PLAN), List.of(), volume, volume, null, null);
+        String sentence = "four facades seen straight on";
+        PromptSpec critique = base().critiqueRound(PLAN, 1, 1, null).withFeedback(feedback);
+        assertTrue(critique.facades() && critique.userContent().contains(sentence));
+        PromptSpec bare = base().critiqueRound(PLAN, 1, 1, null);
+        assertFalse(bare.facades() || bare.userContent().contains(sentence) || bare.userContent().contains("four facades"));
+        PromptSpec self = base().review(PLAN, 1, 1).withFeedback(feedback);
+        assertFalse(self.facades() || self.userContent().contains("facades"), "a self-review never mentions facades");
+        var note = new dev.justbuild.plan.CritiqueNote(critique(), null);
+        PromptSpec repair = base().review(PLAN, 1, 1, note).withFeedback(feedback);
+        assertTrue(repair.facades() && repair.userContent().contains(sentence));
+    }
+
+    @Test
+    void theCriticSeesWhoSelectedTheGuides() throws Exception {
+        PromptSpec critique = base().withGuides(false, List.of("windows")).critiqueRound(PLAN, 1, 1, null);
+        assertTrue(critique.userContent().contains("Guides the builder selected"));
+        assertFalse(critique.userContent().contains("Guides selected by you"));
+        assertTrue(newBuild().withGuides(false, List.of("windows")).userContent().contains("Guides selected by you"));
+    }
 }

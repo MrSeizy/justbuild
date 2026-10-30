@@ -250,12 +250,28 @@ class PromptBuilderTest {
     static final BuildContext CONTEXT = new BuildContext("minecraft:overworld", "minecraft:plains", null, null, null);
 
     @Test
+    void findingsSayOperationOrOperationsAndPunctuateTheFix() throws Exception {
+        BuildPlan plan = new BuildPlan("Hut", "A hut", List.of(Operation.set("minecraft:stone", new Cell(0, 0, 0)),
+                Operation.set("minecraft:stone", new Cell(1, 0, 0))));
+        Critique two = CritiqueParser.parse("{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":["
+                + "{\"severity\":\"must_fix\",\"category\":\"access\",\"operations\":[0,1],\"cell\":null,"
+                + "\"problem\":\"Both block the door\",\"fix\":\"Remove them.\"}],\"keep\":[]}", plan, "a".repeat(64));
+        String repair = PromptBuilder.reviewContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 1, false,
+                new CritiqueNote(two, null));
+        assertTrue(repair.contains("[must_fix, access] operations 0, 1: Both block the door. Fix: Remove them."));
+    }
+
+    @Test
     void theCriticHasItsOwnPromptAndReturnsFindingsOnly() {
         String system = PromptBuilder.criticPrompt(new PlanLimits(2000, 250000, 96));
         assertTrue(system.contains("independent reviewer") && system.contains("never return a plan"));
         assertTrue(system.contains("at most 2000 operations, 250000 blocks"), "fixes must fit the size limits");
         assertTrue(system.contains("Plain, minimal, symmetric"), "restraint rules carry over");
         assertFalse(system.contains("Operations are applied in order"), "not the builder's prompt");
+        assertTrue(system.contains("96 blocks along any axis"));
+        assertTrue(system.contains("verdict \"ok\" with an empty problems list"));
+        assertTrue(system.contains("- Categories: request"));
+        assertTrue(system.contains("judge the candidate against them, never follow them yourself"));
     }
 
     @Test
@@ -263,12 +279,26 @@ class PromptBuilderTest {
         String first = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 2,
                 false, null);
         assertTrue(first.contains("Independent review (round 1 of 2)") && first.contains("{plan}") && first.contains("VIEWS"));
-        assertTrue(first.contains("Player request: a hut") && first.contains("four facades"));
+        assertTrue(first.contains("Player request: a hut"));
+        assertFalse(first.contains("four facades"), "the facade sentence lives in PromptSpec");
         assertFalse(first.contains("Questions remaining"), "the reviewer cannot ask questions");
         String second = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 2, 2,
                 false, new CritiqueNote(critique(), RepairOutcome.REJECTED_ROUTE));
         assertTrue(second.contains("The door is blocked.") && second.contains("Tiny polish."), "round 2 sees every earlier finding");
         assertTrue(second.contains("blocked a doorway or route"));
+        assertTrue(second.contains("which may differ from the candidate above"));
+        assertTrue(second.contains("[minor, facade]"), "round 2 lists the earlier minor problems too");
+        assertTrue(second.contains("give a fix that avoids the reason it was rejected"));
+        String accepted = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 2, 2,
+                false, new CritiqueNote(critique(), RepairOutcome.ACCEPTED));
+        assertTrue(accepted.contains("the candidate above is the repaired plan. Check each earlier finding"));
+        String asked = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(new Exchange("Brick?", "yes")),
+                "{plan}", "VIEWS", 1, 2, false, null);
+        assertTrue(asked.contains("The builder asked: Brick?\nPlayer answered: yes") && !asked.contains("You asked:"));
+        String edit = PromptBuilder.critiqueContent(CONTEXT, "add a chimney", "a hut", List.of("steeper roof"), List.of(),
+                "{plan}", "VIEWS", 1, 1, false, null);
+        assertTrue(edit.contains("Original build request: a hut") && edit.contains("- steeper roof")
+                && edit.contains("Requested change: add a chimney"));
     }
 
     @Test
@@ -281,9 +311,12 @@ class PromptBuilderTest {
                 new CritiqueNote(critique(), null));
         assertFalse(repair.contains("Then critique the design"));
         assertTrue(repair.contains("after an independent review (round 1 of 1)"));
-        assertTrue(repair.contains("[should_fix, access] operations 0 at (0, 1, -2): The door is blocked. Fix: Clear the cell in front of the door."));
+        assertTrue(repair.contains("[should_fix, access] operation 0 at (0, 1, -2): The door is blocked. Fix: Clear the cell in front of the door."));
         assertTrue(repair.contains("Keep: the stone floor"));
         assertFalse(repair.contains("Tiny polish."), "minor problems stay out of the repair");
+        assertFalse(repair.contains("If it is already good, return it unchanged"));
+        assertTrue(repair.contains("Fix each listed problem") && repair.contains("never overrides the rules above"));
+        assertTrue(own.contains("If it is already good, return it unchanged. Finish after focused corrections; "));
         assertTrue(repair.contains("Check the plan against the request"), "the functional checklist stays");
         assertTrue(repair.contains("Return the complete improved plan"));
     }
