@@ -40,27 +40,6 @@ final class RelaySeen {
         add(answers, message);
     }
 
-    /** A question this game's AI asked (as the server will quote it back). */
-    static void question(String question) {
-        add(questions, question);
-    }
-
-    /** A plan this game's AI returned ({@link PromptCheck#planKey}), which a review or shrink may carry back. */
-    static void plan(String key) {
-        add(plans, key);
-    }
-
-    /** A critique this game's AI returned ({@link dev.justbuild.plan.Critique#key}), which a repair may carry back. */
-    static void critique(String key) {
-        add(critiques, key);
-    }
-
-    /** A repair that carried this critique returned this plan, so a second critique round may cite the critique for it. */
-    static void repair(String critiqueKey, String planKey) {
-        if (critiqueKey == null || critiqueKey.isBlank() || planKey == null || planKey.isBlank()) return;
-        add(repairs, critiqueKey + ">" + planKey);
-    }
-
     /** Remembers what a sent response authorizes ({@link RelayRecording#of} decides what that is). */
     static void apply(RelayRecording recording) {
         add(questions, recording.question());

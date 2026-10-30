@@ -4,10 +4,11 @@ package dev.justbuild.relay;
  * What the player's game remembers once it has sent a response (the client's RelaySeen applies it). Kept here, with no
  * game classes, so the decision can be unit tested.
  *
- * @param question a question the AI asked
- * @param planKey the key of a plan the AI returned
+ * @param question a question the AI asked (as the server will quote it back)
+ * @param planKey the key of a plan the AI returned ({@link PromptCheck#planKey}), which a review or shrink may carry back
  * @param repairPair {@code critiqueKey + ">" + planKey} when a repair carrying that critique returned the plan
- * @param critiqueKey the key of a critique the AI returned
+ * @param critiqueKey the key of a critique the AI returned ({@link dev.justbuild.plan.Critique#key}), which a repair may
+ *     carry back
  */
 public record RelayRecording(String question, String planKey, String repairPair, String critiqueKey) {
     private static final RelayRecording NOTHING = new RelayRecording(null, null, null, null);

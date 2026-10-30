@@ -162,4 +162,21 @@ class RelayGateTest {
         assertEquals(14, RelayGate.CALLS, "plan, guides, four reads, two size retries, four review calls, two spare");
         assertEquals(30, RelayGate.HOURLY);
     }
+
+    @Test
+    void theHourlyReasonShowsOnlyForAnArmedRequest() {
+        RelayGate gate = new RelayGate();
+        for (int i = 0; i < RelayGate.HOURLY; i++) {
+            Instant t = T0.plusSeconds(i);
+            gate.command("justbuild tower " + i, t);
+            assertTrue(gate.allow(t));
+        }
+        Instant now = T0.plusSeconds(RelayGate.HOURLY);
+        gate.command("justbuild one more", now);
+        assertFalse(gate.allow(now));
+        assertTrue(gate.hourlyUsedUp(now), "armed, calls left, stopped by the ceiling");
+        gate.reset();
+        assertFalse(gate.hourlyUsedUp(now), "an unrequested call is not blamed on the ceiling");
+        assertFalse(new RelayGate().hourlyUsedUp(now));
+    }
 }

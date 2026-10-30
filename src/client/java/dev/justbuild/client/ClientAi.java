@@ -311,7 +311,9 @@ final class ClientAi {
         var reviewer = config.reviewer();
         if (reviewer.isEmpty()) return builder;
         String problem = LocalProfiles.problem(config, reviewer.get());
-        if (problem != null) {
+        if (problem == null) {
+            lastFallbackNote = null;
+        } else {
             String note = "Reviewer profile “" + reviewer.get().name + "” can't plan here (" + problem
                     + "); using your builder AI.";
             if (!note.equals(lastFallbackNote)) {
