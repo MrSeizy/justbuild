@@ -370,7 +370,7 @@ public final class PromptBuilder {
                 should have left alone.
                 - Blocks already in the world that no plan placed stay as they are wherever the candidate places \
                 nothing. Never ask to re-place one just to keep it; re-placing resets its state and contents.
-                - A fix must not change cells the request fixes by coordinate, or parts it says to preserve or keep. \
+                - A fix must not change cells the request places at given coordinates, or parts it says to preserve or keep. \
                 When a problem touches them, put the fix elsewhere in the plan or leave the problem out.
                 - Each problem lists at most 8 operation indices ([] when none applies) and/or one plan cell (null \
                 when none), says what is wrong in under 200 characters, and gives a concrete fix in under 240 \

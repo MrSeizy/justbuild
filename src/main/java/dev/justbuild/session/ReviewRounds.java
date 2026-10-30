@@ -117,7 +117,8 @@ public final class ReviewRounds {
             }
             boolean worth = critique != null && critique.needsRepair();
             // The reviewer read the draft's checks, so once it answers only technical failures force a repair; advisory
-            // findings (stairs, foundations, support) are its call. Without a critique, any diagnosed problem gets one.
+            // findings (stairs, foundations, support, doors) are its call. Without a critique, any diagnosed problem
+            // gets one.
             boolean checksNeedRepair = critique != null ? evidence.technicalFailures() > 0 : evidence.needsCorrection();
             if (!worth && !checksNeedRepair) {
                 caller.say(critique != null ? "Reviewer: no changes needed."
