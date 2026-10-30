@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.justbuild.plan.BuildPlan;
 import dev.justbuild.plan.Cell;
 import dev.justbuild.plan.Critique;
+import dev.justbuild.plan.CritiqueParser;
 import dev.justbuild.plan.Operation;
 import dev.justbuild.plan.PlanLimits;
+import dev.justbuild.plan.PlanParser;
+import dev.justbuild.plan.PlanResponse;
 import dev.justbuild.plan.PlanWriter;
 import dev.justbuild.plan.RepairOutcome;
 import dev.justbuild.prompt.PlanningFeedback;
@@ -14,13 +17,18 @@ import dev.justbuild.provider.CancelledException;
 import dev.justbuild.provider.ProviderException;
 import dev.justbuild.relay.PromptCheck;
 import dev.justbuild.relay.PromptSpec;
+import dev.justbuild.world.McBootstrap;
 import dev.justbuild.world.ReviewCheck;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class ReviewRoundsTest {
@@ -31,9 +39,21 @@ class ReviewRoundsTest {
     static final String MINOR = "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[{\"severity\":\"minor\",\"category\":\"facade\","
             + "\"operations\":[0],\"cell\":null,\"problem\":\"Plain wall.\",\"fix\":\"Add a window.\"}],\"keep\":[]}";
     static final String SHOULD = MINOR.replace("\"minor\"", "\"should_fix\"").replace("\"ok\"", "\"revise\"");
+    static final BuildPlan REPAIRED2 = new BuildPlan("Hut", "A hut", List.of(Operation.set("minecraft:stone", new Cell(0, 0, 0)),
+            Operation.set("minecraft:oak_planks", new Cell(0, 1, 0)), Operation.set("minecraft:glass", new Cell(1, 1, 0))));
+    static final String NOT_A_PLAN = "this is not a plan";
     static final PlanLimits LIMITS = new PlanLimits(2000, 250000, 96);
     static final PromptSpec BASE = PromptSpec.newBuild("minecraft:overworld", "minecraft:plains", PromptSpec.Placement.FRONT,
             null, null, "a hut", List.of(), 0, null, 250000);
+
+    @BeforeAll static void bootstrap() { McBootstrap.init(); }
+
+    static String key(BuildPlan plan) { return PromptCheck.planKey(PlanWriter.write(plan)); }
+
+    static String problem(String severity, String category) {
+        return "{\"severity\":\"" + severity + "\",\"category\":\"" + category + "\",\"operations\":[0],\"cell\":null,"
+                + "\"problem\":\"A problem.\",\"fix\":\"A fix.\"}";
+    }
 
     static PlanningFeedback evidence(PlanningFeedback.Kind... kinds) {
         return new PlanningFeedback(PromptCheck.planKey(PlanWriter.write(DRAFT)),
@@ -48,6 +68,10 @@ class ReviewRoundsTest {
         final List<String> stages = new ArrayList<>();
         ReviewCheck.Verdict verdict = new ReviewCheck.Verdict(true, null, RepairOutcome.ACCEPTED);
         ProviderException failure;
+        ProviderException repairFailure;
+        ProviderException compareFailure;
+        boolean wrongKey;
+        final Set<String> critiqueKeys = new LinkedHashSet<>();
 
         Fake critiques(String... answers) { critiques.addAll(List.of(answers)); return this; }
         Fake repairs(String... answers) { repairs.addAll(List.of(answers)); return this; }
@@ -57,14 +81,24 @@ class ReviewRoundsTest {
             if (failure != null) throw failure;
             String next = critiques.poll();
             if (next == null) throw new ProviderException("the reviewer did not answer");
+            try {
+                critiqueKeys.add(CritiqueParser.parse(next, ((PlanResponse.Build) PlanParser.parse(spec.planJson())).plan(),
+                        PromptCheck.planKey(spec.planJson())).key());
+            } catch (Exception e) {
+                // not a critique: the loop treats it as a failure
+            }
             return next;
         }
-        @Override public String repair(PromptSpec spec) {
+        @Override public String repair(PromptSpec spec) throws ProviderException {
             asked.add(spec);
+            if (repairFailure != null) throw repairFailure;
             return Objects.requireNonNull(repairs.poll(), "unexpected repair call");
         }
-        @Override public ReviewRounds.Compared compare(BuildPlan draft, BuildPlan repaired) {
-            return new ReviewRounds.Compared(verdict, PlanningFeedback.EMPTY);
+        @Override public ReviewRounds.Compared compare(BuildPlan current, BuildPlan repaired) throws ProviderException {
+            if (compareFailure != null) throw compareFailure;
+            BuildPlan kept = verdict.accepted() ? repaired : current;
+            BuildPlan keyed = wrongKey ? (kept == repaired ? current : repaired) : kept;
+            return new ReviewRounds.Compared(verdict, new PlanningFeedback(key(keyed), List.of(), null, null, null, null));
         }
         @Override public void stage(ReviewRounds.Stage stage, int round, int rounds) { stages.add(stage + " " + round + "/" + rounds); }
         @Override public void say(String line) { lines.add(line); }
@@ -88,7 +122,7 @@ class ReviewRoundsTest {
         assertEquals(List.of(PromptSpec.Kind.CRITIQUE), fake.kinds());
         assertEquals(List.of("CRITIQUE 1/2"), fake.stages);
         assertEquals(List.of("Reviewer: no changes needed."), fake.lines);
-        assertFalse(result.rounds().get(0).repaired());
+        assertFalse(result.rounds().get(0).repairRan());
     }
 
     @Test
@@ -112,6 +146,8 @@ class ReviewRoundsTest {
         assertEquals(PlanWriter.write(REPAIRED), fake.asked.get(2).planJson(), "round 2 reviews the repaired plan");
         assertEquals(List.of("Reviewer found 1 problem (facade); revising…", "Reviewer: no changes needed."), fake.lines);
         assertEquals(List.of("CRITIQUE 1/2", "REPAIR 1/2", "CRITIQUE 2/2"), fake.stages);
+        assertEquals(key(REPAIRED), fake.asked.get(2).feedback().planKey(), "the evidence describes the plan kept");
+        assertEquals(PlanWriter.write(REPAIRED), result.raw());
     }
 
     @Test
@@ -133,6 +169,19 @@ class ReviewRoundsTest {
     }
 
     @Test
+    void aSatisfiedCritiqueIsNotCitedAfterAnIdenticalOrRejectedChecksOnlyRepair() throws Exception {
+        Fake same = new Fake().critiques(OK, OK).repairs(PlanWriter.write(DRAFT));
+        run(same, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.SUPPORT), 2);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW, PromptSpec.Kind.CRITIQUE), same.kinds());
+        assertNull(same.asked.get(2).critique());
+        Fake rejected = new Fake().critiques(OK, OK).repairs(PlanWriter.write(REPAIRED));
+        rejected.verdict = new ReviewCheck.Verdict(false, "removed a wall", RepairOutcome.REJECTED_REMOVAL);
+        run(rejected, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.SUPPORT), 2);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW, PromptSpec.Kind.CRITIQUE), rejected.kinds());
+        assertNull(rejected.asked.get(2).critique());
+    }
+
+    @Test
     void aRejectedRepairKeepsThePlanAndTellsTheNextRound() throws Exception {
         Fake fake = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
         fake.verdict = new ReviewCheck.Verdict(false, "blocked a usable doorway at 0, 1, 0", RepairOutcome.REJECTED_ROUTE);
@@ -142,6 +191,113 @@ class ReviewRoundsTest {
         assertEquals(PlanWriter.write(DRAFT), fake.asked.get(2).planJson());
         assertTrue(fake.lines.contains("Revision rejected (it blocked a doorway or route); keeping the draft."));
         assertEquals(RepairOutcome.REJECTED_ROUTE, result.rounds().get(0).outcome());
+        assertEquals(key(DRAFT), fake.asked.get(2).feedback().planKey(), "the evidence describes the plan kept");
+        assertEquals(PlanWriter.write(DRAFT), result.raw());
+    }
+
+    @Test
+    void aFailedRepairKeepsThePlanAndTheEarlierEvidence() throws Exception {
+        Fake fake = new Fake().critiques(SHOULD, OK).repairs(NOT_A_PLAN);
+        var result = run(fake, 2);
+        assertEquals(DRAFT, result.plan());
+        assertEquals(PlanWriter.write(DRAFT), result.raw());
+        assertEquals(RepairOutcome.FAILED, result.rounds().get(0).outcome());
+        assertEquals(RepairOutcome.FAILED, fake.asked.get(2).critique().outcome());
+        assertEquals(key(DRAFT), fake.asked.get(2).feedback().planKey());
+        assertEquals(PlanWriter.write(DRAFT), fake.asked.get(2).planJson());
+        Fake thrown = new Fake().critiques(SHOULD, OK);
+        thrown.repairFailure = new ProviderException("the builder did not answer");
+        var after = run(thrown, 2);
+        assertEquals(DRAFT, after.plan());
+        assertEquals(RepairOutcome.FAILED, thrown.asked.get(2).critique().outcome());
+        assertEquals(key(DRAFT), thrown.asked.get(2).feedback().planKey());
+    }
+
+    @Test
+    void feedbackAboutAnotherPlanIsNotTrusted() throws Exception {
+        Fake fake = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
+        fake.verdict = new ReviewCheck.Verdict(false, "removed a wall", RepairOutcome.REJECTED_REMOVAL);
+        fake.wrongKey = true;
+        run(fake, 2);
+        assertEquals(key(DRAFT), fake.asked.get(2).feedback().planKey(), "the earlier evidence stays");
+    }
+
+    @Test
+    void aWorldCheckFailureIsAFailedRepair() throws Exception {
+        Fake fake = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
+        fake.compareFailure = new ProviderException("the world could not be read");
+        var result = run(fake, 2);
+        assertEquals(DRAFT, result.plan());
+        assertEquals(RepairOutcome.FAILED, result.rounds().get(0).outcome());
+    }
+
+    @Test
+    void theWorstCaseRunsEveryStageAndRound2RepairsWithRound2sCritique() throws Exception {
+        Fake fake = new Fake().critiques(SHOULD, SHOULD).repairs(PlanWriter.write(REPAIRED), PlanWriter.write(REPAIRED2));
+        var result = run(fake, 2);
+        assertEquals(List.of("CRITIQUE 1/2", "REPAIR 1/2", "CRITIQUE 2/2", "REPAIR 2/2"), fake.stages);
+        assertEquals(PlanWriter.write(REPAIRED2), PlanWriter.write(result.plan()));
+        assertEquals(RepairOutcome.ACCEPTED, fake.asked.get(2).critique().outcome());
+        assertEquals(key(REPAIRED), fake.asked.get(3).critique().critique().planKey());
+        assertNull(fake.asked.get(3).critique().outcome());
+        assertEquals(PlanWriter.write(REPAIRED), fake.asked.get(3).planJson());
+    }
+
+    @Test
+    void roundTwoLinesSayThePreviousVersionIsKept() throws Exception {
+        Fake silent = new Fake().critiques(SHOULD).repairs(PlanWriter.write(REPAIRED));
+        run(silent, 2);
+        assertEquals("Reviewer didn't answer; keeping the previous version.", silent.lines.get(silent.lines.size() - 1));
+        Fake failed = new Fake().critiques(SHOULD, SHOULD).repairs(PlanWriter.write(REPAIRED), NOT_A_PLAN);
+        run(failed, 2);
+        assertEquals("Revision failed; keeping the previous version.", failed.lines.get(failed.lines.size() - 1));
+    }
+
+    @Test
+    void everyRequestTheLoopMakesPassesTheRelayCheck() throws Exception {
+        Fake accepted = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
+        run(accepted, 2);
+        assertRelayAccepts(accepted, true);
+        Fake rejected = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
+        rejected.verdict = new ReviewCheck.Verdict(false, "removed a wall", RepairOutcome.REJECTED_REMOVAL);
+        run(rejected, 2);
+        assertRelayAccepts(rejected, false);
+        Fake failed = new Fake().critiques(SHOULD, OK).repairs(NOT_A_PLAN);
+        run(failed, 2);
+        assertRelayAccepts(failed, false);
+        assertEquals(3, failed.asked.size());
+    }
+
+    static void assertRelayAccepts(Fake fake, boolean repairReturnedRepaired) {
+        Set<String> repairs = new HashSet<>();
+        if (repairReturnedRepaired) repairs.add(fake.critiqueKeys.iterator().next() + ">" + key(REPAIRED));
+        PromptCheck.Seen seen = new PromptCheck.Seen(Set.of("a hut"), Set.of(), Set.of(), Set.of(key(DRAFT), key(REPAIRED)),
+                fake.critiqueKeys, repairs);
+        for (PromptSpec spec : fake.asked) {
+            assertNull(PromptCheck.check(spec, seen).problem(), spec.kind() + " round " + spec.round());
+        }
+    }
+
+    @Test
+    void unknownProblemsAloneNeedNoRepairButTechnicalOnesDo() throws Exception {
+        Fake unknown = new Fake().critiques(OK);
+        run(unknown, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.UNKNOWN), 1);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE), unknown.kinds());
+        Fake zone = new Fake().critiques(OK).repairs(PlanWriter.write(REPAIRED));
+        run(zone, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.UNKNOWN, PlanningFeedback.Kind.ZONE), 1);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW), zone.kinds());
+    }
+
+    @Test
+    void foundCountsProblemsAndListsEachAreaOnce() throws Exception {
+        String raw = "{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":[" + problem("should_fix", "facade") + ","
+                + problem("must_fix", "roof") + "," + problem("minor", "access") + "," + problem("should_fix", "facade")
+                + "],\"keep\":[]}";
+        Critique critique = CritiqueParser.parse(raw, DRAFT, key(DRAFT));
+        assertEquals("Reviewer found 3 problems (facade, roof); revising…", ReviewRounds.found(critique));
+        Critique two = CritiqueParser.parse("{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":["
+                + problem("should_fix", "facade") + "," + problem("should_fix", "facade") + "],\"keep\":[]}", DRAFT, key(DRAFT));
+        assertEquals("Reviewer found 2 problems (facade); revising…", ReviewRounds.found(two));
     }
 
     @Test
@@ -165,6 +321,8 @@ class ReviewRoundsTest {
         Fake fake = new Fake().repairs(PlanWriter.write(REPAIRED));
         run(fake, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.LIMIT), 1);
         assertEquals(List.of(PromptSpec.Kind.REVIEW), fake.kinds());
+        assertEquals(List.of("REPAIR 1/1"), fake.stages);
+        assertEquals("Fixing the reported problems…", fake.lines.get(0));
     }
 
     @Test
@@ -183,9 +341,12 @@ class ReviewRoundsTest {
         assertEquals(List.of(PromptSpec.Kind.REVIEW, PromptSpec.Kind.REVIEW), self.kinds());
         assertTrue(self.asked.stream().allMatch(s -> s.critique() == null));
         assertTrue(self.lines.isEmpty());
+        assertEquals(List.of("REVIEW 1/2", "REVIEW 2/2"), self.stages);
+        assertEquals(PlanWriter.write(REPAIRED), self.asked.get(1).planJson(), "round 2 reviews the repaired plan");
         Fake quick = new Fake().repairs(PlanWriter.write(REPAIRED));
         run(quick, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.SUPPORT), 0);
         assertEquals(List.of(PromptSpec.Kind.REVIEW), quick.kinds());
+        assertEquals(List.of("REVIEW 1/1"), quick.stages);
         Fake idle = new Fake();
         run(idle, ReviewRounds.Mode.SEPARATE, evidence(), 0);
         assertTrue(idle.asked.isEmpty());
@@ -196,5 +357,11 @@ class ReviewRoundsTest {
         Fake fake = new Fake();
         fake.failure = new CancelledException();
         assertThrows(CancelledException.class, () -> run(fake, 2));
+        Fake repairing = new Fake().critiques(SHOULD);
+        repairing.repairFailure = new CancelledException();
+        assertThrows(CancelledException.class, () -> run(repairing, 2));
+        Fake comparing = new Fake().critiques(SHOULD).repairs(PlanWriter.write(REPAIRED));
+        comparing.compareFailure = new CancelledException();
+        assertThrows(CancelledException.class, () -> run(comparing, 2));
     }
 }

@@ -33,19 +33,30 @@ public final class ReviewRounds {
 
     public enum Mode { SEPARATE, SELF }
 
-    public enum Stage { CRITIQUE, REPAIR }
+    public enum Stage {
+        /** The reviewer is critiquing the current candidate. */
+        CRITIQUE,
+        /** The builder is applying a critique, or the draft's own checks, to the candidate. */
+        REPAIR,
+        /** The builder is reviewing its own plan: {@link Mode#SELF}, or the quick-mode correction at detail level 0. */
+        REVIEW
+    }
 
     /** What the rounds need from whoever runs them. Called on a worker thread. */
     public interface Caller {
-        /** The reviewer's raw answer to a CRITIQUE spec. */
+        /** The reviewer's raw answer to a CRITIQUE spec. The spec carries zero inspection reads and must stay that way (the relay refuses otherwise). */
         String critique(PromptSpec spec) throws ProviderException, PlanException;
 
-        /** The builder's raw answer to a REVIEW spec, after any inspection rounds it asks for. */
+        /**
+         * The builder's raw answer to a REVIEW spec, after any inspection rounds it asks for. The spec arrives with zero
+         * inspection reads ({@code PromptSpec.asking} zeroes them); a caller that offers inspection must restore the shared budget.
+         */
         String repair(PromptSpec spec) throws ProviderException, PlanException;
 
-        /** Compares a candidate with its repair on one world snapshot; the feedback describes the plan kept. */
-        Compared compare(BuildPlan draft, BuildPlan repaired) throws ProviderException;
+        /** Compares the current candidate with its repair on one world snapshot; the feedback describes the plan kept. */
+        Compared compare(BuildPlan current, BuildPlan repaired) throws ProviderException;
 
+        /** The review is starting {@code stage} of {@code round} of {@code rounds}. */
         void stage(Stage stage, int round, int rounds);
 
         /** A progress line for the player. */
@@ -54,9 +65,14 @@ public final class ReviewRounds {
 
     public record Compared(ReviewCheck.Verdict verdict, PlanningFeedback feedback) { }
 
-    /** {@code unchanged}: the round left the plan as it was (no repair, a rejection, or an identical repair). */
-    public record Round(int number, Critique critique, boolean repaired, RepairOutcome outcome, boolean unchanged) { }
+    /**
+     * One round. {@code critique} is null when the critique failed or was skipped (or in self-review); {@code repairRan}
+     * says a repair was attempted; {@code outcome} is null when no repair ran; {@code unchanged}: the round left the plan
+     * as it was (no repair, a rejection, a failure, or an identical repair).
+     */
+    public record Round(int number, Critique critique, boolean repairRan, RepairOutcome outcome, boolean unchanged) { }
 
+    /** The plan kept after the rounds, the raw answer that produced it, and what each round did. */
     public record Result(BuildPlan plan, String raw, List<Round> rounds) { }
 
     private record Repair(BuildPlan plan, String raw, PlanningFeedback evidence, RepairOutcome outcome, boolean unchanged) { }
@@ -78,7 +94,7 @@ public final class ReviewRounds {
         if (rounds == 0 || mode == Mode.SELF) {
             int total = rounds == 0 ? (evidence.needsCorrection() ? 1 : 0) : rounds;
             for (int round = 1; round <= total; round++) {
-                caller.stage(Stage.REPAIR, round, total);
+                caller.stage(Stage.REVIEW, round, total);
                 Repair r = repair(base, plan, raw, evidence, null, round, total);
                 done.add(new Round(round, null, true, r.outcome(), r.unchanged()));
                 plan = r.plan();
@@ -89,13 +105,19 @@ public final class ReviewRounds {
         }
         CritiqueNote previous = null;
         for (int round = 1; round <= rounds; round++) {
-            caller.stage(Stage.CRITIQUE, round, rounds);
             // A draft over the limits has no safe views to judge; its diagnostics go straight to a repair.
             boolean drawable = evidence.problems().stream().noneMatch(p -> p.kind() == PlanningFeedback.Kind.LIMIT);
-            Critique critique = drawable ? critique(base, plan, evidence, round, rounds, previous) : null;
+            Critique critique = null;
+            if (drawable) {
+                caller.stage(Stage.CRITIQUE, round, rounds);
+                critique = critique(base, plan, evidence, round, rounds, previous);
+            } else {
+                LOGGER.debug("Review round {}: draft over the limits; skipping the critique", round);
+            }
             boolean worth = critique != null && critique.needsRepair();
             if (!worth && !evidence.needsCorrection()) {
-                caller.say(critique != null ? "Reviewer: no changes needed." : "Reviewer didn't answer; keeping the draft.");
+                caller.say(critique != null ? "Reviewer: no changes needed."
+                        : "Reviewer didn't answer; keeping " + kept(round) + ".");
                 done.add(new Round(round, critique, false, null, true));
                 break;
             }
@@ -103,14 +125,15 @@ public final class ReviewRounds {
                     ? "Reviewer didn't answer; fixing the reported problems." : "Fixing the reported problems…");
             caller.stage(Stage.REPAIR, round, rounds);
             Repair r = repair(base, plan, raw, evidence, worth ? critique : null, round, rounds);
-            if (r.outcome() != RepairOutcome.ACCEPTED) caller.say(rejected(r.outcome()));
+            if (r.outcome() != RepairOutcome.ACCEPTED) caller.say(rejected(r.outcome(), round));
             done.add(new Round(round, critique, true, r.outcome(), r.unchanged()));
             plan = r.plan();
             raw = r.raw();
             evidence = r.evidence();
-            // Round 2 cites this critique only when it is about the plan round 2 judges, or when the repair that
-            // changed the plan carried it (the player's game records that pair); otherwise the relay would refuse it.
-            previous = critique != null && (worth || r.unchanged()) ? new CritiqueNote(critique, r.outcome()) : null;
+            // Round 2 cites only a critique worth fixing: the repair carried it, so the relay can bind it (an unchanged or
+            // rejected plan is what the critique is about; after an accepted change the game recorded the repair pair).
+            // An ok or minor-only critique was never applied, and citing it with the repair's outcome would mislead.
+            previous = worth ? new CritiqueNote(critique, r.outcome()) : null;
         }
         return new Result(plan, raw, List.copyOf(done));
     }
@@ -145,27 +168,41 @@ public final class ReviewRounds {
             }
             try {
                 limits.check(better.plan());
+                if (PlanSize.blocks(better.plan(), limits.maxBlocks()) == PlanSize.OVER) {
+                    LOGGER.warn("Review round {} went over {} blocks; keeping the previous plan", round, limits.maxBlocks());
+                    return new Repair(plan, raw, evidence, RepairOutcome.REJECTED_LIMIT, true);
+                }
             } catch (PlanException e) {
+                // Too many operations, a bad scalar, a box too big, or shapes that take too much work to draw.
                 LOGGER.warn("Review round {} went over the limits ({}); keeping the previous plan", round, e.getMessage());
                 return new Repair(plan, raw, evidence, RepairOutcome.REJECTED_LIMIT, true);
             }
-            if (PlanSize.blocks(better.plan(), limits.maxBlocks()) == PlanSize.OVER) {
-                LOGGER.warn("Review round {} went over {} blocks; keeping the previous plan", round, limits.maxBlocks());
-                return new Repair(plan, raw, evidence, RepairOutcome.REJECTED_LIMIT, true);
-            }
+            // A world-check failure (ProviderException) surfaces here and is reported as FAILED by the catch below.
             Compared compared = caller.compare(plan, better.plan());
             if (!compared.verdict().accepted()) {
                 LOGGER.warn("Review round {} {}; keeping the previous plan", round, compared.verdict().reason());
-                return new Repair(plan, raw, compared.feedback(), compared.verdict().outcome(), true);
+                return new Repair(plan, raw, describing(compared.feedback(), plan, evidence, round),
+                        compared.verdict().outcome(), true);
             }
-            return new Repair(better.plan(), answer, compared.feedback(), RepairOutcome.ACCEPTED,
-                    PlanWriter.write(better.plan()).equals(planJson));
+            return new Repair(better.plan(), answer, describing(compared.feedback(), better.plan(), evidence, round),
+                    RepairOutcome.ACCEPTED, PlanWriter.write(better.plan()).equals(planJson));
         } catch (CancelledException e) {
             throw e;
         } catch (PlanException | ProviderException e) {
-            LOGGER.warn("Review round {} failed ({}); keeping the previous plan", round, e.getMessage());
+            LOGGER.warn("Review round {} repair failed ({}); keeping the previous plan", round, e.getMessage());
             return new Repair(plan, raw, evidence, RepairOutcome.FAILED, true);
         }
+    }
+
+    /** The checks for the plan kept: feedback keyed to another plan would mislead the next round, so the earlier evidence stays. */
+    private static PlanningFeedback describing(PlanningFeedback feedback, BuildPlan kept, PlanningFeedback earlier, int round) {
+        if (feedback.planKey() == null || feedback.planKey().equals(PromptCheck.planKey(PlanWriter.write(kept)))) return feedback;
+        LOGGER.warn("Review round {}: review checks described a different plan; keeping the earlier evidence", round);
+        return earlier;
+    }
+
+    private static String kept(int round) {
+        return round == 1 ? "the draft" : "the previous version";
     }
 
     /** "Reviewer found 3 problems (access, roof, facade); revising…", made from typed fields only. */
@@ -176,13 +213,14 @@ public final class ReviewRounds {
         return "Reviewer found " + count + (count == 1 ? " problem (" : " problems (") + areas + "); revising…";
     }
 
-    static String rejected(RepairOutcome outcome) {
+    static String rejected(RepairOutcome outcome, int round) {
+        String kept = kept(round);
         return switch (outcome) {
-            case REJECTED_TECHNICAL -> "Revision rejected (it added technical problems); keeping the draft.";
-            case REJECTED_REMOVAL -> "Revision rejected (it removed existing structure); keeping the draft.";
-            case REJECTED_ROUTE -> "Revision rejected (it blocked a doorway or route); keeping the draft.";
-            case REJECTED_LIMIT -> "Revision rejected (it went over the size limits); keeping the draft.";
-            case FAILED -> "Revision failed; keeping the draft.";
+            case REJECTED_TECHNICAL -> "Revision rejected (it added technical problems); keeping " + kept + ".";
+            case REJECTED_REMOVAL -> "Revision rejected (it removed existing structure); keeping " + kept + ".";
+            case REJECTED_ROUTE -> "Revision rejected (it blocked a doorway or route); keeping " + kept + ".";
+            case REJECTED_LIMIT -> "Revision rejected (it went over the size limits); keeping " + kept + ".";
+            case FAILED -> "Revision failed; keeping " + kept + ".";
             case ACCEPTED -> "Revision applied.";
         };
     }
