@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -113,6 +114,46 @@ class PlanningCheckTest {
         var narrow = BuildZone.between(Level.OVERWORLD, new BlockPos(0, -1, 0), new BlockPos(5, -1, 6));
         assertEquals(List.of(PlanningFeedback.Kind.ZONE, PlanningFeedback.Kind.ROUTE_START, PlanningFeedback.Kind.UNREACHABLE),
                 routed(shed, narrow, Level.OVERWORLD).feedback().problems().stream().map(PlanningFeedback.Problem::kind).toList());
+    }
+
+    @Test void clearedAirDoesNotEnlargeTheRouteRegion() {
+        // Air placed over air still counts as a change; it must not lift the box above the shed's roof.
+        var cleared = new BuildPlan("Shed", "", List.of(Operation.fill("minecraft:air", new Cell(-1, 0, -1), new Cell(7, 6, 7), false),
+                Operation.fill("stone", new Cell(0, 0, 0), new Cell(6, 4, 6), true)));
+        var result = routed(cleared, null, Level.OVERWORLD);
+        assertTrue(result.changes().values().stream().anyMatch(s -> s.isAir()));
+        assertEquals(List.of(PlanningFeedback.Kind.ROUTE_START, PlanningFeedback.Kind.UNREACHABLE),
+                result.feedback().problems().stream().map(PlanningFeedback.Problem::kind).toList());
+        var floor = result.feedback().problems().get(1);
+        assertEquals(new Cell(1, 1, 1), floor.position()); assertEquals(new Cell(5, 1, 5), floor.to()); assertEquals(25, floor.count().intValue());
+    }
+
+    @Test void blocksAnEditRemovesNoLongerCountForRoutes() {
+        // The old build was a taller box; the edit turns it into the shed. The removed upper walls are air in the draft.
+        var shed = new BuildPlan("Shed", "", List.of(Operation.fill("stone", new Cell(0, 0, 0), new Cell(6, 4, 6), true)));
+        Map<BlockPos, BlockState> before = new LinkedHashMap<>(), baseline = new LinkedHashMap<>();
+        for (int x = 0; x <= 6; x++) for (int y = 0; y <= 8; y++) for (int z = 0; z <= 6; z++) {
+            boolean face = x == 0 || x == 6 || y == 0 || y == 8 || z == 0 || z == 6;
+            before.put(new BlockPos(x, y, z), face ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
+            baseline.put(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState());
+        }
+        Function<BlockPos, BlockState> live = p -> before.containsKey(p) ? before.get(p)
+                : p.getY() < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState();
+        var result = PlanningCheck.check(shed, BlockPos.ZERO, Direction.NORTH, LevelHeightAccessor.create(-64, 384), live,
+                baseline, before, true, p -> true, null, BuildConstraints.NONE, new PlanLimits(100, 1000, 32), Level.OVERWORLD);
+        assertEquals(List.of(PlanningFeedback.Kind.ROUTE_START, PlanningFeedback.Kind.UNREACHABLE),
+                result.feedback().problems().stream().map(PlanningFeedback.Problem::kind).toList());
+        var floor = result.feedback().problems().get(1);
+        assertEquals(new Cell(1, 1, 1), floor.position()); assertEquals(new Cell(5, 1, 5), floor.to()); assertEquals(25, floor.count().intValue());
+    }
+
+    @Test void anIncompleteDraftGetsNoRouteFindings() {
+        var plan = new BuildPlan("Shed", "", List.of(Operation.fill("stone", new Cell(0, 0, 0), new Cell(6, 4, 6), true),
+                Operation.set("minecraft:no_such_block", new Cell(10, 0, 10))));
+        var result = routed(plan, null, Level.OVERWORLD);
+        var kinds = result.feedback().problems().stream().map(PlanningFeedback.Problem::kind).toList();
+        assertTrue(kinds.contains(PlanningFeedback.Kind.INVALID_BLOCKS));
+        assertFalse(kinds.contains(PlanningFeedback.Kind.ROUTE_START)); assertFalse(kinds.contains(PlanningFeedback.Kind.UNREACHABLE));
     }
 
     private PlanningCheck.Result routed(BuildPlan plan, BuildZone zone, ResourceKey<Level> routes) {

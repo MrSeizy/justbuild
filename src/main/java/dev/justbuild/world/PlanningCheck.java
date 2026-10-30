@@ -69,11 +69,13 @@ public final class PlanningCheck {
         if (unknown[0]) problems.add(problem(PlanningFeedback.Kind.UNKNOWN));
         Set<BlockPos> positions = new HashSet<>(changes.keySet()); positions.addAll(before.keySet());
         Function<BlockPos, BlockState> drafted = p -> changes.containsKey(p) ? changes.get(p) : live.apply(p);
-        if (routes != null && !changes.isEmpty()) {
-            // Air placements (cleared interiors) would grow the route region past the build's doors and roofs.
+        // Missing blocks would show up as missing stairs.
+        boolean complete = problems.stream().noneMatch(p -> p.kind() == PlanningFeedback.Kind.INVALID_BLOCKS || p.kind() == PlanningFeedback.Kind.OUTSIDE_WORLD);
+        if (routes != null && !changes.isEmpty() && complete) {
+            // Air placements (cleared interiors) would enlarge the box, moving doors off its edge and flat roofs out of its top layer.
             List<BlockPos> built = new ArrayList<>();
             changes.forEach((p, state) -> { if (!state.isAir()) built.add(p); });
-            before.forEach((p, state) -> { if (!state.isAir()) built.add(p); });
+            before.forEach((p, state) -> { if (!changes.getOrDefault(p, state).isAir()) built.add(p); });
             // Route findings come last, so the 32-finding cap can only ever cut them.
             problems.addAll(RouteFindings.find(routes, built, drafted, origin, facing));
         }
