@@ -22,6 +22,10 @@ import net.minecraft.world.level.storage.LevelResource;
 public final class PlanningWorkflowGameTest implements FabricClientGameTest {
     private final List<JsonObject> prompts = new CopyOnWriteArrayList<>();
     private volatile List<String> editReplies = List.of();
+    static final String SHOULD_FIX = "{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":[{\"severity\":\"should_fix\","
+            + "\"category\":\"interior\",\"operations\":[0],\"cell\":null,\"problem\":\"The table needs room.\","
+            + "\"fix\":\"Clear the cell in front of the door.\"}],\"keep\":[\"the paving\"]}";
+    static final String NOTHING = "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[],\"keep\":[]}";
     private static BuildPlan paving(int y) {
         return new BuildPlan("Mixed paving", "Minimal paving", List.of(Operation.fill("minecraft:stone",
                 new Cell(-3, y, -3), new Cell(3, y, 3), false).withMix("minecraft:cobblestone")));
@@ -93,26 +97,48 @@ public final class PlanningWorkflowGameTest implements FabricClientGameTest {
                 command(context, "preview discard");
                 check(prompts.size() == 6, "A local material control called the AI");
 
-                // A full edit draft must survive a destructive review, including a second review round.
+                // A full edit draft must survive a destructive repair, including a second critique and repair round.
                 Map<BlockPos, BlockState> pavingBefore = blocks(world, at);
                 BuildPlan current = record(world, id).current().plan();
                 var furnishedOps = new ArrayList<>(current.operations());
                 furnishedOps.add(Operation.set("crafting_table", new Cell(0, 1, 0)));
                 BuildPlan furnished = new BuildPlan(current.title(), "Added a workstation", furnishedOps, current.texture());
                 BuildPlan destructive = new BuildPlan("Furniture only", "", List.of(Operation.set("crafting_table", new Cell(0, 1, 0))));
-                editReplies = List.of(PlanWriter.write(furnished), PlanWriter.write(destructive), PlanWriter.write(furnished));
+                var litOps = new ArrayList<>(furnishedOps);
+                litOps.add(Operation.set("lantern", new Cell(0, 2, 0)));
+                BuildPlan lit = new BuildPlan(current.title(), "Added a lantern", litOps, current.texture());
+                editReplies = List.of(PlanWriter.write(furnished), SHOULD_FIX, PlanWriter.write(destructive), SHOULD_FIX,
+                        PlanWriter.write(furnished), PlanWriter.write(lit), NOTHING);
                 config.detail = "masterpiece"; new ConfigStore(file).save(config); command(context, "reload");
                 command(context, "edit add a crafting table and preserve the paving");
                 context.waitFor(mc -> ClientState.preview() != null, 1200);
-                check(prompts.size() == 9, "Expected an edit draft and two reviews, got " + prompts.size());
-                check(words(7).contains("Original build request: a plain mixed stone paving pad")
-                        && words(7).contains("Requested change: add a crafting table and preserve the paving"),
-                        "The review lost original build or current edit context");
-                check(words(8).contains("Mixed paving") && words(8).contains("COMPLETE replacement plan"),
-                        "The next review did not retain the complete draft after rejecting demolition");
+                check(prompts.size() == 11, "Expected an edit draft and two critique/repair rounds, got " + prompts.size());
+                check(words(7).contains("Independent review (round 1 of 2)")
+                        && words(7).contains("Original build request: a plain mixed stone paving pad"),
+                        "The critique lost the original build context");
+                check(prompts.get(7).getAsJsonArray("messages").get(1).getAsJsonObject().getAsJsonArray("content").size() == 4,
+                        "The critique did not receive source, candidate and facade images");
+                check(words(8).contains("Original build request: a plain mixed stone paving pad")
+                        && words(8).contains("Requested change: add a crafting table and preserve the paving")
+                        && words(8).contains("Clear the cell in front of the door."),
+                        "The repair lost original build or current edit context, or the critique");
+                check(words(9).contains("Independent review (round 2 of 2)") && words(9).contains("removed existing structure"),
+                        "The second critique did not hear that the first repair was rejected");
+                check(words(10).contains("Mixed paving") && words(10).contains("COMPLETE replacement plan"),
+                        "The next repair did not retain the complete draft after rejecting demolition");
                 command(context, "confirm"); context.waitFor(mc -> ClientState.preview() == null); context.waitTicks(25);
-                check(pavingBefore.equals(blocks(world, at)), "Review removed or changed paving retained by the edit draft");
+                check(pavingBefore.equals(blocks(world, at)), "A repair removed or changed paving retained by the edit draft");
                 check(state(world, at.above()).is(Blocks.CRAFTING_TABLE), "The accepted draft lost its requested furniture");
+
+                // A satisfied reviewer costs one short call: no repair.
+                config.detail = "detailed"; new ConfigStore(file).save(config); command(context, "reload");
+                command(context, "edit add a lantern on the table");
+                context.waitFor(mc -> ClientState.preview() != null, 1200);
+                check(prompts.size() == 13, "A satisfied critique still called a repair: " + prompts.size() + " calls");
+                check(words(12).contains("Independent review (round 1 of 1)"), "One pass did not ask the reviewer");
+                command(context, "confirm"); context.waitFor(mc -> ClientState.preview() == null); context.waitTicks(25);
+                check(state(world, at.above(2)).is(Blocks.LANTERN), "The reviewed draft was not placed");
+                command(context, "undo"); command(context, "undo confirm"); context.waitTicks(30);
                 command(context, "undo"); command(context, "undo confirm"); context.waitTicks(30);
                 check(state(world, at.above()).isAir() && pavingBefore.equals(blocks(world, at)), "Review fallback broke edit undo");
             }
