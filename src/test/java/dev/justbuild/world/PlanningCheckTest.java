@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.justbuild.plan.*;
 import dev.justbuild.prompt.*;
 import java.util.*;
+import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
@@ -95,6 +97,29 @@ class PlanningCheckTest {
         return PlanningCheck.check(plan, BlockPos.ZERO, facing, LevelHeightAccessor.create(-64, 384),
                 p -> p.getY() < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), Map.of(), Map.of(), false,
                 p -> true, zone, BuildConstraints.NONE, new PlanLimits(100, 1000, 32));
+    }
+
+    @Test void routeFindingsComeOnlyWhenAskedForAndFollowEveryOtherFinding() {
+        // A sealed hollow stone box: its 5 × 5 floor has no way in.
+        var shed = new BuildPlan("Shed", "", List.of(Operation.fill("stone", new Cell(0, 0, 0), new Cell(6, 4, 6), true)));
+        assertEquals(List.of(), routed(shed, null, null).feedback().problems());
+        var routed = routed(shed, null, Level.OVERWORLD).feedback();
+        assertEquals(List.of(PlanningFeedback.Kind.ROUTE_START, PlanningFeedback.Kind.UNREACHABLE),
+                routed.problems().stream().map(PlanningFeedback.Problem::kind).toList());
+        assertEquals(new PlanningFeedback.Problem(PlanningFeedback.Kind.UNREACHABLE, new Cell(1, 1, 1), new Cell(5, 1, 5), 25, List.of()),
+                routed.problems().get(1));
+        assertFalse(routed.needsCorrection());
+        // A draft that leaves the zone still gets route findings, after its other findings.
+        var narrow = BuildZone.between(Level.OVERWORLD, new BlockPos(0, -1, 0), new BlockPos(5, -1, 6));
+        assertEquals(List.of(PlanningFeedback.Kind.ZONE, PlanningFeedback.Kind.ROUTE_START, PlanningFeedback.Kind.UNREACHABLE),
+                routed(shed, narrow, Level.OVERWORLD).feedback().problems().stream().map(PlanningFeedback.Problem::kind).toList());
+    }
+
+    private PlanningCheck.Result routed(BuildPlan plan, BuildZone zone, ResourceKey<Level> routes) {
+        Function<BlockPos, net.minecraft.world.level.block.state.BlockState> ground =
+                p -> p.getY() < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState();
+        return PlanningCheck.check(plan, BlockPos.ZERO, Direction.NORTH, LevelHeightAccessor.create(-64, 384), ground,
+                Map.of(), Map.of(), false, p -> true, zone, BuildConstraints.NONE, new PlanLimits(100, 1000, 32), routes);
     }
 
     private PlanningCheck.Result check(BuildPlan plan, java.util.function.Predicate<BlockPos> allowed) {

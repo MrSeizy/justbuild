@@ -9,6 +9,8 @@ import java.util.function.Predicate;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -22,6 +24,14 @@ public final class PlanningCheck {
     public static Result check(BuildPlan plan, BlockPos origin, Direction facing, LevelHeightAccessor height,
             Function<BlockPos, BlockState> live, Map<BlockPos, BlockState> baseline, Map<BlockPos, BlockState> before,
             boolean edit, Predicate<BlockPos> allowed, BuildZone zone, BuildConstraints constraints, PlanLimits limits) {
+        return check(plan, origin, facing, height, live, baseline, before, edit, allowed, zone, constraints, limits, null);
+    }
+
+    /** routes is the dimension for route findings (reviewed requests only), or null to skip them. */
+    public static Result check(BuildPlan plan, BlockPos origin, Direction facing, LevelHeightAccessor height,
+            Function<BlockPos, BlockState> live, Map<BlockPos, BlockState> baseline, Map<BlockPos, BlockState> before,
+            boolean edit, Predicate<BlockPos> allowed, BuildZone zone, BuildConstraints constraints, PlanLimits limits,
+            ResourceKey<Level> routes) {
         List<PlanningFeedback.Problem> problems = new ArrayList<>();
         Map<BlockPos, BlockState> changes = new LinkedHashMap<>();
         boolean[] unknown = {false};
@@ -58,10 +68,18 @@ public final class PlanningCheck {
         }
         if (unknown[0]) problems.add(problem(PlanningFeedback.Kind.UNKNOWN));
         Set<BlockPos> positions = new HashSet<>(changes.keySet()); positions.addAll(before.keySet());
+        Function<BlockPos, BlockState> drafted = p -> changes.containsKey(p) ? changes.get(p) : live.apply(p);
+        if (routes != null && !changes.isEmpty()) {
+            // Air placements (cleared interiors) would grow the route region past the build's doors and roofs.
+            List<BlockPos> built = new ArrayList<>();
+            changes.forEach((p, state) -> { if (!state.isAir()) built.add(p); });
+            before.forEach((p, state) -> { if (!state.isAir()) built.add(p); });
+            // Route findings come last, so the 32-finding cap can only ever cut them.
+            problems.addAll(RouteFindings.find(routes, built, drafted, origin, facing));
+        }
         InspectionRequest box = WorldInspector.around(positions, origin, facing);
         VoxelVolume source = capture(box, origin, facing, live, VoxelVolume.MAX_CELLS, false);
-        VoxelVolume candidate = changes.isEmpty() ? null : capture(box, origin, facing,
-                p -> changes.containsKey(p) ? changes.get(p) : live.apply(p), VoxelVolume.MAX_CELLS, false);
+        VoxelVolume candidate = changes.isEmpty() ? null : capture(box, origin, facing, drafted, VoxelVolume.MAX_CELLS, false);
         return new Result(new PlanningFeedback(PromptCheck.planKey(PlanWriter.write(plan)),
                 problems.stream().limit(32).toList(), source, candidate, null, null), PositionMaps.frozen(changes));
     }
