@@ -76,6 +76,8 @@ Set `JUSTBUILD_GALLERY_DETAIL=detailed` for one review pass, or `masterpiece` fo
 `ReviewRounds` loop as the mod: by default (`JUSTBUILD_GALLERY_REVIEW=separate`) a separate critique, then a repair only
 when the critique or the checks call for one, as the mod runs with a reviewer profile chosen;
 `JUSTBUILD_GALLERY_REVIEW=self` runs the builder's own review, the mod's default (**Same as builder**), for comparison.
+With `separate`, `JUSTBUILD_GALLERY_REVIEWER_MODEL` gives the critiques their own model on the same provider, like a
+reviewer profile; repairs keep `JUSTBUILD_GALLERY_MODEL`. Each call's model is in `<case>-reviews.json`.
 Critiques and repairs receive the same `PlanningCheck` diagnostics and source/candidate block-color images used by the
 mod, plus the candidate's facades, and a repair keeps the previous plan when it fails, exceeds limits, or fails the
 production `ReviewCheck` comparison: any technical category gets worse, an existing block retained by the
