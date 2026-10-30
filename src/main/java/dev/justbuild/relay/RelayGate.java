@@ -16,8 +16,8 @@ import java.util.Locale;
  */
 public final class RelayGate {
     public static final Duration WINDOW = Duration.ofMinutes(15);
-    /** A plan, guides, four shared spatial/catalog reads, two size retries, two reviews, and bounded headroom. */
-    public static final int CALLS = 12;
+    /** A plan, guides, four shared spatial/catalog reads, two size retries, two critiques and two repairs, and two spare. */
+    public static final int CALLS = 14;
     /** A hard ceiling per rolling hour, however often the player starts builds. */
     public static final int HOURLY = 30;
 

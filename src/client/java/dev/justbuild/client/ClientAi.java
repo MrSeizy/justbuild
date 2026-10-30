@@ -8,7 +8,6 @@ import dev.justbuild.net.AiProgressPayload;
 import dev.justbuild.net.AiRequestPayload;
 import dev.justbuild.net.AiResponsePayload;
 import dev.justbuild.net.ClientAiPayload;
-import dev.justbuild.plan.BuildPlanSchema;
 import dev.justbuild.plan.PlanException;
 import dev.justbuild.plan.PlanLimits;
 import dev.justbuild.plan.PlanParser;
@@ -67,6 +66,8 @@ final class ClientAi {
         final boolean review;
         final dev.justbuild.provider.UsageTracker accounting = usage;
         ResponseReviewScreen screen;
+        /** The key of the critique a repair applied, or null. */
+        volatile String repairOf;
 
         Work(int id, boolean review) { this.id = id; this.review = review; }
     }
@@ -181,22 +182,28 @@ final class ClientAi {
                 error = "the player's game refused the request: " + e.getMessage() + ".";
                 return;
             }
-            BuildProvider provider = Providers.create(config, profile);
-            JustBuildMod.LOGGER.info("Planning for the server with your profile {} ({})", profile.name, provider.displayName());
+            if (checked.spec().kind() == dev.justbuild.relay.PromptSpec.Kind.REVIEW && checked.spec().critique() != null) {
+                work.repairOf = checked.spec().critique().critique().key();
+            }
+            boolean critique = checked.spec().kind() == dev.justbuild.relay.PromptSpec.Kind.CRITIQUE;
+            JustBuildConfig.ModelProfile using = critique ? reviewerFor(config, profile) : profile;
+            BuildProvider provider = Providers.create(config, using);
+            JustBuildMod.LOGGER.info("Planning for the server with your profile {} ({})", using.name, provider.displayName());
             if (first) {
-                sayLater("Planning “" + checked.spec().request() + "” with your " + LocalProfiles.label(profile)
+                sayLater("Planning “" + checked.spec().request() + "” with your " + LocalProfiles.label(using)
                         + " for this server.");
             }
             Guidance.DetailLevel detail = Guidance.DetailLevel.parse(request.detail()).orElse(Guidance.DetailLevel.DETAILED);
             PlanRequest planRequest = new PlanRequest(
                     checked.spec().systemPrompt(
                             new PlanLimits(request.maxOperations(), request.maxBlocks(), request.maxSize()), detail),
-                    content, BuildPlanSchema.JSON, profile.model, Duration.ofSeconds(request.timeoutSeconds()), checked.spec());
-            // Only a re-written plan, question, or decline goes back, never the AI's raw text.
+                    content, checked.spec().schemaJson(), using.model, Duration.ofSeconds(request.timeoutSeconds()), checked.spec());
+            // Only a re-written plan, critique, question, or decline goes back, never the AI's raw text.
             work.token.throwIfCancelled();
             RelayOutput out;
-            try (var call = work.accounting.begin(checked.spec().kind() == dev.justbuild.relay.PromptSpec.Kind.REVIEW, progress)) {
-                out = RelayOutput.normalize(provider.complete(planRequest, work.token, call));
+            try (var call = work.accounting.begin(checked.spec().kind() == dev.justbuild.relay.PromptSpec.Kind.REVIEW || critique, progress)) {
+                String raw = provider.complete(planRequest, work.token, call);
+                out = critique ? RelayOutput.critique(raw, checked.spec()) : RelayOutput.normalize(raw);
             }
             output = out;
             text = out.json();
@@ -270,12 +277,15 @@ final class ClientAi {
         }
         if (ClientPlayNetworking.canSend(AiResponsePayload.TYPE)) {
             ClientPlayNetworking.send(response);
-            // Only sent responses authorize follow-up questions and plan reviews.
+            // Only sent responses authorize follow-up questions, plan reviews, and repairs.
             if (output != null && output.question() != null) {
                 RelaySeen.question(output.question());
                 GATE.questionAsked();
             } else if (output != null && output.planKey() != null) {
                 RelaySeen.plan(output.planKey());
+                if (work.repairOf != null) RelaySeen.repair(work.repairOf, output.planKey());
+            } else if (output != null && output.critiqueKey() != null) {
+                RelaySeen.critique(output.critiqueKey());
             }
         }
         discard(work, true);
@@ -295,6 +305,17 @@ final class ClientAi {
     private static void clear() {
         for (Work work : running.values()) discard(work, false);
         running.clear();
+    }
+
+    /** The reviewer profile for a critique, or the builder's when none is set or it can't plan right now. */
+    private static JustBuildConfig.ModelProfile reviewerFor(JustBuildConfig config, JustBuildConfig.ModelProfile builder) {
+        var reviewer = config.reviewer();
+        if (reviewer.isEmpty()) return builder;
+        if (LocalProfiles.problem(config, reviewer.get()) != null) {
+            sayLater("Reviewer profile “" + reviewer.get().name + "” isn't available; using your builder AI.");
+            return builder;
+        }
+        return reviewer.get().copy();
     }
 
     private static void sayLater(String text) {

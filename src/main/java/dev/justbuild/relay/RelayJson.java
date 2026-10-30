@@ -8,7 +8,7 @@ import dev.justbuild.prompt.Guidance;
 /** JSON inside the relay packets. The request carries no instructions: the player's game builds the system prompt. */
 public final class RelayJson {
     /** Bumped whenever the relay packets change; the server only relays to games with the same number. */
-    public static final int PROTOCOL = 20;
+    public static final int PROTOCOL = 21;
     public static final int MAX_LIMIT = 1_000_000;
     public static final int MIN_TIMEOUT = 10;
     public static final int MAX_TIMEOUT = 900;
