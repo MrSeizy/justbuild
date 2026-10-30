@@ -44,8 +44,9 @@ final class LocalProfiles {
     static String save(ProfileEdits.Request request) {
         try {
             JustBuildConfig config = store().load();
+            List<JustBuildConfig.ModelProfile> profiles = ProfileEdits.apply(config.profiles, request);
             config.reviewerProfile = ProfileEdits.renamed(request, config.reviewerProfile);
-            config.replaceProfiles(ProfileEdits.apply(config.profiles, request), request.active());
+            config.replaceProfiles(profiles, request.active());
             store().save(config);
             return null;
         } catch (ConfigException e) {

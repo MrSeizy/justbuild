@@ -69,15 +69,22 @@ public final class ProfileEdits {
         return out;
     }
 
-    /** What a profile called {@code name} is called after these edits; empty when it was removed or there was none. */
+    /**
+     * What a profile called {@code name} is called after these edits; empty when it was removed or there was none. A copy
+     * keeps its {@code from}, so several edits can share one: the edit that keeps the old name wins (ignoring case and
+     * surrounding spaces), otherwise the first.
+     */
     public static String renamed(Request request, String name) {
         if (name == null || name.isBlank()) return "";
+        String wanted = name.strip();
+        String first = null;
         for (Edit edit : request.profiles()) {
-            if (edit.from() != null && edit.from().strip().equalsIgnoreCase(name.strip())) {
-                return edit.name() == null ? "" : edit.name().strip();
-            }
+            if (edit.from() == null || !edit.from().strip().equalsIgnoreCase(wanted)) continue;
+            String now = edit.name() == null ? "" : edit.name().strip();
+            if (now.equalsIgnoreCase(wanted)) return now;
+            if (first == null) first = now;
         }
-        return "";
+        return first == null ? "" : first;
     }
 
     /** One edited profile with its key filled in from the saved one when the edit leaves it unchanged. */

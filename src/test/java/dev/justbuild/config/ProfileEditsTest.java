@@ -42,6 +42,44 @@ class ProfileEditsTest {
         assertEquals("", ProfileEdits.renamed(request, null));
     }
 
+    private static Request named(String active, Edit... edits) {
+        return new Request(List.of(edits), active);
+    }
+
+    @Test
+    void renamedFollowsASwap() {
+        Request swap = named("B", new Edit("A", "B", "claude", "", null, null), new Edit("B", "A", "codex", "", null, null));
+        assertEquals("B", ProfileEdits.renamed(swap, "A"));
+        assertEquals("A", ProfileEdits.renamed(swap, "B"));
+    }
+
+    @Test
+    void renamedDoesNotLetANewProfileInheritADeletedOnesName() {
+        Request recreated = named("A", new Edit(null, "A", "claude", "", null, null));
+        assertEquals("", ProfileEdits.renamed(recreated, "A"));
+    }
+
+    @Test
+    void renamedMatchesFromIgnoringCaseAndSpaces() {
+        Request request = named("Fast", new Edit(" claude ", "Fast", "claude", "", null, null));
+        assertEquals("Fast", ProfileEdits.renamed(request, "CLAUDE"));
+        assertEquals("Fast", ProfileEdits.renamed(request, " Claude "));
+    }
+
+    @Test
+    void renamedPrefersTheEditThatKeepsTheNameWhenACopyShareItsFrom() {
+        Request original = named("A", new Edit("A", "A copy", "claude", "", null, null), new Edit("A", "A", "claude", "", null, null));
+        assertEquals("A", ProfileEdits.renamed(original, "A"));
+        Request bothRenamed = named("X", new Edit("A", "X", "claude", "", null, null), new Edit("A", "Y", "claude", "", null, null));
+        assertEquals("X", ProfileEdits.renamed(bothRenamed, "A"), "otherwise the first edit");
+    }
+
+    @Test
+    void renamedReturnsANewSpellingThatDiffersOnlyInCase() {
+        Request request = named("claude fast", new Edit("Claude Fast", "claude fast", "claude", "", null, null));
+        assertEquals("claude fast", ProfileEdits.renamed(request, "Claude Fast"));
+    }
+
     @Test
     void blankKeyBoxKeepsTheSavedKeyThroughARename() throws Exception {
         List<Edit> edits = unchangedAll();
