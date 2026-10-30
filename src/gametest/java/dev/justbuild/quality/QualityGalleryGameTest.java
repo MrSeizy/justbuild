@@ -111,7 +111,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                     String key = scenario.id() + (repeats > 1 ? "-" + repeat : "");
                     System.out.println("Gallery case " + key + " (" + providerId + ", " + detail.id() + ")");
                     long started = System.nanoTime();
-                    long planningMillis = 0, guideSelectionMillis = 0, reviewMillis = 0;
+                    long planningMillis = 0, guideSelectionMillis = 0, reviewMillis = 0, evidenceMillis = 0;
                     boolean guidesOffered = provider != null && imported == null && detail != Guidance.DetailLevel.QUICK;
                     JsonArray selectedGuides = new JsonArray();
                     String planPromptHash = null;
@@ -189,7 +189,11 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                             String restored = world.getServer().computeOnServer(server -> sourceHash(server.overworld(), scenario, at));
                             if (!sourceHash.equals(restored)) throw new AssertionError("Draft rendering changed the source scene");
                             BuildPlan first = plan;
+                            long checkStarted = System.nanoTime();
                             PlanningFeedback evidence = world.getServer().computeOnServer(server -> evidence(server.overworld(), scenario, first, at));
+                            evidenceMillis = elapsedMillis(checkStarted);
+                            Files.writeString(output.resolve(key + "-evidence.txt"), evidence.format());
+                            System.out.println("Gallery " + key + " evidence: " + evidenceMillis + " ms");
                             ReviewRounds.Caller caller = new ReviewRounds.Caller() {
                                 private ReviewRounds.Stage last;
                                 @Override public String critique(PromptSpec request) throws ProviderException, PlanException {
@@ -272,6 +276,14 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                                 reviews.forEach(e -> actual.add(e.getAsJsonObject().get("stage").getAsString()));
                                 if (!expected.equals(actual)) throw new AssertionError("Fixture review calls for " + key + " were " + actual + ", expected " + expected);
                             }
+                        } else if (imported != null) {
+                            // A dry pass: the imported draft's review evidence, written without any provider call.
+                            BuildPlan first = plan;
+                            long checkStarted = System.nanoTime();
+                            PlanningFeedback evidence = world.getServer().computeOnServer(server -> evidence(server.overworld(), scenario, first, at));
+                            evidenceMillis = elapsedMillis(checkStarted);
+                            Files.writeString(output.resolve(key + "-evidence.txt"), evidence.format());
+                            System.out.println("Gallery " + key + " evidence: " + evidenceMillis + " ms");
                         }
                         Files.writeString(output.resolve(key + ".json"), PlanWriter.write(plan));
                         row = renderPlan(context, world, player, scenario, plan, at, output, key);
@@ -286,7 +298,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                     row.addProperty("request", scenario.prompt()); row.addProperty("promptHash", promptHash);
                     row.addProperty("before", key + "-before.png");
                     row.addProperty("sourceHash", sourceHash);
-                    row.addProperty("planningMillis", planningMillis); row.addProperty("reviewMillis", reviewMillis); row.addProperty("elapsedMillis", elapsedMillis(started));
+                    row.addProperty("planningMillis", planningMillis); row.addProperty("reviewMillis", reviewMillis); row.addProperty("evidenceMillis", evidenceMillis); row.addProperty("elapsedMillis", elapsedMillis(started));
                     row.addProperty("guidesOffered", guidesOffered); row.add("selectedGuides", selectedGuides);
                     row.addProperty("guideSelectionMillis", guideSelectionMillis); row.addProperty("planPromptHash", planPromptHash);
                     row.add("reviews", reviews); row.add("reviewRounds", reviewRounds); if (draft != null) row.add("draft", draft);
@@ -371,8 +383,9 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         before.keySet().forEach(p -> baseline.put(p, Blocks.AIR.defaultBlockState()));
         BuildZone zone = BuildZone.between(Level.OVERWORLD, at.offset(scenario.min()), at.offset(scenario.max()))
                 .height(at.getY() + scenario.min().getY(), at.getY() + scenario.max().getY());
+        // The gallery checks drafts as production does for One pass and Two passes, with route findings.
         return PlanningCheck.check(plan, at, Direction.NORTH, level, level::getBlockState, baseline, before,
-                scenario.baseline() != null, p -> level.getBlockEntity(p) == null, zone, BuildConstraints.NONE, limits(scenario));
+                scenario.baseline() != null, p -> level.getBlockEntity(p) == null, zone, BuildConstraints.NONE, limits(scenario), Level.OVERWORLD);
     }
 
     private static JsonObject renderPlan(ClientGameTestContext context, TestSingleplayerContext world, String player,
