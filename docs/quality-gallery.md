@@ -87,10 +87,11 @@ Fixture reviews answer with a fixed one-problem critique and replay the fixture 
 `fixture replay` and never call an AI.
 
 For a paired comparison of review modes, collect drafts once with `JUSTBUILD_GALLERY_REVIEW=none` at `detailed` (the
-detail level's draft prompt, no reviews), copy each case's `<scenario>.json` and, when present, `<scenario>-guides.json` into one
-directory, and review those same drafts live in separate runs with `JUSTBUILD_GALLERY_PLANS=<that directory>`, a
-provider, a detail level above quick, and `JUSTBUILD_GALLERY_REVIEW=self` or `separate`. Both modes' reviews then see
-the same guide text; without a guides file an imported draft carries no guide selection.
+detail level's draft prompt, no reviews), copy each case's `<scenario>.json` and, when present,
+`<scenario>-guides.json` into one directory, and review those same drafts live in separate runs with
+`JUSTBUILD_GALLERY_PLANS=<that directory>`, a provider, a detail level above quick, and
+`JUSTBUILD_GALLERY_REVIEW=self` or `separate`. Both modes' reviews then see the same guide text; without a guides file
+an imported draft carries no guide selection.
 
 Use `JUSTBUILD_GALLERY_CASES=cottage,interior,bridge` to select scenes and `JUSTBUILD_GALLERY_REPEATS=2` for repeated
 independent attempts (1–5, default 1). The same source location, daylight, weather and camera are used throughout.
