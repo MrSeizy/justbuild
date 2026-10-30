@@ -171,6 +171,7 @@ final class ClientAi {
         String text = "";
         String error = "";
         RelayOutput output = null;
+        boolean critique = false;
         Progress progress = new Progress(work);
         try {
             work.token.throwIfCancelled();
@@ -191,7 +192,7 @@ final class ClientAi {
             if (checked.spec().kind() == dev.justbuild.relay.PromptSpec.Kind.REVIEW && checked.spec().critique() != null) {
                 work.repairOf = checked.spec().critique().critique().key();
             }
-            boolean critique = checked.spec().kind() == dev.justbuild.relay.PromptSpec.Kind.CRITIQUE;
+            critique = checked.spec().kind() == dev.justbuild.relay.PromptSpec.Kind.CRITIQUE;
             JustBuildConfig.ModelProfile using = critique ? reviewerFor(config, profile) : profile;
             BuildProvider provider = Providers.create(config, using);
             JustBuildMod.LOGGER.info("Planning for the server with your profile {} ({})", using.name, provider.displayName());
@@ -224,9 +225,10 @@ final class ClientAi {
             error = e.getMessage();
         } catch (PlanException e) {
             // Parse failures can quote raw AI output (unknown kinds, operations, and styles). Keep that local too.
-            sayLater("Your AI didn't return a usable plan: "
+            String usable = critique ? "a usable review" : "a usable plan";
+            sayLater("Your AI didn't return " + usable + ": "
                     + PlanParser.clean(e.getCause() == null ? e.getMessage() : e.getCause().getMessage(), 400));
-            error = "the player's AI didn't return a usable plan; the details are shown in their game.";
+            error = "the player's AI didn't return " + usable + "; the details are shown in their game.";
         } catch (ProviderException e) {
             // The details (paths, endpoints, account messages) stay in this game.
             sayLater("Your AI couldn't plan this: " + e.getMessage());

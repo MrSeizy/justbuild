@@ -18,7 +18,7 @@ final class RequestStatus implements ProgressListener {
     private volatile int reviewRounds;
     private volatile boolean shrinking;
     private volatile ReviewRounds.Stage stage;
-    /** How many self-review rounds and smaller-plan tries have started, for the "Plan ready" line. */
+    /** How many review rounds and smaller-plan tries have started, for the "Plan ready" line. */
     private volatile int reviewsStarted;
     private volatile int smallerTries;
     private volatile String note;
