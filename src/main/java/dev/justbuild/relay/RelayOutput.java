@@ -16,11 +16,16 @@ import java.util.List;
  * What the player's game sends back: the AI's answer parsed and written again, so only a build plan (real block ids and
  * shape words, a short title and summary), a short question with options, a short decline, guide ids, or numeric
  * inspection corners reaches the server. {@code planKey} identifies a returned plan for later reviews and shrinks.
- * {@code localMessage} is only for this player's chat: it must never be serialized into a network response.
+ * {@code localMessage} is only for this player's chat: it must never be serialized into a network response. A critique
+ * goes back as its normalized findings; {@code critiqueKey} identifies it for a later repair.
  */
-public record RelayOutput(String json, String question, String planKey, String localMessage) {
+public record RelayOutput(String json, String question, String planKey, String localMessage, String critiqueKey) {
+    public RelayOutput(String json, String question, String planKey, String localMessage) {
+        this(json, question, planKey, localMessage, null);
+    }
+
     public RelayOutput(String json, String question, String planKey) {
-        this(json, question, planKey, null);
+        this(json, question, planKey, null, null);
     }
 
     static final int MAX_TITLE = 60;
@@ -82,6 +87,19 @@ public record RelayOutput(String json, String question, String planKey, String l
                 yield new RelayOutput(o.toString(), null, null);
             }
         };
+    }
+
+    /** The reviewer's answer about {@code spec}'s plan, re-written so only bounded findings reach the server. */
+    public static RelayOutput critique(String raw, PromptSpec spec) throws PlanException {
+        dev.justbuild.plan.Critique critique;
+        try {
+            critique = dev.justbuild.plan.CritiqueParser.parse(raw, spec.plan(), PromptCheck.planKey(spec.planJson()));
+        } catch (PlanException | RuntimeException e) {
+            PlanException failure = new PlanException("the AI response is not a usable critique");
+            failure.initCause(e);
+            throw failure;
+        }
+        return new RelayOutput(critique.toJson().toString(), null, null, null, critique.key());
     }
 
     /** Parser diagnostics can quote arbitrary response fields; only the private cause retains those details. */
