@@ -30,7 +30,7 @@ final class RouteFindings {
     private RouteFindings() { }
 
     /**
-     * positions are the draft's changes plus an edit's existing blocks; candidate reads the world with the draft in
+     * positions are the draft's non-air blocks, including an edit's kept existing ones; candidate reads the world with the draft in
      * place (null for unloaded cells). Returns ROUTE_START and up to four UNREACHABLE areas in the plan frame, or
      * nothing when every counted area connects or the route check can't run.
      */
