@@ -266,7 +266,7 @@ class PromptCheckTest {
         edit.accept(json.getAsJsonObject("critique").getAsJsonObject("critique"));
         try {
             return PromptCheck.check(PromptSpec.parse(json), seen).problem();
-        } catch (SpecException e) {
+        } catch (PromptSpec.SpecException e) {
             return "unreadable: " + e.getMessage();
         }
     }
