@@ -12,12 +12,13 @@ User-visible changes are recorded here. Unreleased entries describe development 
 - Cobble steps past blocks he can't build yet (obstructions, protected cells, hanging blocks waiting for their ceiling) and returns to them once the problem clears, clears grass and other replaceable plants from the site, and outlines in red the block that needs the player, with its coordinates in the status.
 - Link chest also works without aiming: the panel closes and the next chest or barrel opened becomes the supply.
 - A project file that can't be read is explained in the project panel, and **End project** sets it aside under a new name so new plans can start.
-- **Revise** a waiting new-building or design-copy preview with the AI before building (`/justbuild revise <change>`). The revised plan replaces the preview at its current position after the usual checks; **Previous** (`/justbuild preview previous`) steps back through up to 10 earlier versions without another AI call, and each alternative keeps its own history. Stop ends only the revision. Players using their own AI on a server need this version of the client: 0.2.0 clients generally refuse revision requests.
-- Choose which profile reviews drafts with the **Reviewer** setting (Settings tab or `/justbuild reviewer <profile|same>`); Same as builder keeps the builder's profile.
+- **Revise** a waiting new-building or design-copy preview with the AI before building (`/justbuild revise <change>`). The revised plan replaces the preview at its current position after the usual checks; **Previous** (`/justbuild preview previous`) steps back through up to 10 earlier versions without another AI call, and each alternative keeps its own history. Stop ends only the revision. Players using their own AI on a server need this version of the client; no relayed request reaches older clients.
+- A separate reviewer checks each draft at **One pass** and **Two passes**. It returns a short list of problems instead of rewriting the plan, and the builder revises only when the reviewer (or the draft's own checks) finds something worth fixing, so drafts that need nothing finish after one short step. **Settings → Reviewer** or `/justbuild reviewer <profile|same>` can point it at another profile, such as a faster model or a different provider; the default is the builder's own profile. Progress lines say what the reviewer found and whether a revision was kept.
 
 ### Changed
 
 - The chat button and panel action **[Build it]** are now **[Instant Build]**, and the prompt's **Build** button is now **Send**.
+- Players using their own AI on a server need this version of the client: relay protocol 21 adds reviewer requests. An AI-starting command now allows 14 AI calls (up from 12) so that two review rounds can each critique and repair; the 30-per-hour ceiling is unchanged.
 
 ## [0.2.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.2.0) — 2026-10-23
 

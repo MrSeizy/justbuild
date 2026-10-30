@@ -176,7 +176,7 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
   and token counts. **Next/Previous** or the mouse wheel page through long responses; **Copy response** copies all
   response fields. **Send to server** releases only that response; **Cancel**, Escape, or leaving the screen
   withholds it and sends a fixed cancellation with no response text or token counts. Guide requests, world
-  inspections, questions, declines, plans, and self-review rounds each need their own approval. Fixed refusals with
+  inspections, questions, declines, plans, critiques, and repairs each need their own approval. Fixed refusals with
   no AI output or usage do not prompt. A server cancellation, timeout, disconnect, or transfer discards a pending
   approval. With no more provider activity during approval, the server's inactivity timeout continues while you
   read, so a slow decision may require retrying.
@@ -188,8 +188,8 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
     server address in `myAiServers`). Until then the server uses its own profile, or refuses if it requires players'
     own AI.
   - **Only builds you start.** An AI-starting `/justbuild` (a description, `edit`, `revise`, `connect`, `interior`, `template`, `again`, `answer`) allows
-    twelve AI calls within a 15-minute inactivity window (a guide request, up to four shared spatial/catalog reads, a plan, up to two tries at a smaller plan,
-    up to two review rounds, and bounded headroom). An `alternatives` command allows twelve calls per requested option,
+    fourteen AI calls within a 15-minute inactivity window (a guide request, up to four shared spatial/catalog reads, a plan, up to two tries at a smaller plan,
+    up to two review rounds of a critique and a repair, and bounded headroom). An `alternatives` command allows fourteen calls per requested option,
     still within the 30-per-hour ceiling. Chat renews only as the answer to a question your AI just asked. A button in
     a server line shown in the panel never starts one; use the panel's own answer buttons and Templates tab, or type
     the command.
@@ -262,7 +262,7 @@ Two more keys, unbound until you set them, build or discard a waiting preview wi
   into **Build & edit** and **Inspect & protect**. Hover a tool for its keyboard shortcut.
 - **World:** equip the Zone wand, draw a polygon, clear the selection, or inspect the world without calling
   the AI. Move corners directly with the wand’s in-world handles. The white outline marks the selected footprint and any height bounds. Locked areas are outlined in blue.
-- **Settings:** the active profile, AI review, style, and model (**Pick…** lists the models the profile offers),
+- **Settings:** the active profile, AI review and its reviewer profile, style, and model (**Pick…** lists the models the profile offers),
   plus Doctor, Reload, and **Server AI…** to choose the player AI policy. **Doctor** opens a scrollable results dialog
   that updates as each server profile finishes its install, login, or endpoint check. Scroll with the mouse wheel,
   drag the scrollbar, or focus the results and use the arrow/Page Up/Page Down keys. **Copy results** copies the report.
@@ -374,6 +374,7 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild templates [filter]`, `/justbuild template <id>` | List the ready-made requests; build one |
 | `/justbuild history`, `/justbuild again #<id>` | Your recent builds; rebuild one's original request |
 | `/justbuild detail <quick\|detailed\|masterpiece>` | AI review: quick = When needed, detailed = One pass (default), masterpiece = Two passes |
+| `/justbuild reviewer <profile\|same>` | The profile the separate reviewer uses; `same` uses the builder's profile |
 | `/justbuild style <auto\|medieval\|modern\|futuristic\|japanese\|nordic\|steampunk\|rustic\|fantasy\|gothic\|desert\|classical>` | A style and suggested palette; auto lets the AI interpret the request without adding a preset |
 | `/justbuild answer <text>` | Answer the AI's question. You can also type the answer in chat or click an option. |
 | `/justbuild undo` | Undo your last action: an edit goes back one version, a new build is removed (10 steps). Shows what will change and asks you to confirm first. Run it near the build, in its dimension |
@@ -807,7 +808,7 @@ collaborators. An unreadable `history.json` is kept as `history.json.unreadable-
 builds and named checkpoints remain available.
 
 Building records use format 5. Visual history retains recent versions as well as versions required by undo. Matching
-client/server mod versions are required; the structured AI relay uses protocol 20.
+client/server mod versions are required; the structured AI relay uses protocol 21.
 
 ## How it guides the AI
 
@@ -827,11 +828,14 @@ Each draft is rasterized without changing the world and checked for invalid bloc
 and construction warnings. **AI review → When needed** gets one corrective review when checks report a problem. If
 part of the build area isn't loaded (you moved away while the AI worked), the checks see its blocks as air, so only
 invalid blocks, limits, the zone, and your build requirements count then; construction warnings alone don't.
-**One pass** always reviews once and **Two passes** reviews twice, for both new builds and edits. Reviews receive diagnostics, source/candidate
-images, text views, and the remaining inspection budget. The AI is asked to preserve sound geometry and make
-focused corrections. Its design critique is limited to what those simplified views show (massing, material placement,
-and opening alignment; ground contact only where world samples or the candidate image show the ground), not textures
-or lighting, and restrained designs remain valid. Edit reviews and size reductions keep the original build request,
+**One pass** asks a separate reviewer to check the draft once, and **Two passes** allows a second check after a
+revision, for both new builds and edits. The reviewer gets its own instructions, the request, diagnostics,
+source/candidate images, the candidate's four facades, and text views. It returns a short list of problems with fixes
+and what to keep, never a plan. The builder revises only when that list has problems worth fixing or the checks need a
+correction; otherwise the review ends after the reviewer's one short call. The reviewer judges only what those
+simplified views show (massing, material placement, facades and opening rhythm; ground contact only where world
+samples or images show the ground), not textures or lighting, and restrained designs remain valid. By default the
+reviewer uses the builder's profile; **Settings → Reviewer** picks another. Edit reviews and size reductions keep the original build request,
 earlier edits and current change request, and explicitly require the complete replacement plan.
 
 A failed review keeps the previous draft. So does a revision that adds failures in any technical category, removes
