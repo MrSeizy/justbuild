@@ -657,8 +657,9 @@ public final class JustBuildScreen extends FormScreen {
         addRenderableWidget(GlassButton.builder(Component.literal("Review before sending: "
                 + (local.reviewAiResponses ? "On" : "Off")), b -> changeLocal(c -> c.reviewAiResponses = !c.reviewAiResponses))
                 .bounds(left, y + 124, half, 20).tooltip(Tooltip.create(Component.literal(
-                        "Hold each response from your AI for Send or Cancel, including guide, inspection, reviewer checks, "
-                                + "and revisions. Saved on this computer for all servers; off by default."))).build());
+                        "Hold each response from your AI for Send or Cancel, including guide, inspection, review, "
+                                + "reviewer-check and revision requests. Saved on this computer for all servers; off by "
+                                + "default."))).build());
         Button localReviewer = GlassButton.builder(Component.literal("Reviewer: "
                 + local.reviewer().map(p -> p.name).orElse("Same as builder")),
                 b -> changeLocal(c -> c.reviewerProfile = c.nextReviewer()))

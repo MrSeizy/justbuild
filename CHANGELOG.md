@@ -19,7 +19,7 @@ User-visible changes are recorded here. Unreleased entries describe development 
 
 - The chat button and panel action **[Build it]** are now **[Instant Build]**, and the prompt's **Build** button is now **Send**.
 - Players using their own AI on a server need the same JustBuild version as the server: relay protocol 21 adds reviewer requests. An AI-starting command now allows 14 AI calls (up from 12) so two review rounds can each check and revise; the 30-per-hour limit is unchanged, and your game now says when it is used up.
-- **Workshop → AI usage** shows **Review calls** (was **Review rounds**), counting reviewer checks and revisions.
+- **Workshop → AI usage** shows **Review calls** (was **Review rounds**), counting every review call: the builder's own reviews, reviewer checks and revisions.
 
 ## [0.2.0](https://github.com/MrSeizy/justbuild/releases/tag/v0.2.0) — 2026-10-23
 

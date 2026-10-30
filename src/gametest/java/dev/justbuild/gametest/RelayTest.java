@@ -40,7 +40,8 @@ import com.mojang.blaze3d.platform.InputConstants;
  * every critique with no problems, except one masterpiece build whose reviewer asks for a fix; the guide's text must
  * come from the game's own copy. One build with Same as builder gets the builder's own review instead. Before the
  * player turns on "Use my AI here" the server gets nothing, and a forged request (one the player never asked for) is
- * refused.
+ * refused. The run uses about 26 of the game's 30 hourly relay calls (RelayGate counts refused requests too, and a
+ * reset does not clear the hour), so a new scenario that adds more than a few calls needs a fresh hourly window.
  */
 public final class RelayTest implements FabricClientGameTest {
     private static final String EDITOR_REQUEST = "a tiny stone platform\n" + "Keep the path open and use stone. ".repeat(100).stripTrailing();
@@ -456,8 +457,10 @@ public final class RelayTest implements FabricClientGameTest {
     /**
      * A relayed masterpiece build whose reviewer asks for a fix. The player's game refuses a repair carrying a critique
      * its AI didn't return, and a second review citing a repair it didn't run, so this build only gets through when
-     * the critique's key, the critique>plan repair pair and the repaired plan's key all reached RelaySeen. This test's
-     * server places builds directly (previewAbove -1), and responses skip the review screen here.
+     * the critique's key, the critique>plan repair pair and the repaired plan's key all reached RelaySeen. The server
+     * reloads a config with no reviewer and the game then puts its reviewer back and re-sends its Hello, so the
+     * critiques show a relayed request's mode comes from the Hello. This test's server places builds directly
+     * (previewAbove -1), and responses skip the review screen here.
      */
     private void relayedRepair(ClientGameTestContext context, TestDedicatedServerContext server, ConfigStore store) {
         JustBuildConfig previous = null;
@@ -466,8 +469,15 @@ public final class RelayTest implements FabricClientGameTest {
             var config = store.load();
             config.detail = "masterpiece";
             config.reviewAiResponses = false;
+            // The server's own config has no reviewer; only the Hello says the player chose one.
+            config.reviewerProfile = "";
             store.save(config);
             server.runCommand("justbuild reload");
+            check(!previous.reviewerProfile.isEmpty(), "the game should have a reviewer profile to put back");
+            config.reviewerProfile = previous.reviewerProfile;
+            store.save(config);
+            context.runOnClient(mc -> dev.justbuild.client.ResponseReviewChecks.sendHello());
+            context.waitTicks(40);
             int before = auth.size(), builds = buildCount(server);
             overrideReply = PLAN;
             nextCritique.set(CRITIQUE_SHOULD_FIX);
@@ -502,9 +512,11 @@ public final class RelayTest implements FabricClientGameTest {
     }
 
     /**
-     * A relayed One pass build with Same as builder in the player's game. The game's Hello says it has no reviewer, so
-     * the server sends a review without a critique: the builder reviews its own plan and no reviewer check is made.
-     * Editing the file doesn't re-send the Hello, so the test sends it as a Settings change would.
+     * A relayed One pass build with Same as builder in the player's game. The server isn't reloaded, so its own config
+     * still names a reviewer profile while the game's Hello says it has none: the server sends a review without a
+     * critique, which shows a relayed request's mode comes from the Hello. The game reads the cleared reviewer and
+     * {@code reviewAiResponses} from the file itself; editing the file doesn't re-send the Hello, so the test sends it as
+     * a Settings change would.
      */
     private void sameAsBuilderSelfReviews(ClientGameTestContext context, TestDedicatedServerContext server, ConfigStore store) {
         JustBuildConfig previous = null;
@@ -514,7 +526,6 @@ public final class RelayTest implements FabricClientGameTest {
             config.reviewerProfile = "";
             config.reviewAiResponses = false;
             store.save(config);
-            server.runCommand("justbuild reload");
             context.runOnClient(mc -> dev.justbuild.client.ResponseReviewChecks.sendHello());
             context.waitTicks(40);
             int before = auth.size(), builds = buildCount(server);

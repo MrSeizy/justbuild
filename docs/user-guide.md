@@ -178,9 +178,9 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
   and token counts. **Next/Previous** or the mouse wheel page through long responses; **Copy response** copies all
   response fields. **Send to server** releases only that response; **Cancel**, Escape, or leaving the screen
   withholds it and sends a fixed cancellation with no response text or token counts. Guide requests, world
-  inspections, questions, declines, plans, reviewer checks, and revisions each need their own approval. Fixed refusals
-  with no AI output or usage do not prompt. A server cancellation, timeout, disconnect, or transfer discards a pending
-  approval. With no more provider activity during approval, the server's inactivity timeout continues while you
+  inspections, questions, declines, plans, reviews, reviewer checks, and revisions each need their own approval. Fixed
+  refusals with no AI output or usage do not prompt. A server cancellation, timeout, disconnect, or transfer discards a
+  pending approval. With no more provider activity during approval, the server's inactivity timeout continues while you
   read, so a slow decision may require retrying.
   Progress counts and timing are still shared during planning. Singleplayer and server-owned AI calls do not use
   this setting. Review helps you inspect outgoing data; it does not remove the remaining channels described below.
