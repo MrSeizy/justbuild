@@ -25,4 +25,17 @@ class ProvidersTest {
         config.claude.command = "/nonexistent/claude";
         assertEquals(ModelCatalog.CLAUDE, Providers.create(config, config.active()).models(new CancellationToken()));
     }
+
+    @Test
+    void apiProfilesNeedAModelAndAnHttpUrl() {
+        JustBuildConfig config = JustBuildConfig.defaults();
+        JustBuildConfig.ModelProfile blank = new JustBuildConfig.ModelProfile("Mine", "openai", "");
+        assertTrue(Providers.problem(config, blank).contains("needs a model"));
+        JustBuildConfig.ModelProfile ftp = new JustBuildConfig.ModelProfile("Mine", "openai", "m");
+        ftp.baseUrl = "ftp://x";
+        assertTrue(Providers.problem(config, ftp).contains("needs an http(s) base URL"));
+        JustBuildConfig.ModelProfile good = new JustBuildConfig.ModelProfile("Mine", "openai", "m");
+        good.baseUrl = "https://example.com/v1";
+        assertNull(Providers.problem(config, good));
+    }
 }
