@@ -25,4 +25,17 @@ class RequestStatusTest {
         assertFalse(status.heartbeatDue(Duration.ofSeconds(364)));
         assertTrue(status.heartbeatDue(Duration.ofSeconds(365)));
     }
+
+    @Test void critiqueAndRepairStagesAreTracked() {
+        RequestStatus status = new RequestStatus("Claude CLI", java.time.Instant.now());
+        status.critiquing(1, 2);
+        assertEquals(ReviewRounds.Stage.CRITIQUE, status.stage());
+        assertEquals(1, status.reviewsStarted());
+        status.repairing(1, 2);
+        assertEquals(ReviewRounds.Stage.REPAIR, status.stage());
+        status.reviewing(1, 1);
+        assertEquals(ReviewRounds.Stage.REVIEW, status.stage(), "self-review and the quick correction keep their stage");
+        status.shrinking(1, 2);
+        assertNull(status.stage());
+    }
 }

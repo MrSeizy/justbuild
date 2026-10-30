@@ -73,4 +73,14 @@ class StatusTextTest {
         assertEquals(75, StatusText.milestone(800, 1000, 50));
         assertEquals(-1, StatusText.milestone(1000, 1000, 100));
     }
+
+    @Test
+    void theReviewerAndTheRepairHaveTheirOwnWords() {
+        assertEquals("The reviewer is checking the plan (round 1 of 2)",
+                StatusText.activity("Claude CLI", Phase.WAITING, 0, 1, 2, false, ReviewRounds.Stage.CRITIQUE, null));
+        assertEquals("Claude CLI is revising its plan (round 1 of 2), 4 operations so far",
+                StatusText.activity("Claude CLI", Phase.WRITING, 4, 1, 2, false, ReviewRounds.Stage.REPAIR, null));
+        assertEquals(StatusText.activity("Claude CLI", Phase.WAITING, 0, 1, 2, false, null),
+                StatusText.activity("Claude CLI", Phase.WAITING, 0, 1, 2, false, null, null), "no stage keeps today's words");
+    }
 }

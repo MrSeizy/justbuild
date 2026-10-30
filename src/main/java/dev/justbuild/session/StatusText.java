@@ -27,16 +27,25 @@ final class StatusText {
         return activity(provider, phase, operations, round, rounds, shrinking, null);
     }
 
-    /**
-     * What the AI is doing. {@code round > 0} is a self-review round, or a smaller-plan try when {@code shrinking};
-     * {@code note} is the backend's latest headline (Codex reasoning summaries), shown after the activity.
-     */
     static String activity(String provider, Phase phase, int operations, int round, int rounds, boolean shrinking,
             String note) {
+        return activity(provider, phase, operations, round, rounds, shrinking, null, note);
+    }
+
+    /**
+     * What the AI is doing. {@code round > 0} is a review round (the reviewer's critique or the builder's repair when
+     * {@code stage} says so), or a smaller-plan try when {@code shrinking}; {@code note} is the backend's latest headline
+     * (Codex reasoning summaries), shown after the activity.
+     */
+    static String activity(String provider, Phase phase, int operations, int round, int rounds, boolean shrinking,
+            ReviewRounds.Stage stage, String note) {
         String doing;
         if (round > 0) {
-            doing = provider + (shrinking ? " is making its plan smaller (try " : " is reviewing its plan (round ")
-                    + round + " of " + rounds + ")";
+            String which = " (" + (shrinking ? "try " : "round ") + round + " of " + rounds + ")";
+            doing = shrinking ? provider + " is making its plan smaller" + which
+                    : stage == ReviewRounds.Stage.CRITIQUE ? "The reviewer is checking the plan" + which
+                    : stage == ReviewRounds.Stage.REPAIR ? provider + " is revising its plan" + which
+                    : provider + " is reviewing its plan" + which;
         } else {
             doing = switch (phase) {
                 case WAITING -> provider + " is planning";
@@ -62,8 +71,13 @@ final class StatusText {
 
     static String heartbeat(String provider, Phase phase, int operations, int round, int rounds, boolean shrinking,
             String note, Duration elapsed) {
+        return heartbeat(provider, phase, operations, round, rounds, shrinking, null, note, elapsed);
+    }
+
+    static String heartbeat(String provider, Phase phase, int operations, int round, int rounds, boolean shrinking,
+            ReviewRounds.Stage stage, String note, Duration elapsed) {
         return "Still working (" + elapsed(elapsed) + "): " + activity(provider, phase, operations, round, rounds,
-                shrinking, note) + ".";
+                shrinking, stage, note) + ".";
     }
 
     static String waitingBar(String provider, Phase phase, int operations, Duration elapsed) {
@@ -76,7 +90,12 @@ final class StatusText {
 
     static String waitingBar(String provider, Phase phase, int operations, int round, int rounds, boolean shrinking,
             String note, Duration elapsed) {
-        return BAR + activity(provider, phase, operations, round, rounds, shrinking, note) + " · " + elapsed(elapsed);
+        return waitingBar(provider, phase, operations, round, rounds, shrinking, null, note, elapsed);
+    }
+
+    static String waitingBar(String provider, Phase phase, int operations, int round, int rounds, boolean shrinking,
+            ReviewRounds.Stage stage, String note, Duration elapsed) {
+        return BAR + activity(provider, phase, operations, round, rounds, shrinking, stage, note) + " · " + elapsed(elapsed);
     }
 
     /** "AI 0:48, 23.4k tokens in, 1.9k out over 3 calls"; tokens are left out when the backend reported none. */

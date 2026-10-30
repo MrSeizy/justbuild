@@ -17,6 +17,7 @@ final class RequestStatus implements ProgressListener {
     private volatile int reviewRound;
     private volatile int reviewRounds;
     private volatile boolean shrinking;
+    private volatile ReviewRounds.Stage stage;
     /** How many self-review rounds and smaller-plan tries have started, for the "Plan ready" line. */
     private volatile int reviewsStarted;
     private volatile int smallerTries;
@@ -84,9 +85,24 @@ final class RequestStatus implements ProgressListener {
         return notices.poll();
     }
 
-    /** Starts self-review round {@code round} of {@code rounds}; the operation count restarts. */
+    /** Starts the separate reviewer's critique for round {@code round} of {@code rounds}. */
+    void critiquing(int round, int rounds) {
+        start(round, rounds, false);
+        stage = ReviewRounds.Stage.CRITIQUE;
+        reviewsStarted = round;
+    }
+
+    /** Starts the builder's repair of a reviewed plan in round {@code round} of {@code rounds}. */
+    void repairing(int round, int rounds) {
+        start(round, rounds, false);
+        stage = ReviewRounds.Stage.REPAIR;
+        reviewsStarted = round;
+    }
+
+    /** Starts the builder's own review (self-review or the quick correction); the operation count restarts. */
     void reviewing(int round, int rounds) {
         start(round, rounds, false);
+        stage = ReviewRounds.Stage.REVIEW;
         reviewsStarted = round;
     }
 
@@ -98,11 +114,16 @@ final class RequestStatus implements ProgressListener {
 
     private void start(int round, int rounds, boolean shrink) {
         shrinking = shrink;
+        stage = null;
         reviewRounds = rounds;
         reviewRound = round;
         operations = 0;
         note = null;
         phase = Phase.WAITING;
+    }
+
+    ReviewRounds.Stage stage() {
+        return stage;
     }
 
     int reviewsStarted() {
