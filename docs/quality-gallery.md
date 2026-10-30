@@ -72,14 +72,24 @@ records `selectedGuides`, `guideSelectionMillis`, the initial response and the a
 those references. `planningMillis` includes selection and drafting. No clarification or world-inspection rounds are
 allowed in this controlled evaluation. A CLI may also make its own title or session-summary calls.
 The gallery is separate from the mod's full interactive planning workflow.
-Set `JUSTBUILD_GALLERY_DETAIL=detailed` for one review pass, or `masterpiece` for two. Reviews receive the same
-`PlanningCheck` diagnostics and source/candidate block-color images used by the mod, and retain the previous plan
-when a review fails, exceeds limits, or fails the production `ReviewCheck` comparison: any technical category gets
-worse, an existing block retained by the draft is removed, or a bounded route comparison detects a newly blocked
-doorway or disconnected remaining floor space. Each review is an additional provider call.
+Set `JUSTBUILD_GALLERY_DETAIL=detailed` for one review pass, or `masterpiece` for two. Reviews run through the same
+`ReviewRounds` loop as the mod: by default (`JUSTBUILD_GALLERY_REVIEW=separate`) a separate critique, then a repair only
+when the critique or the checks call for one; `JUSTBUILD_GALLERY_REVIEW=self` runs the earlier self-review for
+comparison. Critiques and repairs receive the same `PlanningCheck` diagnostics and source/candidate block-color images
+used by the mod, plus the candidate's facades, and a repair keeps the previous plan when it fails, exceeds limits, or
+fails the production `ReviewCheck` comparison: any technical category gets worse, an existing block retained by the
+draft is removed, or a bounded route comparison detects a newly blocked doorway or disconnected remaining floor space.
+Each critique and repair is a separate provider call; `*-reviews.json` lists every call with its stage and time, and
+`*-review-rounds.json` each round's critique, whether it repaired, and the outcome.
 The gallery saves the first draft, its checks and screenshots, every review prompt/response, acceptance status and
 timing, and the final plan. Source blocks are restored and their hash verified after photographing the draft.
-Fixture reviews replay the fixture plan locally and are labeled `fixture replay`; they never call an AI.
+Fixture reviews answer with a fixed one-problem critique and replay the fixture plan locally. They are labeled `fixture replay` and never call an AI.
+
+For a paired comparison of review modes, collect drafts once with `JUSTBUILD_GALLERY_REVIEW=none` at `detailed` (the
+detail level's draft prompt, no reviews), copy each case's `<scenario>.json` into one directory, and review those same
+drafts live in separate runs with `JUSTBUILD_GALLERY_PLANS=<that directory>`, a provider, a detail level above quick, and
+`JUSTBUILD_GALLERY_REVIEW=self` or `separate`. Imported drafts carry no guide selection, so neither mode's reviews see
+guide text.
 
 Use `JUSTBUILD_GALLERY_CASES=cottage,interior,bridge` to select scenes and `JUSTBUILD_GALLERY_REPEATS=2` for repeated
 independent attempts (1–5, default 1). The same source location, daylight, weather and camera are used throughout.
@@ -121,8 +131,8 @@ JUSTBUILD_GALLERY_PLANS=/absolute/path/to/plans JUSTBUILD_GALLERY_LABEL=imported
 ```
 
 An imported run's recorded prompt describes the scenario; it does not claim to be the prompt used to produce those
-external plans. Keep external model and prompt provenance alongside those files. Imported plans use quick detail
-and cannot be combined with a live provider. These checks supplement the permission, cancellation, undo and relay
+external plans. Keep external model and prompt provenance alongside those files. Imported plans can be reviewed by a live
+provider at detailed or masterpiece detail; at quick detail they are only rendered and checked. These checks supplement the permission, cancellation, undo and relay
 tests; they do not replace them.
 
 ## Large castle test
