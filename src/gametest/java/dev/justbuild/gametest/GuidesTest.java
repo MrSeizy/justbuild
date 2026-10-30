@@ -101,6 +101,7 @@ public final class GuidesTest implements FabricClientGameTest {
                         messages.get(1).getAsJsonObject().getAsJsonArray("content").get(0).getAsJsonObject().get("text").getAsString()});
                 JsonObject message = new JsonObject();
                 message.addProperty("role", "assistant");
+                // The reviewer's system prompt identifies a critique call.
                 boolean critique = calls.get(calls.size() - 1)[0].contains("You are an independent reviewer");
                 message.addProperty("content", critique ? RelayTest.CRITIQUE_OK
                         : calls.size() == 1 && askFirst.get() ? ASK : PreviewTest.PLAN);

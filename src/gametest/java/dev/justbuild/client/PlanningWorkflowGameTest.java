@@ -22,10 +22,11 @@ import net.minecraft.world.level.storage.LevelResource;
 public final class PlanningWorkflowGameTest implements FabricClientGameTest {
     private final List<JsonObject> prompts = new CopyOnWriteArrayList<>();
     private volatile List<String> editReplies = List.of();
-    static final String SHOULD_FIX = "{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":[{\"severity\":\"should_fix\","
+    private static final String SHOULD_FIX = "{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":[{\"severity\":\"should_fix\","
             + "\"category\":\"interior\",\"operations\":[0],\"cell\":null,\"problem\":\"The table needs room.\","
             + "\"fix\":\"Clear the cell in front of the door.\"}],\"keep\":[\"the paving\"]}";
-    static final String NOTHING = "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[],\"keep\":[]}";
+    private static final String NOTHING = "{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[],\"keep\":[]}";
+
     private static BuildPlan paving(int y) {
         return new BuildPlan("Mixed paving", "Minimal paving", List.of(Operation.fill("minecraft:stone",
                 new Cell(-3, y, -3), new Cell(3, y, 3), false).withMix("minecraft:cobblestone")));
@@ -107,6 +108,7 @@ public final class PlanningWorkflowGameTest implements FabricClientGameTest {
                 var litOps = new ArrayList<>(furnishedOps);
                 litOps.add(Operation.set("lantern", new Cell(0, 2, 0)));
                 BuildPlan lit = new BuildPlan(current.title(), "Added a lantern", litOps, current.texture());
+                // Edit draft, critique, destructive repair (rejected), critique, repair; then the lantern draft and a satisfied critique.
                 editReplies = List.of(PlanWriter.write(furnished), SHOULD_FIX, PlanWriter.write(destructive), SHOULD_FIX,
                         PlanWriter.write(furnished), PlanWriter.write(lit), NOTHING);
                 config.detail = "masterpiece"; new ConfigStore(file).save(config); command(context, "reload");

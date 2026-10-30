@@ -8,6 +8,12 @@ import dev.justbuild.client.JustBuildScreen;
 import dev.justbuild.client.ResponseReviewScreen;
 import dev.justbuild.config.JustBuildConfig;
 import dev.justbuild.config.ConfigStore;
+import dev.justbuild.plan.Critique;
+import dev.justbuild.plan.CritiqueNote;
+import dev.justbuild.plan.CritiqueParser;
+import dev.justbuild.plan.PlanException;
+import dev.justbuild.plan.PlanParser;
+import dev.justbuild.plan.PlanResponse;
 import dev.justbuild.provider.ProviderException;
 import dev.justbuild.relay.PromptCheck;
 import dev.justbuild.relay.PromptSpec;
@@ -158,7 +164,8 @@ public final class RelayTest implements FabricClientGameTest {
             }
             check(bodies.get(2).contains("Live world inspection") && bodies.get(2).contains("x=0..2"),
                     "the relay did not return the requested world inspection");
-            check(bodies.get(3).contains("independent reviewer") && !bodies.get(3).contains("Read-only world inspection is available"),
+            check(bodies.get(3).contains("independent reviewer")
+                    && !bodies.get(3).contains("Read-only world inspection is available"),
                     "the game did not send a separate critique without inspection rounds");
             check(auth.stream().allMatch("Bearer sk-client-test"::equals), "the game's key was not used: " + auth);
             context.takeScreenshot("relay-built");
@@ -196,14 +203,15 @@ public final class RelayTest implements FabricClientGameTest {
             check(auth.size() == 4, "a server-written review reached the player's AI");
 
             // A repair must carry a critique the game's own AI returned.
-            dev.justbuild.plan.Critique forgedCritique;
+            Critique forgedCritique;
             try {
-                var returnedPlan = ((dev.justbuild.plan.PlanResponse.Build) dev.justbuild.plan.PlanParser.parse(PLAN)).plan();
-                forgedCritique = dev.justbuild.plan.CritiqueParser.parse(FORGED_CRITIQUE, returnedPlan, PromptCheck.planKey(PLAN));
-            } catch (dev.justbuild.plan.PlanException e) { throw new AssertionError(e); }
+                var returnedPlan = ((PlanResponse.Build) PlanParser.parse(PLAN)).plan();
+                forgedCritique = CritiqueParser.parse(FORGED_CRITIQUE, returnedPlan, PromptCheck.planKey(PLAN));
+            } catch (PlanException e) { throw new AssertionError(e); }
             String repair = relay(context, manager, player,
-                    started.review(PLAN, 1, 1, new dev.justbuild.plan.CritiqueNote(forgedCritique, null)));
-            check(repair.contains("critique your AI didn't return"), "a repair with a server-written critique was not refused: " + repair);
+                    started.review(PLAN, 1, 1, new CritiqueNote(forgedCritique, null)));
+            check(repair.contains("critique your AI didn't return"),
+                    "a repair with a server-written critique was not refused: " + repair);
             check(auth.size() == 4, "a server-written critique reached the player's AI");
 
             // An edit's saved plan reaches the AI as block ids only, so its block fields can't carry instructions.
