@@ -30,7 +30,7 @@ public final class Walkability {
     /** A standing space: where the feet are, the block they stand on, and that block's facing when it is a stair. */
     record Node(BlockPos pos, BlockPos floor, double feet, Direction stairs) { }
     record Routes(Result report, Set<BlockPos> standing, Set<BlockPos> reached, Set<BlockPos> doors,
-            BlockPos start, boolean complete, Map<BlockPos, Node> nodes) {
+            BlockPos start, boolean complete, Map<BlockPos, Node> nodes, boolean steps) {
         Routes {
             standing = Set.copyOf(standing); reached = Set.copyOf(reached); doors = Set.copyOf(doors); nodes = Map.copyOf(nodes);
         }
@@ -44,10 +44,15 @@ public final class Walkability {
 
     /** Review comparisons keep the first graph's start, so a new disconnected entrance cannot hide a regression. */
     static Routes routes(BuildRegion bounds, Function<BlockPos, BlockState> read, BlockPos fixedStart, boolean review) {
+        return routes(bounds, read, fixedStart, review, false);
+    }
+
+    /** steps: one-block rises connect too (players can jump them); the extra headroom a jump needs is ignored. */
+    static Routes routes(BuildRegion bounds, Function<BlockPos, BlockState> read, BlockPos fixedStart, boolean review, boolean steps) {
         long volume = (long) (bounds.max().getX() - bounds.min().getX() + 3)
                 * (bounds.max().getY() - bounds.min().getY() + 3) * (bounds.max().getZ() - bounds.min().getZ() + 3);
         if (volume > MAX_CELLS) return new Routes(new Result(List.of("This area is too large for a route check. Select a smaller part first."),
-                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, false, Map.of());
+                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, false, Map.of(), steps);
         Map<BlockPos, BlockState> cache = new HashMap<>();
         Function<BlockPos, BlockState> live = p -> {
             if (!cache.containsKey(p)) cache.put(p.immutable(), read.apply(p));
@@ -75,7 +80,7 @@ public final class Walkability {
             if (nodes.putIfAbsent(pos, node) == null) columns.computeIfAbsent(new Column(pos.getX(), pos.getZ()), k -> new ArrayList<>()).add(node);
         }
         if (nodes.isEmpty()) return new Routes(new Result(List.of("No standing spaces with enough headroom were found. Check floors and ceilings."),
-                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, cache.values().stream().noneMatch(s -> s == null), Map.of());
+                List.of(), 0, 0, 0), Set.of(), Set.of(), Set.of(), null, cache.values().stream().noneMatch(s -> s == null), Map.of(), steps);
         List<String> lines = new ArrayList<>(); List<BlockPos> blocked = new ArrayList<>();
         entrances.sort(Comparator.<BlockPos>comparingInt(p -> p.getY()).thenComparingInt(BlockPos::getX).thenComparingInt(BlockPos::getZ));
         Node start = null;
@@ -100,7 +105,7 @@ public final class Walkability {
             for (Direction direction : Direction.Plane.HORIZONTAL) {
                 BlockPos next = at.pos().relative(direction);
                 for (Node candidate : columns.getOrDefault(new Column(next.getX(), next.getZ()), List.of())) {
-                    if (!reached.contains(candidate.pos()) && connected(at, candidate, direction)) {
+                    if (!reached.contains(candidate.pos()) && connected(at, candidate, direction, steps)) {
                         reached.add(candidate.pos()); queue.addLast(candidate);
                     }
                 }
@@ -126,7 +131,7 @@ public final class Walkability {
         }
         return new Routes(new Result(lines, markers, interior.size(), reachable, unreachable.size()), nodes.keySet(), reached,
                 entrances.stream().filter(reached::contains).collect(java.util.stream.Collectors.toSet()),
-                start == null ? null : start.pos(), cache.values().stream().noneMatch(s -> s == null), nodes);
+                start == null ? null : start.pos(), cache.values().stream().noneMatch(s -> s == null), nodes, steps);
     }
 
     /** Strictly inside the region's columns: the edge columns may be outside walls or terrain. */
@@ -154,7 +159,7 @@ public final class Walkability {
                 for (Direction direction : Direction.Plane.HORIZONTAL) {
                     BlockPos next = at.pos().relative(direction);
                     for (Node candidate : columns.getOrDefault(new Column(next.getX(), next.getZ()), List.of()))
-                        if (!seen.contains(candidate.pos()) && connected(at, candidate, direction)) { seen.add(candidate.pos()); queue.addLast(candidate); }
+                        if (!seen.contains(candidate.pos()) && connected(at, candidate, direction, routes.steps())) { seen.add(candidate.pos()); queue.addLast(candidate); }
                 }
             }
             areas.add(area);
@@ -162,9 +167,9 @@ public final class Walkability {
         return areas;
     }
 
-    private static boolean connected(Node a, Node b, Direction direction) {
+    private static boolean connected(Node a, Node b, Direction direction, boolean steps) {
         double rise = b.feet() - a.feet();
-        if (Math.abs(rise) <= 0.601) return true;
+        if (Math.abs(rise) <= (steps ? 1.001 : 0.601)) return true;
         if (Math.abs(rise) > 1.001) return false;
         Direction uphill = rise > 0 ? direction : direction.getOpposite();
         return a.stairs() == uphill || b.stairs() == uphill;

@@ -138,8 +138,9 @@ class PlanningEvidenceTest {
                 + "The proposed changes cross the selected footprint."), text);
         assertTrue(text.contains("ROUTE_START at Cell[x=3, y=1, z=-1]: Walking routes were checked from here"), text);
         assertTrue(text.contains("UNREACHABLE at Cell[x=1, y=4, z=1] (box to Cell[x=5, y=4, z=5], 25 standing spaces): "
-                + "No walking route from the start reaches this area. If players should get there, add stairs, a doorway or "
-                + "an opening; if it is deliberately sealed, leave it."), text);
+                + "No walking route from the start reaches this area; routes follow floors, stairs and one-block steps, not ladders. "
+                + "If players should get there, add stairs, a doorway or an opening; if it is deliberately sealed or reached by a "
+                + "ladder, leave it."), text);
         assertTrue(text.contains("ZONE at Cell[x=7, y=0, z=0] (box to Cell[x=7, y=0, z=0], 1 block; operation 3 numbered from 0): "), text);
         String plain = new PlanningFeedback(key, List.of(new PlanningFeedback.Problem(PlanningFeedback.Kind.SUPPORT, new Cell(0, 1, 0))),
                 null, null, null, null).format();

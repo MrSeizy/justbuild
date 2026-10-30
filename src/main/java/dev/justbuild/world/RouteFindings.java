@@ -16,9 +16,15 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/** Review evidence about access: areas of a draft no walking route reaches. Advisory; never a reason to correct. */
+/**
+ * Review evidence about access: areas of a draft no walking route reaches, where routes may take one-block steps.
+ * Advisory; never a reason to correct.
+ */
 final class RouteFindings {
+    private static final Logger LOGGER = LoggerFactory.getLogger("JustBuild");
     static final int MAX_AREAS = 4, MIN_SPACES = 4;
 
     private RouteFindings() { }
@@ -36,9 +42,11 @@ final class RouteFindings {
             BuildRegion box = BuildRegion.enclosing(dimension, positions);
             // routes() drops the top layer as roof; one more layer keeps a tower platform inside its parapet.
             bounds = new BuildRegion(dimension, box.min(), box.max().above());
-        } catch (IllegalArgumentException tooLarge) { return List.of(); }
-        Walkability.Routes routes = Walkability.routes(bounds, candidate, null, false);
-        if (!routes.complete() || routes.start() == null) return List.of();
+        } catch (IllegalArgumentException tooLarge) { LOGGER.debug("Route findings skipped: {}", "the draft is too large"); return List.of(); }
+        // Not review mode: that would let an interior or basement door become the start.
+        Walkability.Routes routes = Walkability.routes(bounds, candidate, null, false, true);
+        if (!routes.complete()) { LOGGER.debug("Route findings skipped: {}", "the draft is too large or some cells are unloaded"); return List.of(); }
+        if (routes.start() == null) { LOGGER.debug("Route findings skipped: {}", "no starting space"); return List.of(); }
         Set<BlockPos> draft = new HashSet<>(positions);
         List<List<Walkability.Node>> areas = new ArrayList<>(Walkability.unreachedAreas(routes,
                 n -> (Walkability.isInterior(bounds, n.pos()) || draft.contains(n.floor()))
