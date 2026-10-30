@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import dev.justbuild.plan.BuildPlan;
+import dev.justbuild.plan.Critique;
+import dev.justbuild.plan.CritiqueParser;
 import dev.justbuild.plan.PlanException;
 import dev.justbuild.plan.PlanParser;
 import dev.justbuild.plan.PlanResponse;
@@ -91,9 +93,12 @@ public record RelayOutput(String json, String question, String planKey, String l
 
     /** The reviewer's answer about {@code spec}'s plan, re-written so only bounded findings reach the server. */
     public static RelayOutput critique(String raw, PromptSpec spec) throws PlanException {
-        dev.justbuild.plan.Critique critique;
+        // A spec without a plan is the caller's fault; only the parse of the AI's answer is reported as unusable.
+        BuildPlan plan = spec.plan();
+        String planKey = PromptCheck.planKey(spec.planJson());
+        Critique critique;
         try {
-            critique = dev.justbuild.plan.CritiqueParser.parse(raw, spec.plan(), PromptCheck.planKey(spec.planJson()));
+            critique = CritiqueParser.parse(raw, plan, planKey);
         } catch (PlanException | RuntimeException e) {
             PlanException failure = new PlanException("the AI response is not a usable critique");
             failure.initCause(e);
