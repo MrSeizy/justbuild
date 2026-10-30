@@ -184,8 +184,14 @@ public final class ReviewRounds {
                 return new Repair(plan, raw, describing(compared.feedback(), plan, evidence, round),
                         compared.verdict().outcome(), true);
             }
-            return new Repair(better.plan(), answer, describing(compared.feedback(), better.plan(), evidence, round),
-                    RepairOutcome.ACCEPTED, PlanWriter.write(better.plan()).equals(planJson));
+            String feedbackKey = compared.feedback().planKey();
+            if (feedbackKey != null && !feedbackKey.equals(PromptCheck.planKey(PlanWriter.write(better.plan())))) {
+                // The verdict may have compared the wrong plans, so it cannot be trusted: keep the plan with its evidence.
+                LOGGER.warn("Review round {}: review checks described a different plan; treating the repair as failed", round);
+                return new Repair(plan, raw, evidence, RepairOutcome.FAILED, true);
+            }
+            return new Repair(better.plan(), answer, compared.feedback(), RepairOutcome.ACCEPTED,
+                    PlanWriter.write(better.plan()).equals(planJson));
         } catch (CancelledException e) {
             throw e;
         } catch (PlanException | ProviderException e) {
