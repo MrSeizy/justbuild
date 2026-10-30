@@ -24,8 +24,9 @@ import java.util.stream.Collectors;
 
 /**
  * The review rounds after a draft, shared by planning and the quality gallery. In {@link Mode#SEPARATE} a reviewer
- * critiques the candidate and the builder repairs it only when the critique, or the draft's own checks, call for it; a
- * second round runs only after the first repaired. Detail level 0 repairs once when the checks need a correction.
+ * critiques the candidate and the builder repairs it only when the critique calls for it or the draft's checks find a
+ * technical failure (any diagnosed problem when the critique fails); a second round runs only after the first repaired.
+ * Detail level 0 repairs once when the checks need a correction.
  * {@link Mode#SELF} is the earlier self-review, kept so the gallery can compare the two.
  */
 public final class ReviewRounds {
@@ -115,7 +116,10 @@ public final class ReviewRounds {
                 LOGGER.debug("Review round {}: draft over the limits; skipping the critique", round);
             }
             boolean worth = critique != null && critique.needsRepair();
-            if (!worth && !evidence.needsCorrection()) {
+            // The reviewer read the draft's checks, so once it answers only technical failures force a repair; advisory
+            // findings (stairs, foundations, support) are its call. Without a critique, any diagnosed problem gets one.
+            boolean checksNeedRepair = critique != null ? evidence.technicalFailures() > 0 : evidence.needsCorrection();
+            if (!worth && !checksNeedRepair) {
                 caller.say(critique != null ? "Reviewer: no changes needed."
                         : "Reviewer didn't answer; keeping " + kept(round) + ".");
                 done.add(new Round(round, critique, false, null, true));
