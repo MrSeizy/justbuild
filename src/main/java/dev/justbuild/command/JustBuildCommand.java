@@ -29,7 +29,7 @@ public final class JustBuildCommand {
             "add", "again", "alternatives", "answer", "autobuild", "box", "build", "cancel", "checkpoint", "confirm", "connect",
             "constraints", "construction", "design", "detail", "doctor", "edit", "help", "history", "inspect", "interior", "link", "lock", "materials",
             "model", "models", "new", "playerai", "preview", "profile", "profiles", "project", "provider", "reload", "rename",
-            "quality", "release", "repair", "retry", "revise", "select", "status", "style", "template", "templates", "undo", "unlock",
+            "quality", "release", "repair", "retry", "revise", "reviewer", "select", "status", "style", "template", "templates", "undo", "unlock",
             "usage", "walkability", "zone");
 
     public static java.util.Set<String> subcommands() {
@@ -250,6 +250,15 @@ public final class JustBuildCommand {
                                 .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
                                         java.util.Arrays.stream(Guidance.DetailLevel.values()).map(Guidance.DetailLevel::id).toList(), builder))
                                 .executes(ctx -> run(ctx, (m, s) -> m.setDetail(s, StringArgumentType.getString(ctx, "level"))))))
+                .then(Commands.literal("reviewer")
+                        .then(Commands.argument("profile", StringArgumentType.greedyString())
+                                .suggests((ctx, builder) -> {
+                                    BuildSessionManager m = JustBuildMod.manager();
+                                    List<String> names = new java.util.ArrayList<>(List.of("same"));
+                                    if (m != null) names.addAll(m.profileNames());
+                                    return SharedSuggestionProvider.suggest(names, builder);
+                                })
+                                .executes(ctx -> run(ctx, (m, s) -> m.setReviewer(s, StringArgumentType.getString(ctx, "profile"))))))
                 .then(Commands.literal("style")
                         .then(Commands.argument("name", StringArgumentType.word())
                                 .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(

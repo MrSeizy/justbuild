@@ -42,6 +42,18 @@ class StateJsonTest {
     }
 
     @Test
+    void stateNamesTheReviewerAndItsChoices() {
+        JustBuildConfig config = config();
+        JsonObject same = JsonParser.parseString(StateJson.build(config, List.of(), true, StateJson.Ai.SERVER)).getAsJsonObject();
+        assertEquals("same", same.get("reviewer").getAsString());
+        assertEquals("same", same.getAsJsonArray("reviewerChoices").get(0).getAsString());
+        assertEquals(config.profileNames().size() + 1, same.getAsJsonArray("reviewerChoices").size());
+        config.reviewerProfile = "Codex";
+        assertEquals("Codex", JsonParser.parseString(StateJson.build(config, List.of(), true, StateJson.Ai.SERVER))
+                .getAsJsonObject().get("reviewer").getAsString());
+    }
+
+    @Test
     void namesTheDimensionOfBuildsElsewhere() {
         JsonArray builds = JsonParser.parseString(StateJson.build(config(), List.of(
                 new StateJson.BuildSummary("e4c91fbd", "Basalt Hut", 1, "a hut", "minecraft:the_nether"),

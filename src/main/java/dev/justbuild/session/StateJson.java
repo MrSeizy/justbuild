@@ -76,6 +76,7 @@ public final class StateJson {
         o.addProperty("profile", active.name);
         o.addProperty("model", active.model);
         o.addProperty("detail", config.detail);
+        o.addProperty("reviewer", config.reviewerProfile == null || config.reviewerProfile.isBlank() ? "same" : config.reviewerProfile);
         o.addProperty("style", config.style);
         o.addProperty("manage", manage);
         o.addProperty("selectingZone", selectingZone);
@@ -138,6 +139,9 @@ public final class StateJson {
         o.addProperty("aiSource", ai.source());
         o.addProperty("aiLabel", ai.label() != null ? ai.label() : active.name);
         o.add("profileNames", strings(config.profileNames()));
+        List<String> reviewers = new java.util.ArrayList<>(List.of("same"));
+        reviewers.addAll(config.profileNames());
+        o.add("reviewerChoices", strings(reviewers));
         JsonArray profiles = new JsonArray();
         for (JustBuildConfig.ModelProfile p : config.profiles) {
             JsonObject e = new JsonObject();
