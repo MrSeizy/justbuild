@@ -17,6 +17,8 @@ public final class ResponseReviewChecks {
     public static void limits(int calls, long tokens) {
         ClientAi.limits(new dev.justbuild.provider.UsageTracker.Limits(calls, tokens));
     }
+    /** Tells the server about this game's AI again, as a Settings change does, after a test edits the config file. */
+    public static void sendHello() { ClientAi.sendHello(); }
 
     public static void run(ClientGameTestContext context) {
         String clipboard = context.computeOnClient(mc -> mc.keyboardHandler.getClipboard());

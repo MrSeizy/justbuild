@@ -46,7 +46,7 @@ public final class GuidesTest implements FabricClientGameTest {
             context.takeScreenshot("guides-chat");
             context.runOnClient(mc -> mc.player.connection.sendCommand("justbuild cancel"));
             context.waitTicks(10);
-            check(calls.size() == 3, "expected 3 AI calls (guides, plan, critique), got " + calls.size());
+            check(calls.size() == 3, "expected 3 AI calls (guides, plan, review), got " + calls.size());
             skipped = new ArrayList<>(calls);
             calls.clear();
             askFirst.set(false);
@@ -70,15 +70,16 @@ public final class GuidesTest implements FabricClientGameTest {
         check(!asked.get(0)[1].contains("Guides selected by you"), "the castle request must not receive automatically matched guides");
         check(!asked.get(1)[0].contains("- timber-frame: "), "second call should not offer guides again");
         check(!asked.get(0)[1].contains("- Style:"), "Auto must not impose a medieval house preset");
+        check(asked.get(2)[1].contains("You are reviewing your own plan"), "the third call should be the builder's own review");
         for (String title : List.of("Castles and fortifications", "Towers and spires", "Interiors", "Landscaping and paths",
                 "Lighting with lanterns and hidden lights")) {
             check(asked.get(1)[1].contains("## " + title), "planning should carry selected guide " + title);
-            check(asked.get(2)[1].contains("## " + title), "the critique should retain selected guide " + title);
+            check(asked.get(2)[1].contains("## " + title), "review should retain selected guide " + title);
         }
         check(!asked.get(1)[1].contains("## Half-timbered walls"), "an unselected style guide must not be added");
         check(!asked.get(1)[1].contains("## Windows with frames"), "a keyword must not add an unselected guide");
         check(!asked.get(1)[1].contains("no-such-guide"), "unknown ids are dropped");
-        check(calls.size() == 2, "expected 2 AI calls (plan, critique) when the AI skips guides, got " + calls.size());
+        check(calls.size() == 2, "expected 2 AI calls (plan, review) when the AI skips guides, got " + calls.size());
         check(calls.get(0)[0].contains("- timber-frame: "), "a new build offers the menu again");
         check(!calls.get(1)[0].contains("- timber-frame: "), "the review round after a skip should not offer guides");
     }
@@ -101,10 +102,7 @@ public final class GuidesTest implements FabricClientGameTest {
                         messages.get(1).getAsJsonObject().getAsJsonArray("content").get(0).getAsJsonObject().get("text").getAsString()});
                 JsonObject message = new JsonObject();
                 message.addProperty("role", "assistant");
-                // The reviewer's system prompt identifies a critique call.
-                boolean critique = calls.get(calls.size() - 1)[0].contains("You are an independent reviewer");
-                message.addProperty("content", critique ? RelayTest.CRITIQUE_OK
-                        : calls.size() == 1 && askFirst.get() ? ASK : PreviewTest.PLAN);
+                message.addProperty("content", calls.size() == 1 && askFirst.get() ? ASK : PreviewTest.PLAN);
                 JsonObject choice = new JsonObject();
                 choice.add("message", message);
                 JsonArray choices = new JsonArray();

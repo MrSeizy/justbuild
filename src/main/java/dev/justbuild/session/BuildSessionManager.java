@@ -1719,7 +1719,7 @@ public final class BuildSessionManager {
             return;
         }
         BuildProvider provider = aiSource == AiSource.PLAYER
-                ? new RelayProvider(relay, player.getUUID(), playerSession(player.getUUID().toString()).hello.label(), cfg.limits(),
+                ? new RelayProvider(relay, player.getUUID(), playerSession(player.getUUID().toString()).hello, cfg.limits(),
                         cfg.detailLevel())
                 : Providers.create(cfg, cfg.active());
         ExecutorService pool = aiSource == AiSource.PLAYER ? relayWorkers : workers;
@@ -2006,23 +2006,22 @@ public final class BuildSessionManager {
         return new Reviewed(plan, raw);
     }
 
-    /** Production always uses the separate reviewer; the quality gallery also runs the earlier self-review to compare. */
-    private static final ReviewRounds.Mode REVIEW_MODE = ReviewRounds.Mode.SEPARATE;
-
     /**
-     * Worker thread: the review rounds after a draft (session.ReviewRounds). Critiques use the reviewer profile, repairs
-     * the builder's; through the relay both go to the player's game, which picks its own reviewer profile.
+     * Worker thread: the review rounds after a draft (session.ReviewRounds). With a reviewer chosen, critiques use the
+     * reviewer profile and repairs the builder's; otherwise the builder reviews its own plan. Through the relay both go
+     * to the player's game, which reported whether it has a reviewer and picks the profile itself.
      */
     private Reviewed review(ActiveRequest active, BuildProvider provider, PlanRequest original, BuildPlan plan, String raw, int rounds,
             JustBuildConfig cfg, CancellationToken token, RequestStatus status) throws ProviderException {
         PlanningFeedback evidence = checkForRequest(active, token, plan, cfg);
+        // Chosen once per request, and only with review rounds: quick mode never resolves a reviewer or posts its note.
+        RelayProvider relayed = provider instanceof RelayProvider r ? r : null;
+        ReviewerAi own = rounds > 0 && relayed == null ? serverReviewer(active, token, cfg) : null;
+        ReviewRounds.Mode mode = ReviewRounds.mode(relayed != null, relayed != null && relayed.playerHasReviewer(), own != null);
+        ReviewerAi reviewer = own != null ? own : new ReviewerAi(provider, original.model());
         ReviewRounds.Caller caller = new ReviewRounds.Caller() {
-            /** Chosen on the first critique, so quick mode and drafts over the limits never make one or post its note. */
-            private ReviewerAi reviewer;
-
             @Override
             public String critique(PromptSpec spec) throws ProviderException, PlanException {
-                if (reviewer == null) reviewer = reviewerAi(active, token, provider, original, cfg);
                 return complete(reviewer.provider(), reviewRequest(spec, cfg, reviewer.model(), original.timeout()), token, status, true);
             }
 
@@ -2065,7 +2064,7 @@ public final class BuildSessionManager {
                 });
             }
         };
-        ReviewRounds.Result result = new ReviewRounds(REVIEW_MODE, cfg.limits(), caller)
+        ReviewRounds.Result result = new ReviewRounds(mode, cfg.limits(), caller)
                 .run(original.spec(), plan, raw, evidence, rounds);
         if (LOGGER.isDebugEnabled()) {
             for (ReviewRounds.Round round : result.rounds()) {
@@ -2086,14 +2085,12 @@ public final class BuildSessionManager {
     private record ReviewerAi(BuildProvider provider, String model) { }
 
     /**
-     * The backend for critiques: the reviewer profile on this server, or the builder's when none is set, the request is
-     * relayed (the player's game chooses), or the profile can't plan right now; in that last case the player is told once.
+     * The backend for critiques on this server's own AI: the reviewer profile, or null for Same as builder. A named
+     * profile that is missing or can't plan right now is also null, and the player is told once that the builder will
+     * review its own plan.
      */
-    private ReviewerAi reviewerAi(ActiveRequest active, CancellationToken token, BuildProvider builder, PlanRequest original,
-            JustBuildConfig cfg) {
-        if (builder instanceof RelayProvider || cfg.reviewerProfile == null || cfg.reviewerProfile.isBlank()) {
-            return new ReviewerAi(builder, original.model());
-        }
+    private ReviewerAi serverReviewer(ActiveRequest active, CancellationToken token, JustBuildConfig cfg) {
+        if (cfg.reviewerProfile == null || cfg.reviewerProfile.isBlank()) return null;
         var profile = cfg.reviewer();
         if (profile.isPresent()) {
             String problem = Providers.problem(cfg, profile.get());
@@ -2103,10 +2100,11 @@ public final class BuildSessionManager {
         String name = cfg.reviewerProfile;
         onServer(() -> {
             if (isCurrent(active, token)) {
-                send(active.source, Chat.progress("Reviewer profile “" + name + "” isn't available; using your builder AI."));
+                send(active.source, Chat.progress("Reviewer profile “" + name
+                        + "” isn't available; the builder will review its own plan."));
             }
         });
-        return new ReviewerAi(builder, original.model());
+        return null;
     }
 
     /**
@@ -3651,7 +3649,7 @@ public final class BuildSessionManager {
         switchProfile(source, name);
     }
 
-    /** Which profile the separate reviewer uses; {@code same} means the builder's profile. */
+    /** Which profile the separate reviewer uses; {@code same} means none: the builder reviews its own plan. */
     public void setReviewer(CommandSourceStack source, String name) {
         String wanted = name.strip();
         boolean same = JustBuildConfig.reservedReviewerName(wanted);
@@ -3663,7 +3661,7 @@ public final class BuildSessionManager {
         if (!configWritable(source)) return;
         config.setReviewer(wanted);
         if (saveConfig(source)) {
-            send(source, Chat.info(same ? "The reviewer uses the builder's profile."
+            send(source, Chat.info(same ? "The builder reviews its own plan."
                     : "The reviewer uses profile “" + config.reviewerProfile + "” ("
                             + profileLabel(config.reviewer().orElseThrow()) + ")."));
             sendStateToAll();

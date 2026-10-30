@@ -3,6 +3,7 @@ package dev.justbuild.relay;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import dev.justbuild.prompt.Guidance;
 
 /** JSON inside the relay packets. The request carries no instructions: the player's game builds the system prompt. */
@@ -29,8 +30,11 @@ public final class RelayJson {
             int timeoutSeconds) {
     }
 
-    /** What the player's game reports on join and when it changes: whether it can plan builds, and with what. */
-    public record Hello(int protocol, boolean ready, String label) {
+    /**
+     * What the player's game reports on join and when it changes: whether it can plan builds, and with what.
+     * {@code reviewer}: the player chose a reviewer profile, so the server asks for the separate reviewer.
+     */
+    public record Hello(int protocol, boolean ready, String label, boolean reviewer) {
     }
 
     private RelayJson() {
@@ -75,10 +79,11 @@ public final class RelayJson {
         o.addProperty("protocol", h.protocol());
         o.addProperty("ready", h.ready());
         o.addProperty("label", h.label());
+        o.addProperty("reviewer", h.reviewer());
         return o.toString();
     }
 
-    /** Never throws: anything unreadable is a game that is not ready. */
+    /** Never throws: anything unreadable is a game that is not ready; a missing or unreadable reviewer is none. */
     public static Hello parseHello(String json) {
         try {
             JsonObject o = JsonParser.parseString(json).getAsJsonObject();
@@ -86,9 +91,10 @@ public final class RelayJson {
             label = label == null ? "" : label.strip();
             return new Hello(o.has("protocol") ? o.get("protocol").getAsInt() : 0,
                     o.has("ready") && o.get("ready").getAsBoolean(),
-                    label.length() > MAX_LABEL ? label.substring(0, MAX_LABEL) : label);
+                    label.length() > MAX_LABEL ? label.substring(0, MAX_LABEL) : label,
+                    o.get("reviewer") instanceof JsonPrimitive p && p.isBoolean() && p.getAsBoolean());
         } catch (RuntimeException e) {
-            return new Hello(0, false, "");
+            return new Hello(0, false, "", false);
         }
     }
 

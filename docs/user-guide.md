@@ -169,8 +169,9 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
 - **In the player's game:** Right Shift → Settings shows **My profile**, **My profiles…** (the editor, working on this
   computer's `config/justbuild.json`, with Pick… asking this computer's CLI or endpoint), **Use my AI here: On/Off**,
   **Reviewer** (**Same as builder**, or another of this computer's profiles; saved as `reviewerProfile` in
-  `config/justbuild.json`), and a line saying which AI your builds use on this server. The game is "ready" when local AI
-  is enabled for that server and the active profile works: an installed CLI, or an HTTP API profile with a model.
+  `config/justbuild.json`; choosing a profile there turns on the separate reviewer for your builds on servers), and a
+  line saying which AI your builds use on this server. The game is "ready" when local AI is enabled for that server and
+  the active profile works: an installed CLI, or an HTTP API profile with a model.
 - **Optional response review:** **Right Shift → Settings → Review before sending** starts **Off**, including for
   existing configs. Turning it on saves `reviewAiResponses: true` on this computer for all multiplayer servers.
   Each normalized response opens a read-only viewer with its destination, request id, full response text/error,
@@ -190,9 +191,9 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
     own AI.
   - **Only builds you start.** An AI-starting `/justbuild` (a description, `edit`, `revise`, `connect`, `interior`, `template`, `again`, `answer`) allows
     fourteen AI calls within a 15-minute inactivity window (a guide request, up to four shared spatial/catalog reads, a
-    plan, up to two tries at a smaller plan, up to two review rounds (a reviewer check, then a revision), and bounded
-    headroom). An `alternatives` command allows fourteen calls per requested option, still within the 30-per-hour
-    ceiling. Chat renews only as the answer to a question your AI just asked. A button in
+    plan, up to two tries at a smaller plan, up to two review rounds (a review, or a reviewer check and a revision),
+    and bounded headroom). An `alternatives` command allows fourteen calls per requested option, still within the
+    30-per-hour ceiling. Chat renews only as the answer to a question your AI just asked. A button in
     a server line shown in the panel never starts one; use the panel's own answer buttons and Templates tab, or type
     the command.
     Each build you start shows "(your game) Planning “…” with your …"; anything else is declined with a
@@ -376,7 +377,7 @@ area loaded from the previous build, and keeps a zone you drew yourself. `build`
 | `/justbuild templates [filter]`, `/justbuild template <id>` | List the ready-made requests; build one |
 | `/justbuild history`, `/justbuild again #<id>` | Your recent builds; rebuild one's original request |
 | `/justbuild detail <quick\|detailed\|masterpiece>` | AI review: quick = When needed, detailed = One pass (default), masterpiece = Two passes |
-| `/justbuild reviewer <profile\|same>` | The profile the separate reviewer uses; `same` uses the builder's profile |
+| `/justbuild reviewer <profile\|same>` | A separate reviewer profile that checks plans and lists problems; `same` (the default) lets the builder review its own plan |
 | `/justbuild style <auto\|medieval\|modern\|futuristic\|japanese\|nordic\|steampunk\|rustic\|fantasy\|gothic\|desert\|classical>` | A style and suggested palette; auto lets the AI interpret the request without adding a preset |
 | `/justbuild answer <text>` | Answer the AI's question. You can also type the answer in chat or click an option. |
 | `/justbuild undo` | Undo your last action: an edit goes back one version, a new build is removed (10 steps). Shows what will change and asks you to confirm first. Run it near the build, in its dimension |
@@ -830,19 +831,21 @@ Each draft is rasterized without changing the world and checked for invalid bloc
 and construction warnings. **AI review → When needed** asks the builder for one correction, without the separate
 reviewer, only when checks report a problem. If part of the build area isn't loaded (you moved away while the AI worked), the checks see its blocks as air, so only
 invalid blocks, limits, the zone, and your build requirements count then; construction warnings alone don't.
-**One pass** asks a separate reviewer to check the draft once, and **Two passes** allows a second check after a
-revision, for both new builds and edits. The reviewer gets its own instructions, the request, diagnostics,
-source/candidate images, the candidate's four facades, and text views. It returns a short list of problems with fixes
-and what to keep, never a plan. The builder revises only when that list has problems worth fixing or the checks find a
-technical failure (invalid blocks, limits, blocks outside the world or the zone, or a build constraint); otherwise the
-review ends after the reviewer's one short call. Each revision is another full planning call, so a reviewer profile on a faster model mainly
-shortens the check itself. The reviewer judges only what those simplified views show (massing, material placement,
-facades and opening rhythm; ground contact only where world samples or images show the ground), not textures or
-lighting, and restrained designs remain valid. By default the reviewer uses the builder's profile;
-**Right Shift → Settings → Reviewer** picks another. Edit reviews and size reductions keep the original build request,
-earlier edits and current change request, and explicitly require the complete replacement plan.
+By default (**Reviewer: Same as builder**), **One pass** reviews once and **Two passes** reviews twice, for both new
+builds and edits: the builder reviews its own plan with diagnostics, source/candidate images, text views, and the
+remaining inspection budget, and returns a corrected plan. With a reviewer profile chosen in
+**Right Shift → Settings → Reviewer**, a separate reviewer checks the draft instead; **Two passes** allows a second
+check after a revision. The reviewer gets its own instructions, the request, diagnostics, source/candidate images, the
+candidate's four facades, and text views. It returns a short list of problems with fixes and what to keep, never a
+plan. The builder revises only when that list has problems worth fixing or the checks find a technical failure
+(invalid blocks, limits, blocks outside the world or the zone, or a build constraint); otherwise the review ends after
+the reviewer's one short call. Each revision is another full planning call, so a reviewer profile on a faster model
+mainly shortens the check itself. The reviewer judges only what those simplified views show (massing, material
+placement, facades and opening rhythm; ground contact only where world samples or images show the ground), not
+textures or lighting, and restrained designs remain valid. Edit reviews and size reductions keep the original build
+request, earlier edits and current change request, and explicitly require the complete replacement plan.
 
-A failed reviewer check or revision keeps the previous draft. So does a revision that adds failures in any technical
+A failed review or revision keeps the previous draft. So does a revision that adds failures in any technical
 category, removes existing blocks retained by the draft, blocks a detected usable doorway, or disconnects floor spaces that remain
 walkable. Requested removals already present in the first edit draft remain allowed, as do material replacements
 and furnishings that preserve access. Route comparisons skip incomplete, unloaded or oversized graphs; they do not

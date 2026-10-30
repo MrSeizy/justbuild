@@ -663,8 +663,8 @@ public final class JustBuildScreen extends FormScreen {
                 + local.reviewer().map(p -> p.name).orElse("Same as builder")),
                 b -> changeLocal(c -> c.reviewerProfile = c.nextReviewer()))
                 .bounds(left + half + 4, y + 124, w - half - 4, 20).tooltip(Tooltip.create(Component.literal(
-                        "The profile on this computer that checks each draft before it is built. Same as builder uses "
-                                + "your planning profile."))).build();
+                        "Same as builder: your builder AI reviews its own plan. Another profile on this computer: that "
+                                + "AI checks the plan and lists problems; the builder revises only when needed."))).build();
         localReviewer.active = local.reviewerChoices().size() >= 2;
         addRenderableWidget(localReviewer);
     }
@@ -732,8 +732,8 @@ public final class JustBuildScreen extends FormScreen {
 
     private static Tooltip cycleTooltip(String key, String value) {
         if ("reviewer".equals(key)) {
-            return Tooltip.create(Component.literal("The profile that checks each draft before it is built. "
-                    + "Same as builder uses the profile that plans it."));
+            return Tooltip.create(Component.literal("Same as builder: the builder reviews its own plan. Another profile: "
+                    + "that AI checks the plan and lists problems; the builder revises only when needed."));
         }
         return "detail".equals(key) ? Guidance.DetailLevel.parse(value)
                 .map(level -> Tooltip.create(Component.literal(level.reviewHint()))).orElse(null) : null;
