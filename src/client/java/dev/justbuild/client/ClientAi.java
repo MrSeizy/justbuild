@@ -41,7 +41,7 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
  * <li>only right after the player started a build, edit, or answer there (RelayGate), at most 30 calls an hour;</li>
  * <li>the request arrives as data and is checked against what this game saw the player type and its own AI ask
  * (PromptCheck); this game writes the system prompt, request text, and schema itself;</li>
- * <li>only a re-written plan (real block ids), question, or decline goes back (RelayOutput), never the AI's raw text,
+ * <li>only a re-written plan (real block ids), critique, question, or decline goes back (RelayOutput), never the AI's raw text,
  * its reasoning, or the details of a provider error;</li>
  * <li>one request at a time, checked and drawn off the game's thread.</li>
  * </ul>
@@ -55,6 +55,8 @@ final class ClientAi {
         if (!running.isEmpty()) throw new IllegalStateException("Finish or cancel the current request before resetting usage.");
         usage.reset();
     }
+    /** The last reviewer fallback note shown, so repeated critiques don't repeat it; reset with RelaySeen. */
+    private static volatile String lastFallbackNote;
     private static final Map<Integer, Work> running = new ConcurrentHashMap<>();
     private static final AtomicReference<ClientPacketListener> connection = new AtomicReference<>();
 
@@ -99,6 +101,7 @@ final class ClientAi {
             usage = new dev.justbuild.provider.UsageTracker();
             GATE.reset();
             RelaySeen.clear();
+            lastFallbackNote = null;
             // A proxy can move the player to another server without a disconnect; nothing planned for the last one goes on.
             clear();
             sendHello();
@@ -111,6 +114,7 @@ final class ClientAi {
                 if (connection.get() == null) {
                     GATE.reset();
                     RelaySeen.clear();
+                    lastFallbackNote = null;
                 }
                 running.values().stream().filter(work -> work.connection == handler).toList()
                         .forEach(work -> discard(work, false));
@@ -147,7 +151,9 @@ final class ClientAi {
             return;
         }
         if (!GATE.allow(Instant.now())) {
-            say("Declined an AI request from this server that you didn't start.");
+            say(GATE.hourlyUsedUp(Instant.now())
+                    ? "Declined an AI request from this server: your hourly AI call limit is used up."
+                    : "Declined an AI request from this server that you didn't start.");
             respond(id, "", "the player's game only plans builds the player just asked for.");
             return;
         }
@@ -278,15 +284,8 @@ final class ClientAi {
         if (ClientPlayNetworking.canSend(AiResponsePayload.TYPE)) {
             ClientPlayNetworking.send(response);
             // Only sent responses authorize follow-up questions, plan reviews, and repairs.
-            if (output != null && output.question() != null) {
-                RelaySeen.question(output.question());
-                GATE.questionAsked();
-            } else if (output != null && output.planKey() != null) {
-                RelaySeen.plan(output.planKey());
-                if (work.repairOf != null) RelaySeen.repair(work.repairOf, output.planKey());
-            } else if (output != null && output.critiqueKey() != null) {
-                RelaySeen.critique(output.critiqueKey());
-            }
+            RelaySeen.apply(dev.justbuild.relay.RelayRecording.of(work.repairOf, output));
+            if (output != null && output.question() != null) GATE.questionAsked();
         }
         discard(work, true);
     }
@@ -311,8 +310,14 @@ final class ClientAi {
     private static JustBuildConfig.ModelProfile reviewerFor(JustBuildConfig config, JustBuildConfig.ModelProfile builder) {
         var reviewer = config.reviewer();
         if (reviewer.isEmpty()) return builder;
-        if (LocalProfiles.problem(config, reviewer.get()) != null) {
-            sayLater("Reviewer profile “" + reviewer.get().name + "” isn't available; using your builder AI.");
+        String problem = LocalProfiles.problem(config, reviewer.get());
+        if (problem != null) {
+            String note = "Reviewer profile “" + reviewer.get().name + "” can't plan here (" + problem
+                    + "); using your builder AI.";
+            if (!note.equals(lastFallbackNote)) {
+                lastFallbackNote = note;
+                sayLater(note);
+            }
             return builder;
         }
         return reviewer.get().copy();
