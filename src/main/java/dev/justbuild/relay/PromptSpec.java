@@ -282,7 +282,6 @@ public record PromptSpec(Kind kind, String dimension, String biome, Placement pl
     }
 
     /** The request text for the AI, made the same way on the server and in a player's game. */
-
     public String userContent() throws PlanException {
         String text = switch (kind) {
             case NEW -> PromptBuilder.userContent(context(), request, exchanges, remaining, terrain);

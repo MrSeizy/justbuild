@@ -403,8 +403,10 @@ public final class PromptBuilder {
                     .append("which may differ from the candidate above):").append(findings(previous.critique(), true))
                     .append("\nIts repair ").append(outcome(previous.outcome()))
                     .append(" Report problems that remain and any new ones, using operation numbers and cells from ")
-                    .append("the candidate above; do not repeat fixed ones. If the repair was rejected, give a fix ")
-                    .append("that avoids the reason it was rejected.");
+                    .append("the candidate above; do not repeat fixed ones.");
+            if (previous.outcome() != null && previous.outcome() != RepairOutcome.ACCEPTED) {
+                sb.append(" If the repair was rejected, give a fix that avoids the reason it was rejected.");
+            }
         }
         return sb.toString();
     }
