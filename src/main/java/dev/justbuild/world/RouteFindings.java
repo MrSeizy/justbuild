@@ -49,11 +49,13 @@ final class RouteFindings {
             BuildRegion box = BuildRegion.enclosing(dimension, positions);
             // routes() drops the top layer as roof; one more layer keeps a tower platform inside its parapet.
             bounds = new BuildRegion(dimension, box.min(), box.max().above());
-        } catch (IllegalArgumentException tooLarge) { LOGGER.debug("Route findings skipped: {}", "the draft is too large"); return List.of(); }
+        } catch (IllegalArgumentException tooLarge) { LOGGER.debug("Route findings skipped: the draft is too large"); return List.of(); }
         // Not review mode: that would let an interior or basement door become the start.
         Walkability.Routes routes = Walkability.routes(bounds, candidate, null, false, true);
-        if (!routes.complete()) { LOGGER.debug("Route findings skipped: {}", "the draft is too large or some cells are unloaded"); return List.of(); }
-        if (routes.start() == null) { LOGGER.debug("Route findings skipped: {}", "no starting space"); return List.of(); }
+        if (!routes.complete()) {
+            LOGGER.debug("Route findings skipped: the draft is too large or some cells are unloaded"); return List.of();
+        }
+        if (routes.start() == null) { LOGGER.debug("Route findings skipped: no starting space"); return List.of(); }
         Set<BlockPos> draft = new HashSet<>(positions);
         List<List<Walkability.Node>> areas = new ArrayList<>(Walkability.unreachedAreas(routes,
                 n -> (Walkability.isInterior(bounds, n.pos()) || draft.contains(n.floor()))

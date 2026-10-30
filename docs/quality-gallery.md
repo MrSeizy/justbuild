@@ -84,7 +84,9 @@ Each critique and repair is a separate provider call; `*-reviews.json` lists eve
 `*-review-rounds.json` each round's critique, whether it repaired, and the outcome.
 The gallery saves the first draft, its checks and screenshots, every review prompt/response, acceptance status and
 timing, and the final plan. `<key>-evidence.txt` is the text of the first draft's checks as the reviewer receives them,
-including the route findings reviewed requests get, and each row's `evidenceMillis` is how long those checks took. Source blocks are restored and their hash verified after photographing the draft.
+always with the route findings that reviewed requests get (even at quick detail, where production has none), and each
+row's `evidenceMillis` is how long those checks took, including the hand-off to the server thread. Source blocks are
+restored and their hash verified after photographing the draft.
 Fixture reviews answer with a fixed one-problem critique and replay the fixture plan locally. They are labeled
 `fixture replay` and never call an AI.
 
@@ -140,8 +142,8 @@ JUSTBUILD_GALLERY_PLANS=/absolute/path/to/plans JUSTBUILD_GALLERY_LABEL=imported
 
 An imported run's recorded prompt describes the scenario; it does not claim to be the prompt used to produce those
 external plans. Keep external model and prompt provenance alongside those files. Imported plans can be reviewed by a live
-provider at detailed or masterpiece detail; at quick detail they are only rendered and checked, and their evidence is written. These checks
-supplement the permission, cancellation, undo and relay tests; they do not replace them.
+provider at detailed or masterpiece detail; at quick detail they are only rendered and checked, and their evidence is
+written. These checks supplement the permission, cancellation, undo and relay tests; they do not replace them.
 
 ## Large castle test
 

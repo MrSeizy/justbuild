@@ -4,7 +4,10 @@ import java.util.List;
 
 /** Inclusive bounding box in plan coordinates. */
 public record Bounds(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
-    /** Bounds of every cell the operation can touch, including repeats and its mirrored copy. */
+    /**
+     * Bounds of the operation's stated shape, including repeats and its mirrored copy. A foundation's is its top layer
+     * only; touched adds the depth it fills.
+     */
     public static Bounds of(Operation op) {
         Bounds b = base(op);
         if (op.repeat() != null && op.repeat().count() > 1) {

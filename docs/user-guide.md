@@ -768,7 +768,8 @@ the existing locked-area controls. Finish or cancel active work before changing 
 - **Walkability:** inspect a pending preview or live selected build without an AI call. The check traces connected
   standing spaces through openable wooden doors and correctly oriented stairs, then marks unreachable spaces and
   obstructed outside doors in red for two minutes. It is advisory: jumps, ladders, redstone door behavior, and unusual
-  collision shapes need manual inspection. Large structures should be checked one part at a time.
+  collision shapes need manual inspection. Large structures should be checked one part at a time. The route findings
+  in AI reviews count one-block steps as walkable, so this tool can mark a raised floor that they treat as reached.
 
 **Create → Floors** (while a preview waits) opens a top-down section of the proposed building. Lower or raise the
 visible ceiling one block at a time to inspect rooms and stairs beneath the roof; hover cells for block names and
@@ -832,7 +833,8 @@ and construction warnings. A draft that crosses the selected area is reported wi
 outside it and the operations that reach outside. With **One pass** or **Two passes**, the checks also walk the draft
 from its lowest outside door on its edge (or the lowest floor space at its edge), over floors, stairs and one-block
 steps but not ladders, and list up to four areas no route reaches; those inform the review and never ask for a
-correction on their own. **AI review → When needed** asks the builder for one correction, without the separate
+correction on their own. The route check is skipped, without a finding, for drafts too large for it, near unloaded
+cells, or with no starting space. **AI review → When needed** asks the builder for one correction, without the separate
 reviewer, only when checks report a problem. If part of the build area isn't loaded (you moved away while the AI worked), the checks see its blocks as air, so only
 invalid blocks, limits, the zone, and your build requirements count then; construction warnings alone don't.
 By default (**Reviewer: Same as builder**), **One pass** reviews once and **Two passes** reviews twice, for both new

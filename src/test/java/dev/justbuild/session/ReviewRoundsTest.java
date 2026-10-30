@@ -421,6 +421,20 @@ class ReviewRoundsTest {
     }
 
     @Test
+    void routeFindingsAloneNeverAskForARepair() throws Exception {
+        PlanningFeedback routes = evidence(PlanningFeedback.Kind.ROUTE_START, PlanningFeedback.Kind.UNREACHABLE);
+        Fake quick = new Fake();
+        run(quick, ReviewRounds.Mode.SEPARATE, routes, 0);
+        assertTrue(quick.asked.isEmpty(), "When needed has nothing to correct");
+        Fake unanswered = new Fake().critiques("not a critique");
+        run(unanswered, ReviewRounds.Mode.SEPARATE, routes, 1);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE), unanswered.kinds(), "without a critique only correctable checks repair");
+        Fake satisfied = new Fake().critiques(OK);
+        run(satisfied, ReviewRounds.Mode.SEPARATE, routes, 1);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE), satisfied.kinds());
+    }
+
+    @Test
     void theSeparateReviewerRunsOnlyWhenOneIsChosen() {
         assertEquals(ReviewRounds.Mode.SELF, ReviewRounds.mode(false, false, false),
                 "the server's own AI with no reviewer profile, or one that is missing or can't plan");

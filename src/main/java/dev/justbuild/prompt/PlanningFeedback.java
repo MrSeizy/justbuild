@@ -151,8 +151,8 @@ public record PlanningFeedback(String planKey, List<Problem> problems, VoxelVolu
             case UNKNOWN -> "Some needed world data is unloaded or unavailable. Do not treat it as empty space.";
             case ROUTE_START -> "Walking routes were checked from here (the lowest outside door, or else the lowest edge floor).";
             case UNREACHABLE -> "No walking route from the start reaches this area; routes follow floors, stairs and one-block steps, "
-                    + "not ladders. If players should get there, add stairs, a doorway or an opening; if it is deliberately sealed "
-                    + "or reached by a ladder, leave it.";
+                    + "not ladders. If players should get there, add stairs, a doorway or an opening; if it is a roof or wall top "
+                    + "nobody needs to walk on, deliberately sealed, or reached by a ladder, leave it.";
         };
     }
 
