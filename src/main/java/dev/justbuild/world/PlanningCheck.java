@@ -78,7 +78,8 @@ public final class PlanningCheck {
     /**
      * The ZONE finding: the plan-frame box and count of changes outside the zone, and up to 8 operations, in plan order,
      * whose reach covers a column of those changes at their heights. The list is a hint: an operation can be named for
-     * a column its shape skips, and changes no operation covers (door tops, bed heads, an edit's restored blocks) name none.
+     * a column its shape skips, or for the inside stretch of a column that leaves through both the zone's floor and its
+     * ceiling, and changes no operation covers (door tops, bed heads, an edit's restored blocks) name none.
      */
     private static PlanningFeedback.Problem zoneProblem(BuildPlan plan, List<BlockPos> outside, BlockPos origin, PlanRotation inverse) {
         // Each outside column in the plan frame: {x, z, lowest y, highest y}.
