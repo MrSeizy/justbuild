@@ -3654,14 +3654,14 @@ public final class BuildSessionManager {
     /** Which profile the separate reviewer uses; {@code same} means the builder's profile. */
     public void setReviewer(CommandSourceStack source, String name) {
         String wanted = name.strip();
-        boolean same = "same".equalsIgnoreCase(wanted);
+        boolean same = JustBuildConfig.reservedReviewerName(wanted);
         if (!same && config.profile(wanted).isEmpty()) {
             send(source, Chat.error("No profile called “" + wanted + "”. Use same or one of: "
-                    + String.join(", ", config.profileNames()) + "."));
+                    + String.join(", ", config.reviewerChoices()) + "."));
             return;
         }
         if (!configWritable(source)) return;
-        config.reviewerProfile = same ? "" : config.profile(wanted).orElseThrow().name;
+        config.setReviewer(wanted);
         if (saveConfig(source)) {
             send(source, Chat.info(same ? "The reviewer uses the builder's profile."
                     : "The reviewer uses profile “" + config.reviewerProfile + "” ("

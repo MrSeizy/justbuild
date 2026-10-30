@@ -203,6 +203,36 @@ public final class JustBuildConfig {
         return reviewerProfile == null || reviewerProfile.isBlank() ? Optional.empty() : profile(reviewerProfile);
     }
 
+    /** True for a profile the reviewer can't select: "same" always means Same as builder. */
+    public static boolean reservedReviewerName(String name) {
+        return name != null && "same".equalsIgnoreCase(name.strip());
+    }
+
+    /** Profile names the reviewer can use (a profile named "same" can never be chosen over the keyword). */
+    public List<String> reviewerChoices() {
+        return profiles.stream().map(p -> p.name).filter(n -> !reservedReviewerName(n)).toList();
+    }
+
+    /** Sets the reviewer: "same" (any case) clears it, a profile name sets its canonical name; false changes nothing. */
+    public boolean setReviewer(String input) {
+        if (input == null) return false;
+        if (reservedReviewerName(input)) {
+            reviewerProfile = "";
+            return true;
+        }
+        Optional<ModelProfile> found = profile(input);
+        if (found.isEmpty()) return false;
+        reviewerProfile = found.get().name;
+        return true;
+    }
+
+    /** The reviewer after the current one in the local cycle: Same, each eligible profile in order, then Same again. */
+    public String nextReviewer() {
+        List<String> names = reviewerChoices();
+        int next = names.indexOf(reviewerProfile == null ? "" : reviewerProfile) + 1;
+        return next < names.size() ? names.get(next) : "";
+    }
+
     /** Model of the active profile; empty means the CLI's default. */
     public String model() {
         return active().model;

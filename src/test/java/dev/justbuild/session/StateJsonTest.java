@@ -54,6 +54,16 @@ class StateJsonTest {
     }
 
     @Test
+    void reviewerChoicesLeaveOutAProfileNamedSame() {
+        JustBuildConfig config = config();
+        config.profiles.add(new JustBuildConfig.ModelProfile("SAME", "claude", ""));
+        JsonArray choices = JsonParser.parseString(StateJson.build(config, List.of(), true, StateJson.Ai.SERVER))
+                .getAsJsonObject().getAsJsonArray("reviewerChoices");
+        assertEquals(config.profileNames().size(), choices.size());
+        assertFalse(choices.toString().contains("SAME"));
+    }
+
+    @Test
     void namesTheDimensionOfBuildsElsewhere() {
         JsonArray builds = JsonParser.parseString(StateJson.build(config(), List.of(
                 new StateJson.BuildSummary("e4c91fbd", "Basalt Hut", 1, "a hut", "minecraft:the_nether"),
