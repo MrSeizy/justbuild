@@ -45,11 +45,11 @@ class RouteFindingsTest {
         s.put(x, 1, z, door); s.put(x, 2, z, door.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER));
     }
 
-    /** A 7 × 7 stone room with an oak door in its north wall, an upper floor at y = 3 and a ceiling at y = 7. */
+    /** A 7 × 7 stone room with an oak door in its north wall, an upper floor at y = 3 and a ceiling at y = 9. */
     private static Scene tower() {
         Scene s = new Scene();
-        for (int y = 1; y <= 7; y++) for (int x = 0; x <= 6; x++) for (int z = 0; z <= 6; z++)
-            if (x == 0 || x == 6 || z == 0 || z == 6 || y == 7) s.put(x, y, z, stone());
+        for (int y = 1; y <= 9; y++) for (int x = 0; x <= 6; x++) for (int z = 0; z <= 6; z++)
+            if (x == 0 || x == 6 || z == 0 || z == 6 || y == 9) s.put(x, y, z, stone());
         s.fill(1, 3, 1, 5, 3, 5, stone());
         door(s, 3, 0);
         return s;
@@ -108,15 +108,43 @@ class RouteFindingsTest {
     }
 
     @Test void leavesSmallPocketsAndStairRoofsAreIgnored() {
-        Scene canopy = tower(); stairs(canopy); canopy.fill(1, 4, 4, 2, 4, 5, Blocks.OAK_LEAVES.defaultBlockState());
+        Scene canopy = tower(); stairs(canopy); canopy.fill(1, 5, 4, 2, 5, 5, Blocks.OAK_LEAVES.defaultBlockState());
         assertEquals(List.of(), canopy.find(), "a leaf canopy is not a floor");
-        Scene ledge = tower(); stairs(ledge); ledge.fill(1, 4, 4, 2, 4, 5, stone());
-        assertEquals(List.of(start(3, 1, 0), area(new Cell(1, 5, 4), new Cell(2, 5, 5), 4)), ledge.find(), "the same spaces on stone");
-        Scene pocket = tower(); stairs(pocket); pocket.fill(1, 4, 4, 2, 4, 5, stone()); pocket.put(2, 4, 5, Blocks.AIR.defaultBlockState());
+        Scene ledge = tower(); stairs(ledge); ledge.fill(1, 5, 4, 2, 5, 5, stone());
+        assertEquals(List.of(start(3, 1, 0), area(new Cell(1, 6, 4), new Cell(2, 6, 5), 4)), ledge.find(), "the same spaces on stone");
+        Scene pocket = tower(); stairs(pocket); pocket.fill(1, 5, 4, 2, 5, 5, stone()); pocket.put(2, 5, 5, Blocks.AIR.defaultBlockState());
         assertEquals(List.of(), pocket.find(), "three spaces are too few");
         Scene roof = tower(); stairs(roof);
-        roof.fill(1, 4, 5, 5, 4, 5, Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.EAST));
+        roof.fill(1, 5, 5, 5, 5, 5, Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.EAST));
         assertEquals(List.of(), roof.find(), "a run of stairs alone is a roof, not a floor");
+    }
+
+    @Test void aCottageOneStepAboveTheGroundIsReachable() {
+        // The approach pushes the door off the box edge, so the start is the ground ring, and the floor is one step up.
+        Scene s = new Scene();
+        s.fill(0, 1, 0, 8, 1, 6, stone());
+        for (int x = 0; x <= 8; x++) for (int z = 0; z <= 6; z++) if (x == 0 || x == 8 || z == 0 || z == 6) s.fill(x, 2, z, x, 4, z, stone());
+        BlockState door = Blocks.OAK_DOOR.defaultBlockState().setValue(DoorBlock.FACING, Direction.NORTH);
+        s.put(4, 2, 0, door); s.put(4, 3, 0, door.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER));
+        s.fill(3, 1, -5, 5, 1, -1, stone());
+        assertEquals(List.of(), s.find());
+    }
+
+    @Test void aGatelessCourtyardOfNaturalGroundIsReported() {
+        // The courtyard counts by the interior rule alone; equal areas are ordered by their lowest space.
+        Scene s = new Scene();
+        for (int x = 0; x <= 6; x++) for (int z = 0; z <= 6; z++)
+            if (x == 0 || x == 6 || z == 0 || z == 6) s.fill(x, 1, z, x, 3, z, stone());
+        s.fill(3, 1, 3, 3, 6, 3, stone()); // a mast, so the wall top isn't the region's top layer
+        assertEquals(List.of(start(-1, 1, -1), area(new Cell(1, 1, 1), new Cell(5, 1, 5), 24),
+                area(new Cell(0, 4, 0), new Cell(6, 4, 6), 24)), s.find());
+    }
+
+    @Test void aFloorWithAFewStairsIsStillAFloor() {
+        // 23 floor spaces at feet 4 (two lose their headroom to the stairs) and 2 stair spaces at feet 5.
+        Scene s = tower();
+        s.fill(2, 4, 2, 3, 4, 2, Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.EAST));
+        assertEquals(List.of(start(3, 1, 0), area(new Cell(1, 4, 1), new Cell(5, 5, 5), 25)), s.find());
     }
 
     @Test void onlyTheFourLargestAreasAreReported() {
