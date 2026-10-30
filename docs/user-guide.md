@@ -168,7 +168,7 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
 
 - **In the player's game:** Right Shift → Settings shows **My profile**, **My profiles…** (the editor, working on this
   computer's `config/justbuild.json`, with Pick… asking this computer's CLI or endpoint), **Use my AI here: On/Off**,
-  **Reviewer** (Same as builder (`same`) or another of this computer's profiles, saved as `reviewerProfile` in
+  **Reviewer** (**Same as builder**, or another of this computer's profiles; saved as `reviewerProfile` in
   `config/justbuild.json`), and a line saying which AI your builds use on this server. The game is "ready" when local AI
   is enabled for that server and the active profile works: an installed CLI, or an HTTP API profile with a model.
 - **Optional response review:** **Right Shift → Settings → Review before sending** starts **Off**, including for
@@ -177,8 +177,8 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
   and token counts. **Next/Previous** or the mouse wheel page through long responses; **Copy response** copies all
   response fields. **Send to server** releases only that response; **Cancel**, Escape, or leaving the screen
   withholds it and sends a fixed cancellation with no response text or token counts. Guide requests, world
-  inspections, questions, declines, plans, reviewer checks, and revisions each need their own approval. Fixed refusals with
-  no AI output or usage do not prompt. A server cancellation, timeout, disconnect, or transfer discards a pending
+  inspections, questions, declines, plans, reviewer checks, and revisions each need their own approval. Fixed refusals
+  with no AI output or usage do not prompt. A server cancellation, timeout, disconnect, or transfer discards a pending
   approval. With no more provider activity during approval, the server's inactivity timeout continues while you
   read, so a slow decision may require retrying.
   Progress counts and timing are still shared during planning. Singleplayer and server-owned AI calls do not use
@@ -191,7 +191,8 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
   - **Only builds you start.** An AI-starting `/justbuild` (a description, `edit`, `revise`, `connect`, `interior`, `template`, `again`, `answer`) allows
     fourteen AI calls within a 15-minute inactivity window (a guide request, up to four shared spatial/catalog reads, a
     plan, up to two tries at a smaller plan, up to two review rounds (a reviewer check, then a revision), and bounded
-    headroom). An `alternatives` command allows fourteen calls per requested option, still within the 30-per-hour ceiling. Chat renews only as the answer to a question your AI just asked. A button in
+    headroom). An `alternatives` command allows fourteen calls per requested option, still within the 30-per-hour
+    ceiling. Chat renews only as the answer to a question your AI just asked. A button in
     a server line shown in the panel never starts one; use the panel's own answer buttons and Templates tab, or type
     the command.
     Each build you start shows "(your game) Planning “…” with your …"; anything else is declined with a
@@ -826,8 +827,8 @@ images ship with the mod. The principles never override the requested scope, siz
 budget, edit boundary, or safe access.
 
 Each draft is rasterized without changing the world and checked for invalid blocks, limits, boundaries, constraints,
-and construction warnings. **AI review → When needed** asks the builder for one correction, without the separate reviewer, only when checks report a problem. If
-part of the build area isn't loaded (you moved away while the AI worked), the checks see its blocks as air, so only
+and construction warnings. **AI review → When needed** asks the builder for one correction, without the separate
+reviewer, only when checks report a problem. If part of the build area isn't loaded (you moved away while the AI worked), the checks see its blocks as air, so only
 invalid blocks, limits, the zone, and your build requirements count then; construction warnings alone don't.
 **One pass** asks a separate reviewer to check the draft once, and **Two passes** allows a second check after a
 revision, for both new builds and edits. The reviewer gets its own instructions, the request, diagnostics,
@@ -841,8 +842,8 @@ reviewer uses the builder's profile; **Right Shift → Settings → Reviewer** p
 reductions keep the original build request, earlier edits and current change request, and explicitly require the
 complete replacement plan.
 
-If the reviewer check or a revision fails, the previous draft is kept. So does a revision that adds failures in any technical category, removes
-existing blocks retained by the draft, blocks a detected usable doorway, or disconnects floor spaces that remain
+A failed reviewer check or revision keeps the previous draft. So does a revision that adds failures in any technical
+category, removes existing blocks retained by the draft, blocks a detected usable doorway, or disconnects floor spaces that remain
 walkable. Requested removals already present in the first edit draft remain allowed, as do material replacements
 and furnishings that preserve access. Route comparisons skip incomplete, unloaded or oversized graphs; they do not
 cover every movement mechanic. These checks prevent specific review regressions, not mistakes already present in
