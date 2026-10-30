@@ -71,6 +71,8 @@ class ReviewRoundsTest {
         ProviderException repairFailure;
         ProviderException compareFailure;
         boolean wrongKey;
+        /** What the review checks find in the plan kept after a repair. */
+        PlanningFeedback.Kind[] afterRepair = {};
         final Set<String> critiqueKeys = new LinkedHashSet<>();
 
         Fake critiques(String... answers) { critiques.addAll(List.of(answers)); return this; }
@@ -98,7 +100,8 @@ class ReviewRoundsTest {
             if (compareFailure != null) throw compareFailure;
             BuildPlan kept = verdict.accepted() ? repaired : current;
             BuildPlan keyed = wrongKey ? (kept == repaired ? current : repaired) : kept;
-            return new ReviewRounds.Compared(verdict, new PlanningFeedback(key(keyed), List.of(), null, null, null, null));
+            return new ReviewRounds.Compared(verdict, new PlanningFeedback(key(keyed),
+                    Arrays.stream(afterRepair).map(k -> new PlanningFeedback.Problem(k, null)).toList(), null, null, null, null));
         }
         @Override public void stage(ReviewRounds.Stage stage, int round, int rounds) { stages.add(stage + " " + round + "/" + rounds); }
         @Override public void say(String line) { lines.add(line); }
@@ -151,18 +154,66 @@ class ReviewRoundsTest {
     }
 
     @Test
-    void checksThatNeedCorrectionRepairEvenWhenTheReviewerIsSatisfied() throws Exception {
-        Fake fake = new Fake().critiques(OK).repairs(PlanWriter.write(REPAIRED));
-        run(fake, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.SUPPORT), 1);
-        assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW), fake.kinds());
-        assertNull(fake.asked.get(1).critique(), "nothing from an ok critique is applied");
-        assertEquals("Fixing the reported problems…", fake.lines.get(0));
+    void technicalFailuresRepairEvenWhenTheReviewerIsSatisfied() throws Exception {
+        for (PlanningFeedback.Kind kind : List.of(PlanningFeedback.Kind.ZONE, PlanningFeedback.Kind.INVALID_BLOCKS)) {
+            Fake fake = new Fake().critiques(OK).repairs(PlanWriter.write(REPAIRED));
+            run(fake, ReviewRounds.Mode.SEPARATE, evidence(kind, PlanningFeedback.Kind.STAIR), 1);
+            assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW), fake.kinds(), kind.name());
+            assertNull(fake.asked.get(1).critique(), "nothing from an ok critique is applied");
+            assertEquals("Fixing the reported problems…", fake.lines.get(0));
+        }
+    }
+
+    @Test
+    void advisoryFindingsAreTheReviewersCall() throws Exception {
+        for (PlanningFeedback.Kind kind : List.of(PlanningFeedback.Kind.STAIR, PlanningFeedback.Kind.FOUNDATION,
+                PlanningFeedback.Kind.SUPPORT, PlanningFeedback.Kind.DOOR)) {
+            Fake fake = new Fake().critiques(OK);
+            var result = run(fake, ReviewRounds.Mode.SEPARATE, evidence(kind), 1);
+            assertEquals(List.of(PromptSpec.Kind.CRITIQUE), fake.kinds(), kind + ": the reviewer read the finding and saw no problem");
+            assertEquals(List.of("CRITIQUE 1/1"), fake.stages);
+            assertEquals(List.of("Reviewer: no changes needed."), fake.lines);
+            assertEquals(DRAFT, result.plan());
+            assertEquals(PlanWriter.write(DRAFT), result.raw());
+            assertFalse(result.rounds().get(0).repairRan());
+        }
+    }
+
+    @Test
+    void withoutACritiqueAdvisoryFindingsStillGetARepair() throws Exception {
+        Fake failed = new Fake();
+        failed.failure = new ProviderException("the reviewer could not be reached");
+        failed.repairs(PlanWriter.write(REPAIRED));
+        run(failed, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.STAIR), 1);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW), failed.kinds());
+        assertNull(failed.asked.get(1).critique());
+        assertEquals(List.of("Reviewer didn't answer; fixing the reported problems."), failed.lines);
+        Fake notACritique = new Fake().critiques(PlanWriter.write(DRAFT)).repairs(PlanWriter.write(REPAIRED));
+        run(notACritique, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.STAIR), 1);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW), notACritique.kinds(), "a plan is not a critique");
+        assertNull(notACritique.asked.get(1).critique());
+    }
+
+    @Test
+    void roundTwoLeavesAdvisoryFindingsToTheReviewer() throws Exception {
+        Fake fake = new Fake().critiques(SHOULD, OK).repairs(PlanWriter.write(REPAIRED));
+        fake.afterRepair = new PlanningFeedback.Kind[] {PlanningFeedback.Kind.STAIR};
+        var result = run(fake, 2);
+        assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW, PromptSpec.Kind.CRITIQUE), fake.kinds());
+        assertEquals(List.of("CRITIQUE 1/2", "REPAIR 1/2", "CRITIQUE 2/2"), fake.stages);
+        assertEquals(List.of(PlanningFeedback.Kind.STAIR),
+                fake.asked.get(2).feedback().problems().stream().map(PlanningFeedback.Problem::kind).toList(),
+                "round 2's reviewer sees the repaired plan's finding");
+        assertEquals(PlanWriter.write(REPAIRED), PlanWriter.write(result.plan()));
+        assertEquals(RepairOutcome.ACCEPTED, result.rounds().get(0).outcome());
+        assertFalse(result.rounds().get(1).repairRan());
+        assertEquals("Reviewer: no changes needed.", fake.lines.get(fake.lines.size() - 1));
     }
 
     @Test
     void aSatisfiedCritiqueIsNotCitedAfterAChecksOnlyRepairChangedThePlan() throws Exception {
         Fake fake = new Fake().critiques(OK, OK).repairs(PlanWriter.write(REPAIRED));
-        run(fake, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.SUPPORT), 2);
+        run(fake, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.ZONE), 2);
         assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW, PromptSpec.Kind.CRITIQUE), fake.kinds());
         assertNull(fake.asked.get(2).critique(), "the ok critique is about the old plan and no repair carried it");
         assertEquals(PlanWriter.write(REPAIRED), fake.asked.get(2).planJson());
@@ -171,12 +222,12 @@ class ReviewRoundsTest {
     @Test
     void aSatisfiedCritiqueIsNotCitedAfterAnIdenticalOrRejectedChecksOnlyRepair() throws Exception {
         Fake same = new Fake().critiques(OK, OK).repairs(PlanWriter.write(DRAFT));
-        run(same, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.SUPPORT), 2);
+        run(same, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.ZONE), 2);
         assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW, PromptSpec.Kind.CRITIQUE), same.kinds());
         assertNull(same.asked.get(2).critique());
         Fake rejected = new Fake().critiques(OK, OK).repairs(PlanWriter.write(REPAIRED));
         rejected.verdict = new ReviewCheck.Verdict(false, "removed a wall", RepairOutcome.REJECTED_REMOVAL);
-        run(rejected, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.SUPPORT), 2);
+        run(rejected, ReviewRounds.Mode.SEPARATE, evidence(PlanningFeedback.Kind.ZONE), 2);
         assertEquals(List.of(PromptSpec.Kind.CRITIQUE, PromptSpec.Kind.REVIEW, PromptSpec.Kind.CRITIQUE), rejected.kinds());
         assertNull(rejected.asked.get(2).critique());
     }

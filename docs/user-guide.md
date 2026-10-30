@@ -833,14 +833,14 @@ invalid blocks, limits, the zone, and your build requirements count then; constr
 **One pass** asks a separate reviewer to check the draft once, and **Two passes** allows a second check after a
 revision, for both new builds and edits. The reviewer gets its own instructions, the request, diagnostics,
 source/candidate images, the candidate's four facades, and text views. It returns a short list of problems with fixes
-and what to keep, never a plan. The builder revises only when that list has problems worth fixing or the checks need a
-correction; otherwise the review ends after the reviewer's one short call. Each revision is another full planning call,
-so a reviewer profile on a faster model mainly shortens the check itself. The reviewer judges only what those
-simplified views show (massing, material placement, facades and opening rhythm; ground contact only where world
-samples or images show the ground), not textures or lighting, and restrained designs remain valid. By default the
-reviewer uses the builder's profile; **Right Shift → Settings → Reviewer** picks another. Edit reviews and size
-reductions keep the original build request, earlier edits and current change request, and explicitly require the
-complete replacement plan.
+and what to keep, never a plan. The builder revises only when that list has problems worth fixing or the checks find a
+technical failure (invalid blocks, limits, the zone, or a build constraint); otherwise the review ends after the
+reviewer's one short call. Each revision is another full planning call, so a reviewer profile on a faster model mainly
+shortens the check itself. The reviewer judges only what those simplified views show (massing, material placement,
+facades and opening rhythm; ground contact only where world samples or images show the ground), not textures or
+lighting, and restrained designs remain valid. By default the reviewer uses the builder's profile;
+**Right Shift → Settings → Reviewer** picks another. Edit reviews and size reductions keep the original build request,
+earlier edits and current change request, and explicitly require the complete replacement plan.
 
 A failed reviewer check or revision keeps the previous draft. So does a revision that adds failures in any technical
 category, removes existing blocks retained by the draft, blocks a detected usable doorway, or disconnects floor spaces that remain
