@@ -3447,11 +3447,11 @@ public final class BuildSessionManager {
                 }
             }
             bar(request.source, StatusText.waitingBar(status.provider, status.currentPhase(), status.operationCount(),
-                    status.reviewRound(), status.reviewRounds(), status.isShrinking(), status.note(), elapsed));
+                    status.reviewRound(), status.reviewRounds(), status.isShrinking(), status.stage(), status.note(), elapsed));
             if (status.heartbeatDue(elapsed)) {
                 send(request.source, Chat.working(StatusText.heartbeat(status.provider, status.currentPhase(),
                         status.operationCount(), status.reviewRound(), status.reviewRounds(), status.isShrinking(),
-                        status.note(), elapsed)));
+                        status.stage(), status.note(), elapsed)));
             }
         }
         for (PlacementJob job : scheduler.jobs()) {
