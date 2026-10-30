@@ -923,7 +923,7 @@ uses the economical quick workflow without guide selection.
 - **Finished** and **Updated** lines end with the AI's time and tokens, e.g. "AI 0:48, 23.4k tokens in, 1.9k out over
   3 calls" (OpenAI-compatible endpoints are asked for token counts too; ones that refuse are asked again without).
 
-**Workshop → AI usage** collects calls, reported input/output tokens, accumulated AI time, review rounds, active
+**Workshop → AI usage** collects calls, reported input/output tokens, accumulated AI time, review calls, active
 calls, and calls without token reports. In multiplayer, choose **AI on this computer** for your local provider or
 **requests handled by the server** for your server-side requests. Local counters include responses you withheld in
 the response-review screen. These scopes can describe the same relayed work; do not add them together.

@@ -46,7 +46,7 @@ final class UsageScreen extends ToolScreen {
     @Override public void tick() { super.tick(); if (!local && ticks++ % 20 == 0) run("usage show"); }
     @Override public void extractRenderState(GuiGraphicsExtractor g, int x, int y, float tick) {
         super.extractRenderState(g,x,y,tick); var value = usage();
-        g.text(font, "Calls: " + value.calls() + "    Review rounds: " + value.reviews() + "    Active: " + value.active(), left, 62, Glass.TEXT);
+        g.text(font, "Calls: " + value.calls() + "    Review calls: " + value.reviews() + "    Active: " + value.active(), left, 62, Glass.TEXT);
         g.text(font, "Reported tokens: " + value.input() + " in + " + value.output() + " out", left, 76, Glass.TEXT);
         g.text(font, "AI time: " + value.elapsedMillis()/1000 + "s    Calls without token counts: " + value.unreported(), left, 90, Glass.MUTED);
         g.text(font, "Max calls / max reported tokens · 0 = unlimited", left, 106, Glass.MUTED);

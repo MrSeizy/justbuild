@@ -312,6 +312,21 @@ class PromptBuilderTest {
         assertEquals(PromptBuilder.reviewContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 1, false), own,
                 "the earlier overload is unchanged");
         assertTrue(own.contains("reviewing your own plan") && own.contains("Then critique the design"));
+        // The self-review text as it was before the separate reviewer (the gallery's SELF mode compares against it).
+        assertTrue(own.contains("\n\nYou are reviewing your own plan before it is built (round 1 of 1)."));
+        assertTrue(own.contains("\nThen critique the design where relevant: a clear main volume and roof with subordinate parts, "
+                + "materials in consistent roles, evenly spaced repeated openings, an entrance that is easy to "
+                + "find, detail suited to the size, and a base that meets the ground where world samples or a "
+                + "candidate image show the ground. The views and any "
+                + "block-color images show shape, alignment, and which blocks sit where; they do not show "
+                + "textures, lighting, or in-game appearance, so make no claims about those. Change a design "
+                + "choice only for a weakness the views show, within the request's scope, palette, and budget; "
+                + "on an edit, only in the part being changed. Flat roofs, plain facades, symmetry or "
+                + "asymmetry, sparse detail, and empty space can be deliberate. Functional fixes come first. "
+                + "Return the complete improved plan with kind \"build\"."), "the design-critique paragraph is unchanged");
+        assertTrue(own.endsWith("Return the complete improved plan with kind \"build\". It replaces the draft; do not return a "
+                + "patch or assume the draft has been placed. If it is already good, return it unchanged. Finish after "
+                + "focused corrections; unused operation budget is not a reason to redesign it."), "the ending is unchanged");
         String repair = PromptBuilder.reviewContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 1, 1, false,
                 new CritiqueNote(critique(), null));
         assertFalse(repair.contains("Then critique the design"));
