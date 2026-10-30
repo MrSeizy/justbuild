@@ -48,7 +48,7 @@ for(const run of runs){
   const drafts=run.cases.filter(c=>c.draft);
   if(drafts.length)box.append(el('p',`${drafts.filter(c=>c.draft.passed).length}/${drafts.length} first drafts passed`));
   box.append(el('small',`${run.createdAt} · ${run.revision} · Minecraft ${run.minecraft}`));
-  const meta=el('p');meta.append(el('span',`${run.detail} · ${run.reviewRounds} scheduled review rounds`,'tag'),el('span',`Guides ${short(run.guideHash)}`,'tag'));
+  const meta=el('p');meta.append(el('span',`${run.detail} · ${run.reviewRounds} scheduled review rounds`,'tag'),...(run.reviewMode?[el('span',`Review: ${run.reviewMode}`,'tag')]:[]),el('span',`Guides ${short(run.guideHash)}`,'tag'));
   if(run.timeoutSeconds&&run.timeoutMode!=='none')meta.append(el('span',`${run.timeoutSeconds / 60} min ${run.timeoutMode==='idle'?'without CLI output':'request limit'}`,'tag'));
   if(run.repeats)meta.append(el('span',`${run.repeats} attempts per scene`,'tag'));
   box.append(meta);document.getElementById('summary').append(box)
@@ -79,7 +79,8 @@ for(const name of names){
     const info=el('div',undefined,'info');info.append(el('small',`${c.changedCells??'—'} changed cells · ${c.protectedCellsKept??0} protected cells kept`));
     if(c.guidesOffered!==undefined){const chosen=c.selectedGuides||[];info.append(el('p',chosen.length?`AI-selected guides: ${chosen.join(', ')} · ${(c.guideSelectionMillis/1000).toFixed(1)} s`:(c.guidesOffered?'Guide menu offered; no selection recorded.':'Guide selection disabled for this run.')))}
     if(c.planningMillis!==undefined){const reviewMillis=(c.reviews||[]).reduce((sum,r)=>sum+(r.elapsedMillis||0),0);info.append(el('p',`Planning ${(c.planningMillis/1000).toFixed(1)} s · Review ${(reviewMillis/1000).toFixed(1)} s`))}
-    if(c.reviews?.length){const d=el('details');d.append(el('summary',`${c.reviews.length} review rounds attempted`));for(const r of c.reviews){d.append(el('p',`Round ${r.round}: ${r.status} · ${r.mode}`));if(r.error)d.append(el('p',r.error))}info.append(d)}
+    if(c.reviews?.length){const d=el('details');d.append(el('summary',`${c.reviews.length} review calls`));for(const r of c.reviews){d.append(el('p',`Round ${r.round} ${r.stage||''}: ${r.status} · ${r.mode}`));if(r.error)d.append(el('p',r.error))}info.append(d)}
+    if(c.reviewRounds?.length){const d=el('details');d.append(el('summary',`${c.reviewRounds.length} review rounds`));for(const r of c.reviewRounds)d.append(el('p',`Round ${r.number??r.round}: ${r.repaired?(r.outcome||'repair'):'no repair'} · critique ${r.critiqueParsed?'parsed':'not parsed'}`));info.append(d)}
     if(c.draft){const d=el('details');d.append(el('summary','First-draft checks'));checks(d,c.draft.checks);info.append(d)}
     checks(info,c.checks);
     const details=el('details');details.append(el('summary','Request and provenance'),el('p',c.request,'request'));
