@@ -160,4 +160,26 @@ class RelayOutputTest {
                 "a plan is not a critique");
         assertNull(RelayOutput.normalize(PromptSpecTest.PLAN).critiqueKey());
     }
+
+    @Test
+    void malformedCritiqueFieldsCannotEscapeInThePublicDiagnostic() throws Exception {
+        PromptSpec spec = PromptSpecTest.base().critiqueRound(PromptSpecTest.PLAN, 1, 1, null);
+        String raw = "{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":["
+                + "{\"severity\":\"SECRET-CANARY\",\"category\":\"request\",\"operations\":[0],\"cell\":null,"
+                + "\"problem\":\"No door.\",\"fix\":\"Add a door.\"}],\"keep\":[]}";
+        PlanException outbound = assertThrows(PlanException.class, () -> RelayOutput.critique(raw, spec));
+        assertFalse(outbound.getMessage().contains("SECRET-CANARY"), outbound.getMessage());
+    }
+
+    @Test
+    void critiqueFixesAreTruncated() throws Exception {
+        PromptSpec spec = PromptSpecTest.base().critiqueRound(PromptSpecTest.PLAN, 1, 1, null);
+        String raw = "{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":["
+                + "{\"severity\":\"must_fix\",\"category\":\"request\",\"operations\":[0],\"cell\":null,"
+                + "\"problem\":\"No door.\",\"fix\":\"" + "x".repeat(300) + "\"}],\"keep\":[]}";
+        RelayOutput out = RelayOutput.critique(raw, spec);
+        var problem = com.google.gson.JsonParser.parseString(out.json()).getAsJsonObject()
+                .getAsJsonArray("problems").get(0).getAsJsonObject();
+        assertEquals("x".repeat(240), problem.get("fix").getAsString());
+    }
 }
