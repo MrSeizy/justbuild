@@ -89,21 +89,21 @@ final class RequestStatus implements ProgressListener {
     void critiquing(int round, int rounds) {
         start(round, rounds, false);
         stage = ReviewRounds.Stage.CRITIQUE;
-        reviewsStarted = round;
+        reviewsStarted = Math.max(reviewsStarted, round);
     }
 
     /** Starts the builder's repair of a reviewed plan in round {@code round} of {@code rounds}. */
     void repairing(int round, int rounds) {
         start(round, rounds, false);
         stage = ReviewRounds.Stage.REPAIR;
-        reviewsStarted = round;
+        reviewsStarted = Math.max(reviewsStarted, round);
     }
 
     /** Starts the builder's own review (self-review or the quick correction); the operation count restarts. */
     void reviewing(int round, int rounds) {
         start(round, rounds, false);
         stage = ReviewRounds.Stage.REVIEW;
-        reviewsStarted = round;
+        reviewsStarted = Math.max(reviewsStarted, round);
     }
 
     /** Starts retry {@code round} of {@code rounds} asking for a plan under the block limit. */

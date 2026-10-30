@@ -38,4 +38,11 @@ class RequestStatusTest {
         status.shrinking(1, 2);
         assertNull(status.stage());
     }
+
+    @Test void reviewsStartedNeverGoesBackwards() {
+        RequestStatus status = new RequestStatus("Claude CLI", Instant.EPOCH);
+        status.critiquing(2, 2);
+        status.repairing(1, 2);
+        assertEquals(2, status.reviewsStarted());
+    }
 }

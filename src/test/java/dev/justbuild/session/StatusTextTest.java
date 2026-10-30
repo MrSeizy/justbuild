@@ -83,4 +83,18 @@ class StatusTextTest {
         assertEquals(StatusText.activity("Claude CLI", Phase.WAITING, 0, 1, 2, false, null),
                 StatusText.activity("Claude CLI", Phase.WAITING, 0, 1, 2, false, null, null), "no stage keeps today's words");
     }
+
+    @Test
+    void stageWordingEdgeCases() {
+        assertEquals(StatusText.activity("Claude CLI", Phase.WRITING, 4, 1, 2, false, null, null),
+                StatusText.activity("Claude CLI", Phase.WRITING, 4, 1, 2, false, ReviewRounds.Stage.REVIEW, null));
+        assertEquals("Claude CLI is making its plan smaller (try 1 of 2), 4 operations so far",
+                StatusText.activity("Claude CLI", Phase.WRITING, 4, 1, 2, true, ReviewRounds.Stage.CRITIQUE, null));
+        assertTrue(StatusText.heartbeat("Claude CLI", Phase.WAITING, 0, 1, 2, false, ReviewRounds.Stage.CRITIQUE, null,
+                Duration.ofSeconds(60)).contains("The reviewer is checking the plan"));
+        assertTrue(StatusText.waitingBar("Claude CLI", Phase.WAITING, 0, 1, 2, false, ReviewRounds.Stage.CRITIQUE, null,
+                Duration.ofSeconds(5)).contains("The reviewer is checking the plan"));
+        assertEquals("The reviewer is checking the plan (round 1 of 2)",
+                StatusText.activity("Claude CLI", Phase.WRITING, 3, 1, 2, false, ReviewRounds.Stage.CRITIQUE, null));
+    }
 }
