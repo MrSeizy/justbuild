@@ -76,12 +76,14 @@ class PlanningCheckTest {
     }
 
     @Test void aFoundationBelowAZonesFloorIsNamed() {
-        // The foundation fills from y = 4 down to the stone at y = -1; the zone starts at y = 2.
+        // The foundation fills from y = 4 down to the stone at y = -1; the zone is y = 2..10. The pad at y = 5 shares
+        // the foundation's columns but not their outside heights, so it isn't named; the marker above the zone is.
         var plan = new BuildPlan("Pad", "", List.of(
                 Operation.fill("stone", new Cell(0, 5, 0), new Cell(1, 5, 1), false),
-                Operation.foundation("cobblestone", new Cell(0, 4, 0), new Cell(1, 4, 1))));
+                Operation.foundation("cobblestone", new Cell(0, 4, 0), new Cell(1, 4, 1)),
+                Operation.set("stone", new Cell(3, 11, 3))));
         var zone = BuildZone.between(Level.OVERWORLD, new BlockPos(-2, -1, -2), new BlockPos(3, -1, 3)).height(2, 10);
-        assertEquals(List.of(new PlanningFeedback.Problem(PlanningFeedback.Kind.ZONE, new Cell(0, 0, 0), new Cell(1, 1, 1), 8, List.of(1))),
+        assertEquals(List.of(new PlanningFeedback.Problem(PlanningFeedback.Kind.ZONE, new Cell(0, 0, 0), new Cell(3, 11, 3), 9, List.of(1, 2))),
                 zones(zoneCheck(plan, zone, Direction.NORTH)));
     }
 
