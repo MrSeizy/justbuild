@@ -536,7 +536,12 @@ public final class JustBuildScreen extends FormScreen {
                         : "Only operators or the singleplayer world owner can edit profiles"))).build();
         profiles.active = manage;
         addRenderableWidget(profiles);
-        addRenderableWidget(cycle("AI review", "detail", "details", y + 24, w, null));
+        int reviewWidth = (w - 4) / 2;
+        addRenderableWidget(cycle("AI review", "detail", "details", y + 24, reviewWidth, null));
+        Button reviewer = cycle("Reviewer", "reviewer", "reviewerChoices", y + 24, w - reviewWidth - 4, null);
+        reviewer.setX(left + reviewWidth + 4);
+        reviewer.active = manage;
+        addRenderableWidget(reviewer);
         addRenderableWidget(cycle("Style", "style", "styles", y + 48, (w - 4) / 2, null));
         addRenderableWidget(autoBuildToggle(y + 48, w));
         model.setMaxLength(200);
@@ -647,9 +652,17 @@ public final class JustBuildScreen extends FormScreen {
         addRenderableWidget(serverAiSettings(left + 2 * (bw + 2), y + 100, bw));
         addRenderableWidget(GlassButton.builder(Component.literal("Review before sending: "
                 + (local.reviewAiResponses ? "On" : "Off")), b -> changeLocal(c -> c.reviewAiResponses = !c.reviewAiResponses))
-                .bounds(left, y + 124, w, 20).tooltip(Tooltip.create(Component.literal(
+                .bounds(left, y + 124, half, 20).tooltip(Tooltip.create(Component.literal(
                         "Hold each response from your AI for Send or Cancel, including guide, inspection, and review rounds. "
                                 + "Saved on this computer for all servers; off by default."))).build());
+        addRenderableWidget(GlassButton.builder(Component.literal("Reviewer: "
+                + local.reviewer().map(p -> p.name).orElse("Same as builder")), b -> changeLocal(c -> {
+                    List<String> names = c.profileNames();
+                    int next = c.reviewer().map(p -> names.indexOf(p.name) + 1).orElse(0);
+                    c.reviewerProfile = next < names.size() ? names.get(next) : "";
+                })).bounds(left + half + 4, y + 124, w - half - 4, 20).tooltip(Tooltip.create(Component.literal(
+                        "The profile on this computer that checks each draft before it is built. Same as builder uses "
+                                + "your planning profile."))).build());
     }
 
     private Button serverAiSettings(int x, int y, int w) {
@@ -708,11 +721,16 @@ public final class JustBuildScreen extends FormScreen {
 
     private static Component cycleLabel(String label, String key, String value) {
         String shown = "detail".equals(key) ? Guidance.DetailLevel.parse(value)
-                .map(Guidance.DetailLevel::reviewLabel).orElse(value) : value;
+                .map(Guidance.DetailLevel::reviewLabel).orElse(value)
+                : "reviewer".equals(key) && "same".equals(value) ? "Same as builder" : value;
         return Component.literal(label + ": " + shown);
     }
 
     private static Tooltip cycleTooltip(String key, String value) {
+        if ("reviewer".equals(key)) {
+            return Tooltip.create(Component.literal("The profile that checks each draft before it is built. "
+                    + "Same as builder uses the profile that plans it."));
+        }
         return "detail".equals(key) ? Guidance.DetailLevel.parse(value)
                 .map(level -> Tooltip.create(Component.literal(level.reviewHint()))).orElse(null) : null;
     }

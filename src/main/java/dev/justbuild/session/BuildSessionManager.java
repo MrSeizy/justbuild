@@ -3651,6 +3651,25 @@ public final class BuildSessionManager {
         switchProfile(source, name);
     }
 
+    /** Which profile the separate reviewer uses; {@code same} means the builder's profile. */
+    public void setReviewer(CommandSourceStack source, String name) {
+        String wanted = name.strip();
+        boolean same = "same".equalsIgnoreCase(wanted);
+        if (!same && config.profile(wanted).isEmpty()) {
+            send(source, Chat.error("No profile called “" + wanted + "”. Use same or one of: "
+                    + String.join(", ", config.profileNames()) + "."));
+            return;
+        }
+        if (!configWritable(source)) return;
+        config.reviewerProfile = same ? "" : config.profile(wanted).orElseThrow().name;
+        if (saveConfig(source)) {
+            send(source, Chat.info(same ? "The reviewer uses the builder's profile."
+                    : "The reviewer uses profile “" + config.reviewerProfile + "” ("
+                            + profileLabel(config.reviewer().orElseThrow()) + ")."));
+            sendStateToAll();
+        }
+    }
+
     private void switchProfile(CommandSourceStack source, String name) {
         if (!configWritable(source)) return;
         config.activate(name);
