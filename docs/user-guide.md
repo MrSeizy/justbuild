@@ -830,9 +830,9 @@ budget, edit boundary, or safe access.
 Each draft is rasterized without changing the world and checked for invalid blocks, limits, boundaries, constraints,
 and construction warnings. A draft that crosses the selected area is reported with the box and number of blocks
 outside it and the operations that reach outside. With **One pass** or **Two passes**, the checks also walk the draft
-from an outside door on its edge (or its lowest edge floor), over floors, stairs and one-block steps but not ladders,
-and list up to four areas no route reaches; those inform the review and never ask for a correction on their own.
-**AI review → When needed** asks the builder for one correction, without the separate
+from its lowest outside door on its edge (or the lowest floor space at its edge), over floors, stairs and one-block
+steps but not ladders, and list up to four areas no route reaches; those inform the review and never ask for a
+correction on their own. **AI review → When needed** asks the builder for one correction, without the separate
 reviewer, only when checks report a problem. If part of the build area isn't loaded (you moved away while the AI worked), the checks see its blocks as air, so only
 invalid blocks, limits, the zone, and your build requirements count then; construction warnings alone don't.
 By default (**Reviewer: Same as builder**), **One pass** reviews once and **Two passes** reviews twice, for both new
