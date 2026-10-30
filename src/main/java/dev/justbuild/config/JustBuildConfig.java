@@ -35,6 +35,8 @@ public final class JustBuildConfig {
     /** Named backend settings; normalize() replaces a missing or empty list with the starter profiles. */
     public List<ModelProfile> profiles;
     public String activeProfile;
+    /** The profile the separate reviewer uses (a saved profile's name); empty means Same as builder. */
+    public String reviewerProfile = "";
     /** Reference to the external unlocking key; ConfigStore alone encrypts/decrypts the on-disk API keys. */
     public String credentialKey;
     /** Where the CLIs are installed; shared by every profile that uses them. */
@@ -196,6 +198,11 @@ public final class JustBuildConfig {
         return p.isPresent();
     }
 
+    /** The separate reviewer's own profile, or empty for Same as builder. */
+    public Optional<ModelProfile> reviewer() {
+        return reviewerProfile == null || reviewerProfile.isBlank() ? Optional.empty() : profile(reviewerProfile);
+    }
+
     /** Model of the active profile; empty means the CLI's default. */
     public String model() {
         return active().model;
@@ -271,6 +278,7 @@ public final class JustBuildConfig {
         }
         profiles = clean.isEmpty() ? starters() : clean;
         activeProfile = profile(activeProfile).orElse(profiles.get(0)).name;
+        reviewerProfile = reviewerProfile == null ? "" : profile(reviewerProfile).map(p -> p.name).orElse("");
     }
 
     /** One starter profile per backend. */
