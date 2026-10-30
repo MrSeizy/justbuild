@@ -298,7 +298,7 @@ class PromptSpecTest {
         PromptSpec bare = base().critiqueRound(PLAN, 1, 1, null);
         assertFalse(bare.facades() || bare.userContent().contains(sentence) || bare.userContent().contains("four facades"));
         PromptSpec self = base().review(PLAN, 1, 1).withFeedback(feedback);
-        assertFalse(self.facades() || self.userContent().contains("facades"), "a self-review never mentions facades");
+        assertFalse(self.facades() || self.userContent().contains(sentence), "a self-review never mentions facades");
         var note = new dev.justbuild.plan.CritiqueNote(critique(), null);
         PromptSpec repair = base().review(PLAN, 1, 1, note).withFeedback(feedback);
         assertTrue(repair.facades() && repair.userContent().contains(sentence));

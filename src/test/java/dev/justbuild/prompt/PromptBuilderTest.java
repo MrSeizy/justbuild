@@ -266,7 +266,7 @@ class PromptBuilderTest {
         String system = PromptBuilder.criticPrompt(new PlanLimits(2000, 250000, 96));
         assertTrue(system.contains("independent reviewer") && system.contains("never return a plan"));
         assertTrue(system.contains("at most 2000 operations, 250000 blocks"), "fixes must fit the size limits");
-        assertTrue(system.contains("Plain, minimal, symmetric"), "restraint rules carry over");
+        assertTrue(system.contains("Flat roofs, plain facades, symmetry or asymmetry, sparse detail and empty space can be deliberate"), "restraint rules carry over");
         assertFalse(system.contains("Operations are applied in order"), "not the builder's prompt");
         assertTrue(system.contains("96 blocks along any axis"));
         assertTrue(system.contains("verdict \"ok\" with an empty problems list"));
