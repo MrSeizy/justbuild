@@ -41,7 +41,7 @@ final class WorkshopScreen extends ToolScreen {
                 () -> minecraft.gui.setScreen(new NamedPartsScreen(this))).active = selected;
         tool("Version history", left + half + 4, 136, half, "See saved versions, preview their differences, and restore with undo.",
                 () -> minecraft.gui.setScreen(new VersionHistoryScreen(this))).active = selected;
-        tool("AI usage", left + half + 4, 160, half, "Calls, reported tokens, AI time, review rounds, and optional session limits.",
+        tool("AI usage", left + half + 4, 160, half, "Calls, reported tokens, AI time, review calls, and optional session limits.",
                 () -> minecraft.gui.setScreen(new UsageScreen(this)));
         tool("Back", left, height - 28, panelWidth, "Return to the previous screen.", this::onClose);
     }
