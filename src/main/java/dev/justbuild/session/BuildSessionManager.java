@@ -3661,6 +3661,7 @@ public final class BuildSessionManager {
         try {
             ProfileEdits.Request request = ProfileEdits.parse(json);
             List<JustBuildConfig.ModelProfile> profiles = ProfileEdits.apply(config.profiles, request);
+            config.reviewerProfile = ProfileEdits.renamed(request, config.reviewerProfile);
             config.replaceProfiles(profiles, request.active());
         } catch (ConfigException e) {
             send(source, Chat.error("Profiles not saved: " + e.getMessage()));

@@ -32,6 +32,17 @@ class ProfileEditsTest {
     }
 
     @Test
+    void renamedFollowsAProfileThroughItsEdit() {
+        var request = new ProfileEdits.Request(List.of(
+                new ProfileEdits.Edit("Claude", "Claude fast", "claude", "", null, null),
+                new ProfileEdits.Edit(null, "New", "codex", "", null, null)), "Claude fast");
+        assertEquals("Claude fast", ProfileEdits.renamed(request, "claude"));
+        assertEquals("", ProfileEdits.renamed(request, "Codex"), "a removed profile clears the reviewer");
+        assertEquals("", ProfileEdits.renamed(request, ""));
+        assertEquals("", ProfileEdits.renamed(request, null));
+    }
+
+    @Test
     void blankKeyBoxKeepsTheSavedKeyThroughARename() throws Exception {
         List<Edit> edits = unchangedAll();
         edits.set(2, new Edit("OpenAI-compatible", "Work", "openai", "gpt-x", " https://API.openai.com/v1/ ", null));

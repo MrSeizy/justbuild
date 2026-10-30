@@ -69,6 +69,17 @@ public final class ProfileEdits {
         return out;
     }
 
+    /** What a profile called {@code name} is called after these edits; empty when it was removed or there was none. */
+    public static String renamed(Request request, String name) {
+        if (name == null || name.isBlank()) return "";
+        for (Edit edit : request.profiles()) {
+            if (edit.from() != null && edit.from().strip().equalsIgnoreCase(name.strip())) {
+                return edit.name() == null ? "" : edit.name().strip();
+            }
+        }
+        return "";
+    }
+
     /** One edited profile with its key filled in from the saved one when the edit leaves it unchanged. */
     public static ModelProfile resolve(List<ModelProfile> current, Edit edit) throws ConfigException {
         String name = edit.name() == null ? "" : edit.name().strip();
