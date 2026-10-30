@@ -5,6 +5,7 @@ import dev.justbuild.plan.*;
 import dev.justbuild.prompt.*;
 import dev.justbuild.provider.*;
 import dev.justbuild.relay.PromptSpec;
+import dev.justbuild.session.ReviewRounds;
 import dev.justbuild.world.*;
 import java.nio.file.*;
 import dev.justbuild.config.JustBuildConfig;
@@ -36,11 +37,14 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
     private record Scenario(String id, String prompt, BuildPlan reference, BuildPlan baseline, BlockPos min, BlockPos max) {}
     private record Evaluation(JsonObject report, Map<BlockPos, BlockState> changes) {}
+    /** Fixture critique: one should_fix problem, so fixture runs exercise the repair and the second round. */
+    private static final String FIXTURE_CRITIQUE = "{\"kind\":\"critique\",\"verdict\":\"revise\",\"problems\":[{\"severity\":"
+            + "\"should_fix\",\"category\":\"facade\",\"operations\":[0],\"cell\":null,\"problem\":\"Fixture problem.\","
+            + "\"fix\":\"Fixture fix.\"}],\"keep\":[\"Fixture keep\"]}";
     private static final Gson JSON = new GsonBuilder().setPrettyPrinting().create();
     @Override public void runTest(ClientGameTestContext context) {
         String providerId = System.getenv().getOrDefault("JUSTBUILD_GALLERY_PROVIDER", "fixture");
         String imported = System.getenv("JUSTBUILD_GALLERY_PLANS");
-        if (imported != null && !providerId.equals("fixture")) throw new AssertionError("Choose imported plans or a live provider, not both");
         BuildProvider provider = switch (providerId) {
             case "fixture" -> null;
             case "claude" -> new ClaudeCliProvider("");
@@ -48,7 +52,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
             case "grok" -> new dev.justbuild.provider.GrokCliProvider("");
             default -> throw new AssertionError("JUSTBUILD_GALLERY_PROVIDER must be fixture, claude, codex or grok");
         };
-        String mode = imported != null ? "imported" : provider == null ? "deterministic fixture" : "live provider";
+        String mode = imported != null ? (provider == null ? "imported" : "imported drafts, live reviews") : provider == null ? "deterministic fixture" : "live provider";
         String model = System.getenv().getOrDefault("JUSTBUILD_GALLERY_MODEL", "");
         String label = System.getenv().getOrDefault("JUSTBUILD_GALLERY_LABEL", providerId);
         if (!label.matches("[A-Za-z0-9_-]{1,60}")) throw new AssertionError("Gallery label must be 1–60 letters, digits, _ or -");
@@ -56,7 +60,17 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                 .orElseThrow(() -> new AssertionError("Gallery detail must be quick, detailed or masterpiece"));
         int repeats = Integer.parseInt(System.getenv().getOrDefault("JUSTBUILD_GALLERY_REPEATS", "1"));
         if (repeats < 1 || repeats > 5) throw new AssertionError("Gallery repeats must be 1–5");
-        if (imported != null && detail.reviewRounds() > 0) throw new AssertionError("Imported plans require quick detail; no provider is selected to review them");
+        String reviewSetting = System.getenv().getOrDefault("JUSTBUILD_GALLERY_REVIEW", "separate").strip().toLowerCase(java.util.Locale.ROOT);
+        if (!List.of("separate", "self", "none").contains(reviewSetting))
+            throw new AssertionError("JUSTBUILD_GALLERY_REVIEW must be separate, self or none");
+        ReviewRounds.Mode reviewMode = reviewSetting.equals("self") ? ReviewRounds.Mode.SELF : ReviewRounds.Mode.SEPARATE;
+        // none keeps the detail level's draft prompt and skips reviews, to collect drafts for a paired comparison.
+        boolean reviewing = detail.reviewRounds() > 0 && !reviewSetting.equals("none");
+        // Imported drafts can be reviewed live, so both review modes can judge the same drafts.
+        if (imported != null && provider == null && reviewing)
+            throw new AssertionError("Imported plans need a live provider to review them, or quick detail");
+        if (imported != null && provider != null && !reviewing)
+            throw new AssertionError("A live provider with imported plans only reviews them: choose detailed or masterpiece and a review mode");
         List<Scenario> selected = selectedScenarios();
         Path output = Path.of(System.getProperty("justbuild.galleryDir", "quality-gallery"))
                 .resolve(label + "-" + Instant.now().toString().replaceAll("[:.]", "-"));
@@ -65,6 +79,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         report.addProperty("provider", providerId); report.addProperty("model", model.isEmpty() ? "CLI default / fixture" : model);
         report.addProperty("createdAt", Instant.now().toString()); report.addProperty("revision", System.getProperty("justbuild.galleryRevision", "unknown"));
         report.addProperty("minecraft", "26.3"); report.addProperty("detail", detail.id()); report.addProperty("reviewRounds", detail.reviewRounds());
+        report.addProperty("reviewMode", reviewSetting);
         report.addProperty("repeats", repeats);
         int timeoutSeconds = Integer.parseInt(System.getenv().getOrDefault("JUSTBUILD_GALLERY_TIMEOUT_SECONDS",
                 String.valueOf(new JustBuildConfig().timeout().toSeconds())));
@@ -97,11 +112,12 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                     System.out.println("Gallery case " + key + " (" + providerId + ", " + detail.id() + ")");
                     long started = System.nanoTime();
                     long planningMillis = 0, guideSelectionMillis = 0;
-                    boolean guidesOffered = provider != null && detail != Guidance.DetailLevel.QUICK;
+                    boolean guidesOffered = provider != null && imported == null && detail != Guidance.DetailLevel.QUICK;
                     JsonArray selectedGuides = new JsonArray();
                     String planPromptHash = null;
                     JsonObject draft = null;
                     JsonArray reviews = new JsonArray();
+                    JsonArray reviewRounds = new JsonArray();
                     world.getServer().runOnServer(server -> prepare(server.overworld(), scenario, at));
                     String sourceHash = world.getServer().computeOnServer(server -> sourceHash(server.overworld(), scenario, at));
                     camera(context, world, player, scenario, at, false);
@@ -149,8 +165,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                         }
                         // The menu is a planning tool, never another selection round during review.
                         spec = spec.withGuides(false, spec.guides());
-                        system = spec.systemPrompt(limits(scenario), detail);
-                        if (detail.reviewRounds() > 0) {
+                        if (reviewing) {
                             Files.writeString(output.resolve(key + "-draft.json"), PlanWriter.write(plan));
                             draft = renderPlan(context, world, player, scenario, plan, at, output, key + "-draft");
                             // Review evidence must describe the untouched source, never the placed draft.
@@ -159,45 +174,63 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                             if (!sourceHash.equals(restored)) throw new AssertionError("Draft rendering changed the source scene");
                             BuildPlan first = plan;
                             PlanningFeedback evidence = world.getServer().computeOnServer(server -> evidence(server.overworld(), scenario, first, at));
-                            for (int round = 1; round <= detail.reviewRounds(); round++) {
-                                JsonObject review = new JsonObject(); reviews.add(review);
-                                review.addProperty("round", round);
-                                review.addProperty("mode", provider == null ? "fixture replay" : "live provider");
-                                long reviewStarted = System.nanoTime();
-                                String prefix = key + "-review-" + round;
-                                try {
-                                    PromptSpec reviewSpec = spec.review(PlanWriter.write(plan), round, detail.reviewRounds()).withFeedback(evidence);
-                                    String reviewPrompt = reviewSpec.userContent();
-                                    Files.writeString(output.resolve(prefix + "-prompt.txt"), system + "\n\n" + reviewPrompt);
-                                    Files.writeString(output.resolve(prefix + "-feedback.json"), JSON.toJson(evidence.toJson()));
-                                    review.addProperty("promptHash", hash(system + "\n" + reviewPrompt));
-                                    review.addProperty("inputPlanHash", hash(PlanWriter.write(plan)));
-                                    System.out.println("Gallery " + key + " review " + round);
-                                    String raw = provider == null ? PlanWriter.write(plan)
-                                            : provider.complete(new PlanRequest(system, reviewPrompt, BuildPlanSchema.JSON, model, timeout, reviewSpec), new CancellationToken(), progress(prefix));
-                                    Files.writeString(output.resolve(prefix + "-response.txt"), raw);
-                                    BuildPlan revised = requirePlan(raw);
-                                    Files.writeString(output.resolve(prefix + ".json"), PlanWriter.write(revised));
-                                    limits(scenario).check(revised);
-                                    if (PlanSize.blocks(revised, limits(scenario).maxBlocks()) == PlanSize.OVER) throw new PlanException("Review exceeded the block limit");
-                                    BuildPlan current = plan;
-                                    var checked = world.getServer().computeOnServer(server -> reviewCheck(server.overworld(), scenario, current, revised, at));
-                                    review.addProperty("technicalFailuresBefore", evidence.technicalFailures());
-                                    review.addProperty("technicalFailuresAfter", checked.feedback().technicalFailures());
-                                    review.addProperty("outputPlanHash", hash(PlanWriter.write(revised)));
-                                    if (!checked.verdict().accepted()) {
-                                        review.addProperty("status", "rejected: " + checked.verdict().reason());
-                                    } else {
-                                        review.addProperty("status", PlanWriter.write(plan).equals(PlanWriter.write(revised)) ? "unchanged" : "accepted");
-                                        plan = revised; evidence = checked.feedback();
+                            ReviewRounds.Caller caller = new ReviewRounds.Caller() {
+                                @Override public String critique(PromptSpec request) throws ProviderException, PlanException {
+                                    return call(request, "critique", provider == null ? FIXTURE_CRITIQUE : null);
+                                }
+                                @Override public String repair(PromptSpec request) throws ProviderException, PlanException {
+                                    return call(request, "repair", provider == null ? request.planJson() : null);
+                                }
+                                private String call(PromptSpec request, String stage, String fixture) throws ProviderException, PlanException {
+                                    JsonObject entry = new JsonObject(); reviews.add(entry);
+                                    entry.addProperty("round", request.round()); entry.addProperty("stage", stage);
+                                    entry.addProperty("mode", provider == null ? "fixture replay" : "live provider");
+                                    String system = request.systemPrompt(limits(scenario), detail), prompt = request.userContent();
+                                    String prefix = key + "-review-" + request.round() + "-" + stage;
+                                    long started = System.nanoTime();
+                                    try {
+                                        Files.writeString(output.resolve(prefix + "-prompt.txt"), system + "\n\n" + prompt);
+                                        Files.writeString(output.resolve(prefix + "-feedback.json"), JSON.toJson(request.feedback().toJson()));
+                                        entry.addProperty("promptHash", hash(system + "\n" + prompt));
+                                        entry.addProperty("inputPlanHash", hash(request.planJson()));
+                                        System.out.println("Gallery " + key + " review " + request.round() + " " + stage);
+                                        String raw = fixture != null ? fixture : provider.complete(new PlanRequest(system, prompt,
+                                                request.schemaJson(), model, timeout, request), new CancellationToken(), progress(prefix));
+                                        Files.writeString(output.resolve(prefix + "-response.txt"), raw);
+                                        entry.addProperty("status", stage + " answered");
+                                        return raw;
+                                    } catch (ProviderException e) {
+                                        entry.addProperty("status", stage + " failed");
+                                        entry.addProperty("error", failureMessage(e, timeout));
+                                        throw e;
+                                    } catch (java.io.IOException e) {
+                                        throw new java.io.UncheckedIOException(e);
+                                    } finally {
+                                        entry.addProperty("elapsedMillis", elapsedMillis(started));
+                                        try { Files.writeString(output.resolve(key + "-reviews.json"), JSON.toJson(reviews)); }
+                                        catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
                                     }
-                                } catch (Exception e) {
-                                    review.addProperty("status", "failed; kept previous draft");
-                                    review.addProperty("error", failureMessage(e, timeout));
-                                } finally { review.addProperty("elapsedMillis", elapsedMillis(reviewStarted)); }
-                                // Preserve completed calls even if a later review or screenshot fails.
-                                Files.writeString(output.resolve(key + "-reviews.json"), JSON.toJson(reviews));
+                                }
+                                @Override public ReviewRounds.Compared compare(BuildPlan current, BuildPlan repaired) {
+                                    var checked = world.getServer().computeOnServer(server -> reviewCheck(server.overworld(), scenario, current, repaired, at));
+                                    return new ReviewRounds.Compared(checked.verdict(), checked.feedback());
+                                }
+                                @Override public void stage(ReviewRounds.Stage stage, int round, int rounds) { }
+                                @Override public void say(String line) { System.out.println("Gallery " + key + ": " + line); }
+                            };
+                            ReviewRounds.Result reviewed = new ReviewRounds(reviewMode, limits(scenario), caller)
+                                    .run(spec, plan, PlanWriter.write(plan), evidence, detail.reviewRounds());
+                            plan = reviewed.plan();
+                            for (ReviewRounds.Round r : reviewed.rounds()) {
+                                JsonObject value = new JsonObject();
+                                value.addProperty("round", r.number());
+                                value.add("critique", r.critique() == null ? JsonNull.INSTANCE : r.critique().toJson());
+                                value.addProperty("repaired", r.repairRan());
+                                value.addProperty("outcome", r.outcome() == null ? null : r.outcome().name().toLowerCase(java.util.Locale.ROOT));
+                                value.addProperty("unchanged", r.unchanged());
+                                reviewRounds.add(value);
                             }
+                            Files.writeString(output.resolve(key + "-review-rounds.json"), JSON.toJson(reviewRounds));
                         }
                         Files.writeString(output.resolve(key + ".json"), PlanWriter.write(plan));
                         row = renderPlan(context, world, player, scenario, plan, at, output, key);
@@ -215,7 +248,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                     row.addProperty("planningMillis", planningMillis); row.addProperty("elapsedMillis", elapsedMillis(started));
                     row.addProperty("guidesOffered", guidesOffered); row.add("selectedGuides", selectedGuides);
                     row.addProperty("guideSelectionMillis", guideSelectionMillis); row.addProperty("planPromptHash", planPromptHash);
-                    row.add("reviews", reviews); if (draft != null) row.add("draft", draft);
+                    row.add("reviews", reviews); row.add("reviewRounds", reviewRounds); if (draft != null) row.add("draft", draft);
                     boolean ok = passed(row);
                     row.addProperty("passed", ok); failed |= !ok; cases.add(row);
                     Files.writeString(output.resolve("results.json"), JSON.toJson(report));
@@ -272,8 +305,9 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
             BuildPlan draft, BuildPlan revised, BlockPos at) {
         var before = planningCheck(level, scenario, draft, at);
         var after = planningCheck(level, scenario, revised, at);
-        return new ReviewedCandidate(after.feedback(), ReviewCheck.compare(before, after,
-                sourcePlan(level, scenario, at), Level.OVERWORLD, level::getBlockState));
+        var verdict = ReviewCheck.compare(before, after, sourcePlan(level, scenario, at), Level.OVERWORLD, level::getBlockState);
+        // The feedback describes the plan that is kept, as production's checkReview does.
+        return new ReviewedCandidate(verdict.accepted() ? after.feedback() : before.feedback(), verdict);
     }
 
     private static Map<BlockPos, BlockState> sourcePlan(net.minecraft.server.level.ServerLevel level, Scenario scenario, BlockPos at) {
