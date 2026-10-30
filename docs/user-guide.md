@@ -167,7 +167,8 @@ With `playerAi: prefer`, requests that fall back to the server use its configure
   ![Server AI policy settings with Require players' AI selected](images/server-ai-policy.png)
 
 - **In the player's game:** Right Shift → Settings shows **My profile**, **My profiles…** (the editor, working on this
-  computer's `config/justbuild.json`, with Pick… asking this computer's CLI or endpoint), **Use my AI here: On/Off**, and a
+  computer's `config/justbuild.json`, with Pick… asking this computer's CLI or endpoint), **Use my AI here: On/Off**, **Reviewer** (Same as builder or another of this computer's profiles, saved as
+  `reviewerProfile` in `config/justbuild.json`), and a
   line saying which AI your builds use on this server. The game is "ready" when local AI is enabled for that server and the active profile
   works: an installed CLI, or an HTTP API profile with a model.
 - **Optional response review:** **Right Shift → Settings → Review before sending** starts **Off**, including for
