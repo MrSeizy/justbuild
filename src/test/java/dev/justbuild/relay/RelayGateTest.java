@@ -156,4 +156,10 @@ class RelayGateTest {
         assertFalse(RelayGate.startsAi("justbuild revise"));
         assertFalse(RelayGate.startsAi("justbuild preview previous"));
     }
+
+    @Test
+    void eachRequestCoversTwoCritiqueAndRepairRounds() {
+        assertEquals(14, RelayGate.CALLS, "plan, guides, four reads, two size retries, four review calls, two spare");
+        assertEquals(30, RelayGate.HOURLY);
+    }
 }

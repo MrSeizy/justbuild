@@ -8,7 +8,7 @@ import java.util.Set;
 /**
  * What this game has seen, for checking a server's AI requests (relay.PromptCheck): the requests the player started
  * with /justbuild (this session, plus the ones they typed earlier on this computer), the questions this game's own AI
- * asked, the player's answers, and the plans its AI returned. Client thread only; the session sets clear when joining
+ * asked, the player's answers, and the plans and critiques its AI returned. Client thread only; the session sets clear when joining
  * or leaving a server.
  */
 final class RelaySeen {
@@ -17,6 +17,8 @@ final class RelaySeen {
     private static final Set<String> questions = new LinkedHashSet<>();
     private static final Set<String> answers = new LinkedHashSet<>();
     private static final Set<String> plans = new LinkedHashSet<>();
+    private static final Set<String> critiques = new LinkedHashSet<>();
+    private static final Set<String> repairs = new LinkedHashSet<>();
 
     private RelaySeen() {
     }
@@ -46,10 +48,21 @@ final class RelaySeen {
         add(plans, key);
     }
 
+    /** A critique this game's AI returned ({@link dev.justbuild.plan.Critique#key}), which a repair may carry back. */
+    static void critique(String key) {
+        add(critiques, key);
+    }
+
+    /** A repair that carried this critique returned this plan, so a second critique round may cite the critique for it. */
+    static void repair(String critiqueKey, String planKey) {
+        add(repairs, critiqueKey + ">" + planKey);
+    }
+
     static PromptCheck.Seen snapshot() {
         Set<String> all = new LinkedHashSet<>(RequestHistory.all());
         all.addAll(requests);
-        return new PromptCheck.Seen(Set.copyOf(all), Set.copyOf(questions), Set.copyOf(answers), Set.copyOf(plans));
+        return new PromptCheck.Seen(Set.copyOf(all), Set.copyOf(questions), Set.copyOf(answers), Set.copyOf(plans),
+                Set.copyOf(critiques), Set.copyOf(repairs));
     }
 
     static void clear() {
@@ -57,6 +70,8 @@ final class RelaySeen {
         questions.clear();
         answers.clear();
         plans.clear();
+        critiques.clear();
+        repairs.clear();
     }
 
     private static void add(Set<String> set, String text) {
