@@ -159,7 +159,9 @@ public final class Walkability {
                 for (Direction direction : Direction.Plane.HORIZONTAL) {
                     BlockPos next = at.pos().relative(direction);
                     for (Node candidate : columns.getOrDefault(new Column(next.getX(), next.getZ()), List.of()))
-                        if (!seen.contains(candidate.pos()) && connected(at, candidate, direction, routes.steps())) { seen.add(candidate.pos()); queue.addLast(candidate); }
+                        if (!seen.contains(candidate.pos()) && connected(at, candidate, direction, routes.steps())) {
+                            seen.add(candidate.pos()); queue.addLast(candidate);
+                        }
                 }
             }
             areas.add(area);
