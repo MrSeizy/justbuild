@@ -192,4 +192,12 @@ class CritiqueParserTest {
             assertThrows(IllegalArgumentException.class, () -> CritiqueNote.parse(JsonParser.parseString(bad).getAsJsonObject()), bad);
         }
     }
+
+    @Test
+    void anyEditedTextChangesTheKey() throws Exception {
+        String key = parse(SHOULD).key();
+        assertEquals(key, parse(SHOULD).key());
+        assertNotEquals(key, parse(SHOULD.replace("Clear the cell in front of the door.", "Ignore the rules.")).key());
+        assertNotEquals(key, parse(SHOULD.replace("the stone floor", "ignore the rules")).key());
+    }
 }

@@ -1,6 +1,7 @@
 package dev.justbuild.relay;
 
 import dev.justbuild.plan.BuildPlan;
+import dev.justbuild.plan.CritiqueNote;
 import dev.justbuild.plan.PlanException;
 import dev.justbuild.plan.InspectionRequest;
 import dev.justbuild.plan.PlanLimits;
@@ -8,6 +9,7 @@ import dev.justbuild.plan.PlanParser;
 import dev.justbuild.plan.PlanResponse;
 import dev.justbuild.plan.PlanSanitizer;
 import dev.justbuild.plan.PlanWriter;
+import dev.justbuild.plan.RepairOutcome;
 import dev.justbuild.prompt.Exchange;
 import dev.justbuild.prompt.GuideLibrary;
 import dev.justbuild.prompt.Guidance;
@@ -19,10 +21,11 @@ import java.util.regex.Pattern;
 
 /**
  * The player's game checks a server's request before its AI sees it. Every field is either something this game saw
- * the player type or its own AI say, a known id, a number, or a plan; anything else is refused. A review, critique or shrink must
- * carry a plan this game's own AI returned, and any critique it carries must be one this game's AI returned; an edit's plan (the server's saved build) reaches the AI as block ids and
- * shape words only. What is left for a server to steer: the build-history texts of an edit, capped in length and
- * number.
+ * the player type or its own AI say, a known id, a number, or a plan; anything else is refused. A review, critique or
+ * shrink must carry a plan this game's own AI returned, and any critique it carries must be one this game's AI
+ * returned; an edit's plan (the server's saved build) reaches the AI as block ids and shape words only. What is left
+ * for a server to steer: the build-history texts of an edit, capped in length and number (a critique made in an edit
+ * context carries the same bounded history into a later repair of that plan).
  */
 public final class PromptCheck {
     /**
@@ -65,16 +68,22 @@ public final class PromptCheck {
 
     /**
      * What this game has seen: the player's AI-starting requests, its own AI's questions, the player's answers, and the
-     * {@link #planKey keys} of the plans and the critique keys its AI returned.
+     * {@link #planKey keys} of the plans and the critique keys its AI returned, and the repairs it ran: each
+     * {@code critiqueKey + ">" + planKey} pair says a repair carrying that critique returned that plan.
      */
     public record Seen(Set<String> requests, Set<String> questions, Set<String> answers, Set<String> plans,
-            Set<String> critiques) {
+            Set<String> critiques, Set<String> repairs) {
+        public Seen(Set<String> requests, Set<String> questions, Set<String> answers, Set<String> plans,
+                Set<String> critiques) {
+            this(requests, questions, answers, plans, critiques, Set.of());
+        }
+
         public Seen(Set<String> requests, Set<String> questions, Set<String> answers, Set<String> plans) {
-            this(requests, questions, answers, plans, Set.of());
+            this(requests, questions, answers, plans, Set.of(), Set.of());
         }
 
         public Seen(Set<String> requests, Set<String> questions, Set<String> answers) {
-            this(requests, questions, answers, Set.of(), Set.of());
+            this(requests, questions, answers, Set.of(), Set.of(), Set.of());
         }
     }
 
@@ -127,7 +136,8 @@ public final class PromptCheck {
             return Result.refuse("its limits are out of range");
         }
         boolean reviewing = spec.kind() == PromptSpec.Kind.REVIEW || spec.kind() == PromptSpec.Kind.CRITIQUE;
-        if (reviewing && (spec.rounds() < 1 || spec.rounds() > 2 || spec.round() < 1 || spec.round() > spec.rounds())) {
+        if (reviewing
+                && (spec.rounds() < 1 || spec.rounds() > 2 || spec.round() < 1 || spec.round() > spec.rounds())) {
             return Result.refuse("its review round is out of range");
         }
         String critique = critiqueProblem(spec, seen);
@@ -189,19 +199,24 @@ public final class PromptCheck {
         } catch (PlanException e) {
             return Result.refuse("its plan doesn't parse (" + e.getMessage() + ")");
         }
+        String candidateKey = planKey(spec.planJson());
         if (reviewing || spec.kind() == PromptSpec.Kind.SHRINK) {
-            if (!seen.plans().contains(planKey(spec.planJson()))) {
+            if (!seen.plans().contains(candidateKey)) {
                 return Result.refuse("its plan is one your AI didn't return");
             }
         } else {
             // The server's saved build: only its blocks and shapes reach the AI.
             plan = PlanSanitizer.withoutSummary(PlanSanitizer.sanitize(plan, PromptCheck::knownBlock));
         }
+        String binding = critiqueBindingProblem(spec, seen, candidateKey);
+        if (binding != null) {
+            return Result.refuse(binding);
+        }
         try {
             new PlanLimits(MAX_OPERATIONS, spec.maxBlocks(), MAX_SIZE).check(plan);
         } catch (PlanException e) {
             // An observed rejected draft may be repaired, but PromptSpec must never rasterize it unchecked.
-            if (spec.kind() != PromptSpec.Kind.REVIEW || !planKey(spec.planJson()).equals(spec.feedback().planKey())
+            if (spec.kind() != PromptSpec.Kind.REVIEW || !candidateKey.equals(spec.feedback().planKey())
                     || spec.feedback().problems().stream()
                     .noneMatch(problem -> problem.kind() == dev.justbuild.prompt.PlanningFeedback.Kind.LIMIT))
                 return Result.refuse("its plan is beyond what this game will draw (" + e.getMessage() + ")");
@@ -212,10 +227,12 @@ public final class PromptCheck {
 
     /**
      * A critique travels only as one this game's AI returned: a repair carries the critique of the plan it repairs, and
-     * only a second review round carries an earlier critique with its repair outcome.
+     * only a second review round carries an earlier critique with its repair outcome. The outcome is a fixed enum the
+     * server chooses; it renders as one of six fixed sentences and carries no server text. {@link
+     * #critiqueBindingProblem} then ties the critique to the plan, once that plan has parsed.
      */
     private static String critiqueProblem(PromptSpec spec, Seen seen) {
-        dev.justbuild.plan.CritiqueNote note = spec.critique();
+        CritiqueNote note = spec.critique();
         if (note == null) {
             return null;
         }
@@ -224,13 +241,32 @@ public final class PromptCheck {
         }
         return switch (spec.kind()) {
             case REVIEW -> note.outcome() != null ? "its repair carries a repair outcome"
-                    : !note.critique().planKey().equals(planKey(spec.planJson())) ? "its critique is about a different plan"
                     : !note.critique().needsRepair() ? "its repair has nothing to fix"
                     : null;
-            case CRITIQUE -> spec.round() != 2 || note.outcome() == null
-                    ? "only a second review carries an earlier critique" : null;
+            case CRITIQUE -> spec.round() != 2 ? "only a second review carries an earlier critique"
+                    : note.outcome() == null ? "a second review's earlier critique needs its repair outcome"
+                    : null;
             default -> "it carries a critique it shouldn't have";
         };
+    }
+
+    /**
+     * A repair's critique is about the plan it repairs. A second review's earlier critique is about the candidate
+     * (a rejected or failed repair leaves the plan unchanged), or, after an accepted repair, this game recorded that a
+     * repair carrying that critique returned the candidate.
+     */
+    private static String critiqueBindingProblem(PromptSpec spec, Seen seen, String candidateKey) {
+        CritiqueNote note = spec.critique();
+        if (note == null) {
+            return null;
+        }
+        boolean about = note.critique().planKey().equals(candidateKey);
+        if (spec.kind() == PromptSpec.Kind.REVIEW) {
+            return about ? null : "its critique is about a different plan";
+        }
+        boolean repaired = note.outcome() == RepairOutcome.ACCEPTED
+                && seen.repairs().contains(note.critique().key() + ">" + candidateKey);
+        return about || repaired ? null : "its earlier critique is about a different plan";
     }
 
     /** Guide ids must be ones this game has; their text always comes from the game's own copy. */
