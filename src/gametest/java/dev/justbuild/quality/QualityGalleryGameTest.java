@@ -64,6 +64,10 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         if (!List.of("separate", "self", "none").contains(reviewSetting))
             throw new AssertionError("JUSTBUILD_GALLERY_REVIEW must be separate, self or none");
         ReviewRounds.Mode reviewMode = reviewSetting.equals("self") ? ReviewRounds.Mode.SELF : ReviewRounds.Mode.SEPARATE;
+        // Like the mod's reviewer profile: critiques use this model, repairs stay with the builder's.
+        String reviewerModel = System.getenv().getOrDefault("JUSTBUILD_GALLERY_REVIEWER_MODEL", model);
+        if (!reviewerModel.equals(model) && !reviewSetting.equals("separate"))
+            throw new AssertionError("JUSTBUILD_GALLERY_REVIEWER_MODEL needs JUSTBUILD_GALLERY_REVIEW=separate");
         // none keeps the detail level's draft prompt and skips reviews, to collect drafts for a paired comparison.
         boolean reviewing = detail.reviewRounds() > 0 && !reviewSetting.equals("none");
         // Imported drafts can be reviewed live, so both review modes can judge the same drafts.
@@ -80,6 +84,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
         report.addProperty("createdAt", Instant.now().toString()); report.addProperty("revision", System.getProperty("justbuild.galleryRevision", "unknown"));
         report.addProperty("minecraft", "26.3"); report.addProperty("detail", detail.id()); report.addProperty("reviewRounds", reviewing ? detail.reviewRounds() : 0);
         report.addProperty("reviewMode", reviewing ? reviewSetting : "none");
+        report.addProperty("reviewerModel", reviewerModel.isEmpty() ? "CLI default / fixture" : reviewerModel);
         report.addProperty("repeats", repeats);
         int timeoutSeconds = Integer.parseInt(System.getenv().getOrDefault("JUSTBUILD_GALLERY_TIMEOUT_SECONDS",
                 String.valueOf(new JustBuildConfig().timeout().toSeconds())));
@@ -217,6 +222,8 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                                     entry.addProperty("round", request.round()); entry.addProperty("stage", stage);
                                     entry.addProperty("mode", provider == null ? "fixture replay" : "live provider");
                                     String prefix = key + "-review-" + request.round() + "-" + stage;
+                                    String callModel = stage.equals("critique") ? reviewerModel : model;
+                                    entry.addProperty("model", callModel);
                                     try {
                                         String system = request.systemPrompt(limits(scenario), detail), prompt = request.userContent();
                                         quietly(output.resolve(prefix + "-prompt.txt"), system + "\n\n" + prompt);
@@ -229,7 +236,7 @@ public final class QualityGalleryGameTest implements FabricClientGameTest {
                                         else {
                                             long providerStarted = System.nanoTime();
                                             try {
-                                                raw = provider.complete(new PlanRequest(system, prompt, request.schemaJson(), model, timeout, request),
+                                                raw = provider.complete(new PlanRequest(system, prompt, request.schemaJson(), callModel, timeout, request),
                                                         new CancellationToken(), progress(prefix, entry));
                                             } finally { entry.addProperty("providerMillis", elapsedMillis(providerStarted)); }
                                         }
