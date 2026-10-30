@@ -213,4 +213,44 @@ class PromptCheckTest {
             assertTrue(problem(PromptSpec.parse(forged)).contains("unplaced proposal"), ordinary.kind().toString());
         }
     }
+
+    @Test
+    void critiquesAndRepairsCarryOnlyWhatThisGameReturned() throws Exception {
+        PromptSpec base = spec("a fishing hut", List.of());
+        var seenCritique = PromptSpecTest.critique();
+        PromptCheck.Seen seen = new PromptCheck.Seen(SEEN.requests(), SEEN.questions(), SEEN.answers(), SEEN.plans(),
+                Set.of(seenCritique.key()));
+        var repairNote = new dev.justbuild.plan.CritiqueNote(seenCritique, null);
+        var roundTwoNote = new dev.justbuild.plan.CritiqueNote(seenCritique, dev.justbuild.plan.RepairOutcome.ACCEPTED);
+        java.util.function.Function<PromptSpec, String> check = s -> PromptCheck.check(s, seen).problem();
+
+        assertNull(check.apply(base.critiqueRound(PromptSpecTest.PLAN, 1, 1, null)));
+        assertNull(check.apply(base.critiqueRound(PromptSpecTest.PLAN, 2, 2, roundTwoNote)));
+        assertNull(check.apply(base.review(PromptSpecTest.PLAN, 1, 1, repairNote)));
+
+        assertTrue(problem(base.review(PromptSpecTest.PLAN, 1, 1, repairNote)).contains("critique your AI didn't return"),
+                "a critique this game never saw is refused");
+        var plan = ((dev.justbuild.plan.PlanResponse.Build) dev.justbuild.plan.PlanParser.parse(PromptSpecTest.PLAN)).plan();
+        var elsewhere = dev.justbuild.plan.CritiqueParser.parse(seenCritique.toJson().toString(), plan, "b".repeat(64));
+        PromptCheck.Seen both = new PromptCheck.Seen(SEEN.requests(), SEEN.questions(), SEEN.answers(), SEEN.plans(),
+                Set.of(seenCritique.key(), elsewhere.key()));
+        assertTrue(PromptCheck.check(base.review(PromptSpecTest.PLAN, 1, 1,
+                new dev.justbuild.plan.CritiqueNote(elsewhere, null)), both).problem().contains("different plan"));
+        assertTrue(check.apply(base.review(PromptSpecTest.PLAN, 1, 1, roundTwoNote)).contains("repair outcome"));
+        var plain = dev.justbuild.plan.CritiqueParser.parse("{\"kind\":\"critique\",\"verdict\":\"ok\",\"problems\":[],"
+                + "\"keep\":[]}", plan, PromptCheck.planKey(PromptSpecTest.PLAN));
+        PromptCheck.Seen withPlain = new PromptCheck.Seen(SEEN.requests(), SEEN.questions(), SEEN.answers(), SEEN.plans(),
+                Set.of(seenCritique.key(), plain.key()));
+        assertTrue(PromptCheck.check(base.review(PromptSpecTest.PLAN, 1, 1, new dev.justbuild.plan.CritiqueNote(plain, null)),
+                withPlain).problem().contains("nothing to fix"), "a repair only applies a critique with problems worth fixing");
+        assertTrue(check.apply(base.critiqueRound(PromptSpecTest.PLAN, 1, 2, roundTwoNote)).contains("second review"));
+        assertTrue(check.apply(base.critiqueRound(PromptSpecTest.PLAN, 2, 2, repairNote)).contains("second review"));
+        assertTrue(check.apply(base.critiqueRound(PromptSpecTest.PLAN, 3, 2, null)).contains("review round is out of range"));
+        assertTrue(check.apply(base.critiqueRound(PromptSpecTest.PLAN, 1, 1, null).withWorld(null, List.of(), 2))
+                .contains("inspection limits"));
+        String forged = PromptSpecTest.PLAN.replace("\"Hut\"", "\"Barn\"");
+        assertTrue(check.apply(base.critiqueRound(forged, 1, 1, null)).contains("didn't return"));
+        assertNull(check.apply(base.withGuides(true, List.of()).critiqueRound(PromptSpecTest.PLAN, 1, 1, null)),
+                "the critique never offers the guide menu");
+    }
 }
