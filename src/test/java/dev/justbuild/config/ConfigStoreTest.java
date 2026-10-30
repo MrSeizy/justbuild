@@ -67,6 +67,17 @@ class ConfigStoreTest extends CredentialVaultTest {
     }
 
     @Test
+    void theReviewerProfileSurvivesASaveAndLoad() throws Exception {
+        var store = new ConfigStore(dir.resolve("reviewer.json"));
+        var config = store.load();
+        assertEquals("", config.reviewerProfile);
+        config.reviewerProfile = "Codex";
+        store.save(config);
+        assertTrue(Files.readString(dir.resolve("reviewer.json")).contains("\"reviewerProfile\": \"Codex\""));
+        assertEquals("Codex", store.load().reviewerProfile);
+    }
+
+    @Test
     void handEditedValuesAreNormalized() throws Exception {
         Path file = dir.resolve("justbuild.json");
         Files.writeString(file, """
