@@ -12,6 +12,10 @@ def read_run(directory: Path) -> dict:
     if data.get("format") != 1 or not isinstance(data.get("cases"), list):
         raise ValueError(f"Unsupported gallery results: {root}")
     for case in data["cases"]:
+        # The first draft's checks as the reviewer received them, when the run wrote them.
+        evidence = root / f"{case.get('id', '')}-evidence.txt"
+        if case.get("id") and evidence.resolve().parent == root and evidence.is_file():
+            case["evidence"] = evidence.read_text()[:20000]
         for stage in (case, case.get("draft", {})):
             images = [(stage, key) for key in ("before", "after", "detailImage") if key in stage]
             images.extend((view, "image") for view in stage.get("views", []))
@@ -80,6 +84,7 @@ for(const name of names){
     if(c.guidesOffered!==undefined){const chosen=c.selectedGuides||[];info.append(el('p',chosen.length?`AI-selected guides: ${chosen.join(', ')} · ${(c.guideSelectionMillis/1000).toFixed(1)} s`:(c.guidesOffered?'Guide menu offered; no selection recorded.':'Guide selection disabled for this run.')))}
     if(c.planningMillis!==undefined){const reviewMillis=(c.reviews||[]).reduce((sum,r)=>sum+(r.elapsedMillis||0),0);info.append(el('p',`Planning ${(c.planningMillis/1000).toFixed(1)} s · Review ${(reviewMillis/1000).toFixed(1)} s`))}
     if(c.reviews?.length){const d=el('details');d.append(el('summary',`${c.reviews.length} review calls`));for(const r of c.reviews){d.append(el('p',`Round ${r.round} ${r.stage||''}: ${r.status} · ${r.mode}${r.providerMillis!==undefined?` · ${(r.providerMillis/1000).toFixed(1)} s`:''}`));if(r.error)d.append(el('p',r.error))}info.append(d)}
+    if(c.evidence){const d=el('details');d.append(el('summary','Review evidence (the first draft\'s checks)'));d.append(el('div',c.evidence.trim(),'request'));info.append(d)}
     if(c.reviewRounds?.length){const d=el('details');d.append(el('summary',`${c.reviewRounds.length} review rounds`));for(const r of c.reviewRounds){d.append(el('p',`Round ${r.number??r.round}: ${r.repaired?(r.outcome||'repair'):'no repair'} · ${run.reviewMode==='self'?'self-review':'critique '+(r.critiqueParsed?'parsed':'not parsed')}`));const k=r.critique;if(k){d.append(el('p',`Reviewer verdict: ${k.verdict}`,'muted'));for(const p of k.problems||[])d.append(el('p',`${p.severity} · ${p.category}: ${p.problem} Fix: ${p.fix}`,'check'+(p.severity==='minor'?'':' bad')));if(k.keep?.length)d.append(el('p','Keep: '+k.keep.join('; '),'muted'))}}info.append(d)}
     if(c.draft){const d=el('details');d.append(el('summary','First-draft checks'));checks(d,c.draft.checks);info.append(d)}
     checks(info,c.checks);
