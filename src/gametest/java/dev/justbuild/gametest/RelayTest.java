@@ -35,11 +35,12 @@ import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * A player on a real dedicated server plans a build with their own AI. The server runs with playerAi "require", so a
- * placed build proves the game made the AI calls. The game's profile points at a stub OpenAI-compatible endpoint
- * here, which first asks for a guide, then answers every call with the same small plan and every critique with no
- * problems, except one masterpiece build whose reviewer asks for a fix; the guide's text must come from the game's own
- * copy. Before the player turns on "Use my AI here" the server gets nothing, and a forged request (one the player
- * never asked for) is refused.
+ * placed build proves the game made the AI calls. The game's profile and its reviewer profile point at a stub
+ * OpenAI-compatible endpoint here, which first asks for a guide, then answers every call with the same small plan and
+ * every critique with no problems, except one masterpiece build whose reviewer asks for a fix; the guide's text must
+ * come from the game's own copy. One build with Same as builder gets the builder's own review instead. Before the
+ * player turns on "Use my AI here" the server gets nothing, and a forged request (one the player never asked for) is
+ * refused.
  */
 public final class RelayTest implements FabricClientGameTest {
     private static final String EDITOR_REQUEST = "a tiny stone platform\n" + "Keep the path open and use stone. ".repeat(100).stripTrailing();
@@ -359,6 +360,9 @@ public final class RelayTest implements FabricClientGameTest {
             // A reviewer's fix travels through the relay and the repaired plan is kept (two rounds at masterpiece).
             relayedRepair(context, server, store);
 
+            // With Same as builder in the player's game, the server asks for the builder's own review, not a critique.
+            sameAsBuilderSelfReviews(context, server, store);
+
             // Leave an approval open during transfer. It must close, and the next connection must not receive it.
             context.runOnClient(mc -> mc.player.connection.sendCommand("jb a tiny stone platform"));
             context.waitForScreen(ResponseReviewScreen.class);
@@ -385,7 +389,7 @@ public final class RelayTest implements FabricClientGameTest {
                     "an old approval survived the transfer");
             context.runOnClient(mc -> pressStaleSend(transferReview));
             context.waitTicks(10);
-            check(buildCount(server) == 3, "an old approval was sent to the new connection");
+            check(buildCount(server) == 4, "an old approval was sent to the new connection");
         } finally {
             stub.stop(0);
         }
@@ -497,6 +501,47 @@ public final class RelayTest implements FabricClientGameTest {
         }
     }
 
+    /**
+     * A relayed One pass build with Same as builder in the player's game. The game's Hello says it has no reviewer, so
+     * the server sends a review without a critique: the builder reviews its own plan and no reviewer check is made.
+     * Editing the file doesn't re-send the Hello, so the test sends it as a Settings change would.
+     */
+    private void sameAsBuilderSelfReviews(ClientGameTestContext context, TestDedicatedServerContext server, ConfigStore store) {
+        JustBuildConfig previous = null;
+        try {
+            previous = store.load();
+            var config = store.load();
+            config.reviewerProfile = "";
+            config.reviewAiResponses = false;
+            store.save(config);
+            server.runCommand("justbuild reload");
+            context.runOnClient(mc -> dev.justbuild.client.ResponseReviewChecks.sendHello());
+            context.waitTicks(40);
+            int before = auth.size(), builds = buildCount(server);
+            overrideReply = PLAN;
+            context.runOnClient(mc -> mc.player.connection.sendCommand("jb build a tiny stone platform on its own"));
+            for (int i = 0; i < 60 && buildCount(server) == builds; i++) {
+                context.waitTicks(20);
+            }
+            check(buildCount(server) == builds + 1, "the self-reviewed build was not placed within a minute");
+            context.waitTicks(40);
+            check(auth.size() == before + 2, "expected the draft and one self-review, got " + (auth.size() - before)
+                    + " calls");
+            String review = bodies.get(before + 1);
+            check(review.contains("You are reviewing your own plan before it is built (round 1 of 1)")
+                    && !review.contains("independent reviewer"), "Same as builder did not get the builder's own review");
+        } catch (Exception e) {
+            throw new AssertionError("Same-as-builder relay check failed", e);
+        } finally {
+            if (previous != null) {
+                try { store.save(previous); server.runCommand("justbuild reload"); }
+                catch (Exception e) { throw new AssertionError("Could not restore relay test settings", e); }
+                context.runOnClient(mc -> dev.justbuild.client.ResponseReviewChecks.sendHello());
+                context.waitTicks(40);
+            }
+        }
+    }
+
     /** Sends a request as the server would, off the test thread (the game only runs while the test waits). */
     private static String relay(ClientGameTestContext context, BuildSessionManager manager, UUID player, PromptSpec spec) {
         return await(context, startRelay(manager, player, spec));
@@ -569,16 +614,24 @@ public final class RelayTest implements FabricClientGameTest {
         }
     }
 
-    /** The test server and the game share this file: the server requires players' own AI, the game uses the stub. */
+    /**
+     * The test server and the game share this file: the server requires players' own AI, the game uses the stub, with
+     * a reviewer profile on the same stub so its builds get the separate reviewer.
+     */
     private static void writeConfig(ConfigStore store, int port) {
         try {
             JustBuildConfig config = JustBuildConfig.defaults();
             JustBuildConfig.ModelProfile stub = new JustBuildConfig.ModelProfile("Stub", "openai", "stub-model");
             stub.baseUrl = "http://127.0.0.1:" + port + "/v1";
             stub.apiKey = "sk-client-test";
+            JustBuildConfig.ModelProfile reviewer = new JustBuildConfig.ModelProfile("Stub reviewer", "openai", "stub-model");
+            reviewer.baseUrl = stub.baseUrl;
+            reviewer.apiKey = stub.apiKey;
             List<JustBuildConfig.ModelProfile> profiles = new java.util.ArrayList<>(config.profiles);
             profiles.add(stub);
+            profiles.add(reviewer);
             config.replaceProfiles(profiles, "Stub");
+            config.reviewerProfile = reviewer.name;
             config.useMyAi = true;
             config.detail = "detailed";
             config.previewAbove = -1;

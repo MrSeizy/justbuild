@@ -145,7 +145,7 @@ final class CommandHelp {
             e("templates [filter]", "List ready-made build requests, optionally filtered by name."),
             e("template <id>", "Start a new build using a ready-made request."),
             e("detail <quick|detailed|masterpiece>", "Choose how much planning and review the AI performs."),
-            e("reviewer <profile|same>", "Choose the profile the separate reviewer uses; same uses the builder's."),
+            e("reviewer <profile|same>", "Have another profile check plans and list problems; same lets the builder review its own."),
             e("style <name>", "Set the building style; Tab lists the available styles."),
             e("profile [name]", "List AI profiles; add a name to switch to it."),
             e("model [name|default]", "List models; add a name to choose one, or default to reset."),

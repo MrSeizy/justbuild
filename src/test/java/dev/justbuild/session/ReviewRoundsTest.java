@@ -421,6 +421,18 @@ class ReviewRoundsTest {
     }
 
     @Test
+    void theSeparateReviewerRunsOnlyWhenOneIsChosen() {
+        assertEquals(ReviewRounds.Mode.SELF, ReviewRounds.mode(false, false, false),
+                "the server's own AI with no reviewer profile, or one that is missing or can't plan");
+        assertEquals(ReviewRounds.Mode.SEPARATE, ReviewRounds.mode(false, false, true), "a usable reviewer profile");
+        assertEquals(ReviewRounds.Mode.SELF, ReviewRounds.mode(false, true, false),
+                "the server's own AI does not go by a player's game");
+        assertEquals(ReviewRounds.Mode.SEPARATE, ReviewRounds.mode(true, true, false), "the player's game has a reviewer");
+        assertEquals(ReviewRounds.Mode.SELF, ReviewRounds.mode(true, false, true),
+                "a relayed request goes by the player's game, not the server's reviewer profile");
+    }
+
+    @Test
     void cancellationStopsEverything() {
         Fake fake = new Fake();
         fake.failure = new CancelledException();

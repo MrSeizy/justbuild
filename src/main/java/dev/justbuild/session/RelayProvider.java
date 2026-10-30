@@ -20,15 +20,23 @@ final class RelayProvider implements BuildProvider {
     private final RelayHub hub;
     private final UUID player;
     private final String label;
+    private final boolean reviewer;
     private final PlanLimits limits;
     private final Guidance.DetailLevel detail;
 
-    RelayProvider(RelayHub hub, UUID player, String label, PlanLimits limits, Guidance.DetailLevel detail) {
+    /** {@code hello} is what the player's game last reported, read when the request starts. */
+    RelayProvider(RelayHub hub, UUID player, RelayJson.Hello hello, PlanLimits limits, Guidance.DetailLevel detail) {
         this.hub = hub;
         this.player = player;
-        this.label = label;
+        this.label = hello.label();
+        this.reviewer = hello.reviewer();
         this.limits = limits;
         this.detail = detail;
+    }
+
+    /** Whether the player chose a reviewer profile in their game, which turns on the separate reviewer. */
+    boolean playerHasReviewer() {
+        return reviewer;
     }
 
     @Override

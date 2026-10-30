@@ -27,7 +27,8 @@ import java.util.stream.Collectors;
  * critiques the candidate and the builder repairs it only when the critique calls for it or the draft's checks find a
  * technical failure (any diagnosed problem when the critique fails); a second round runs only after the first repaired.
  * Detail level 0 repairs once when the checks need a correction.
- * {@link Mode#SELF} is the earlier self-review, kept so the gallery can compare the two.
+ * {@link Mode#SELF} is the builder's own review, which planning uses unless a reviewer is chosen
+ * ({@link #mode(boolean, boolean, boolean)}).
  */
 public final class ReviewRounds {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("JustBuild");
@@ -86,6 +87,15 @@ public final class ReviewRounds {
         this.mode = mode;
         this.limits = limits;
         this.caller = caller;
+    }
+
+    /**
+     * Which review a request with review rounds gets: the separate reviewer only when one is chosen, because a critique
+     * by the builder's own model can take longer than its self-review. A relayed request goes by whether the player's
+     * game reported a reviewer (it picks the profile); the server's own AI needs a reviewer profile that can plan.
+     */
+    static Mode mode(boolean relayed, boolean playerHasReviewer, boolean serverReviewerUsable) {
+        return (relayed ? playerHasReviewer : serverReviewerUsable) ? Mode.SEPARATE : Mode.SELF;
     }
 
     /** {@code base} is the draft's request spec, {@code evidence} the draft's checks, {@code rounds} the detail level's. */

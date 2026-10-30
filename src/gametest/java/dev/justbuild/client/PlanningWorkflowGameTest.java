@@ -42,7 +42,10 @@ public final class PlanningWorkflowGameTest implements FabricClientGameTest {
             var config = JustBuildConfig.defaults();
             var profile = new JustBuildConfig.ModelProfile("Planning test", "openai", "stub");
             profile.baseUrl = "http://127.0.0.1:" + stub.getAddress().getPort() + "/v1";
-            config.replaceProfiles(List.of(profile), profile.name); config.detail = "quick"; config.previewAbove = 0;
+            // The separate reviewer runs only with a reviewer profile chosen; this one answers from the same stub.
+            var reviewer = new JustBuildConfig.ModelProfile("Planning reviewer", "openai", "stub");
+            reviewer.baseUrl = profile.baseUrl;
+            config.replaceProfiles(List.of(profile, reviewer), profile.name); config.detail = "quick"; config.previewAbove = 0;
             config.creativeDirection = false; config.maxQuestions = 0; new ConfigStore(file).save(config);
             try (TestSingleplayerContext world = context.worldBuilder().create()) {
                 world.getConnection().waitForChunksRender();
@@ -108,10 +111,13 @@ public final class PlanningWorkflowGameTest implements FabricClientGameTest {
                 var litOps = new ArrayList<>(furnishedOps);
                 litOps.add(Operation.set("lantern", new Cell(0, 2, 0)));
                 BuildPlan lit = new BuildPlan(current.title(), "Added a lantern", litOps, current.texture());
-                // Edit draft, critique, destructive repair (rejected), critique, repair; then the lantern draft and a satisfied critique.
+                // Edit draft, critique, destructive repair (rejected), critique, repair; then the lantern draft and a satisfied
+                // critique; then, with Same as builder, an edit draft and the builder's own review of it.
                 editReplies = List.of(PlanWriter.write(furnished), SHOULD_FIX, PlanWriter.write(destructive), SHOULD_FIX,
-                        PlanWriter.write(furnished), PlanWriter.write(lit), NOTHING);
-                config.detail = "masterpiece"; new ConfigStore(file).save(config); command(context, "reload");
+                        PlanWriter.write(furnished), PlanWriter.write(lit), NOTHING, PlanWriter.write(furnished),
+                        PlanWriter.write(furnished));
+                config.detail = "masterpiece"; config.reviewerProfile = reviewer.name; new ConfigStore(file).save(config);
+                command(context, "reload");
                 command(context, "edit add a crafting table and preserve the paving");
                 context.waitFor(mc -> ClientState.preview() != null, 1200);
                 check(prompts.size() == 11, "Expected an edit draft and two critique/repair rounds, got " + prompts.size());
@@ -143,6 +149,16 @@ public final class PlanningWorkflowGameTest implements FabricClientGameTest {
                 command(context, "undo"); command(context, "undo confirm"); context.waitTicks(30);
                 command(context, "undo"); command(context, "undo confirm"); context.waitTicks(30);
                 check(state(world, at.above()).isAir() && pavingBefore.equals(blocks(world, at)), "Review fallback broke edit undo");
+
+                // Same as builder keeps the builder's own review: One pass makes one review call and no critique.
+                config.reviewerProfile = ""; new ConfigStore(file).save(config); command(context, "reload");
+                command(context, "edit add a crafting table");
+                context.waitFor(mc -> ClientState.preview() != null, 1200);
+                check(prompts.size() == 15, "Expected an edit draft and one self-review, got " + prompts.size() + " calls");
+                check(words(14).contains("You are reviewing your own plan before it is built (round 1 of 1)")
+                        && !prompts.get(14).toString().contains("independent reviewer"),
+                        "Same as builder did not ask the builder to review its own plan");
+                command(context, "preview discard");
             }
         } catch (Exception e) { throw new AssertionError("Planning workflow failed", e); }
         finally {

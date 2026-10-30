@@ -30,10 +30,24 @@ class RelayJsonTest {
 
     @Test
     void helloRoundTripsAndToleratesJunk() {
-        RelayJson.Hello hello = new RelayJson.Hello(RelayJson.PROTOCOL, true, "Claude (Claude CLI)");
+        RelayJson.Hello hello = new RelayJson.Hello(RelayJson.PROTOCOL, true, "Claude (Claude CLI)", false);
         assertEquals(hello, RelayJson.parseHello(RelayJson.toJson(hello)));
-        assertEquals(new RelayJson.Hello(0, false, ""), RelayJson.parseHello("{garbage"));
-        assertEquals(new RelayJson.Hello(1, false, "x".repeat(RelayJson.MAX_LABEL)),
+        assertEquals(new RelayJson.Hello(0, false, "", false), RelayJson.parseHello("{garbage"));
+        assertEquals(new RelayJson.Hello(1, false, "x".repeat(RelayJson.MAX_LABEL), false),
                 RelayJson.parseHello("{\"protocol\":1,\"label\":\"" + "x".repeat(200) + "\"}"));
+    }
+
+    @Test
+    void helloSaysWhetherThePlayerChoseAReviewer() {
+        RelayJson.Hello hello = new RelayJson.Hello(RelayJson.PROTOCOL, true, "Claude (Claude CLI)", true);
+        assertTrue(RelayJson.toJson(hello).contains("\"reviewer\":true"));
+        assertEquals(hello, RelayJson.parseHello(RelayJson.toJson(hello)));
+        String plain = "{\"protocol\":" + RelayJson.PROTOCOL + ",\"ready\":true,\"label\":\"Claude\"";
+        assertEquals(new RelayJson.Hello(RelayJson.PROTOCOL, true, "Claude", false), RelayJson.parseHello(plain + "}"),
+                "a missing reviewer is none");
+        for (String junk : new String[] {"{}", "[true]", "\"true\"", "1", "null"}) {
+            assertEquals(new RelayJson.Hello(RelayJson.PROTOCOL, true, "Claude", false),
+                    RelayJson.parseHello(plain + ",\"reviewer\":" + junk + "}"), "an unreadable reviewer is none: " + junk);
+        }
     }
 }

@@ -70,14 +70,16 @@ final class LocalProfiles {
     }
 
     /**
-     * What this game tells servers about its own AI: ready only on a server the player turned it on for. Other servers
-     * don't learn the profile's name or provider.
+     * What this game tells servers about its own AI: ready only on a server the player turned it on for, and whether a
+     * reviewer profile is chosen (the server then asks for the separate reviewer). Other servers don't learn the
+     * profile's name or provider, or whether there is a reviewer.
      */
     static RelayJson.Hello hello() {
         JustBuildConfig config = load();
         JustBuildConfig.ModelProfile p = config.active();
         boolean allowed = allowedHere(config);
-        return new RelayJson.Hello(RelayJson.PROTOCOL, allowed && problem(config, p) == null, allowed ? label(p) : "");
+        return new RelayJson.Hello(RelayJson.PROTOCOL, allowed && problem(config, p) == null, allowed ? label(p) : "",
+                allowed && config.reviewer().isPresent());
     }
 
     /** The current server's address as typed in the server list, lower case; null in singleplayer. */

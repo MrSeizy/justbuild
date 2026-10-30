@@ -74,10 +74,11 @@ allowed in this controlled evaluation. A CLI may also make its own title or sess
 The gallery is separate from the mod's full interactive planning workflow.
 Set `JUSTBUILD_GALLERY_DETAIL=detailed` for one review pass, or `masterpiece` for two. Reviews run through the same
 `ReviewRounds` loop as the mod: by default (`JUSTBUILD_GALLERY_REVIEW=separate`) a separate critique, then a repair only
-when the critique or the checks call for one; `JUSTBUILD_GALLERY_REVIEW=self` runs the earlier self-review for
-comparison. Critiques and repairs receive the same `PlanningCheck` diagnostics and source/candidate block-color images
-used by the mod, plus the candidate's facades, and a repair keeps the previous plan when it fails, exceeds limits, or
-fails the production `ReviewCheck` comparison: any technical category gets worse, an existing block retained by the
+when the critique or the checks call for one, as the mod runs with a reviewer profile chosen;
+`JUSTBUILD_GALLERY_REVIEW=self` runs the builder's own review, the mod's default (**Same as builder**), for comparison.
+Critiques and repairs receive the same `PlanningCheck` diagnostics and source/candidate block-color images used by the
+mod, plus the candidate's facades, and a repair keeps the previous plan when it fails, exceeds limits, or fails the
+production `ReviewCheck` comparison: any technical category gets worse, an existing block retained by the
 draft is removed, or a bounded route comparison detects a newly blocked doorway or disconnected remaining floor space.
 Each critique and repair is a separate provider call; `*-reviews.json` lists every call with its stage and time, and
 `*-review-rounds.json` each round's critique, whether it repaired, and the outcome.

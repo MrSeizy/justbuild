@@ -36,11 +36,11 @@ public final class Guidance {
         QUICK(0, "When needed", "Make a simple plan. Ask the AI for one correction only if checks find a problem.",
                 "Detail level: quick. Make a simple, complete interpretation of the request. Prefer economical "
                 + "geometry, usually about 60 operations or fewer. Add only the detail needed to make it recognizable and usable."),
-        DETAILED(1, "One pass", "Plan with more care, then a separate reviewer checks it once. Takes an extra AI step; a second only if it or the checks find problems.",
+        DETAILED(1, "One pass", "Plan with more care, then ask the AI to review it once. Takes an extra AI step.",
                 "Detail level: detailed. Spend effort on composition, coherent materials, intentional proportions, "
                 + "and appropriate detail. Depth, trim, interiors, and landscaping are possibilities, not required additions. "
                 + "A restrained or minimalist request should stay restrained."),
-        MASTERPIECE(2, "Two passes", "Plan carefully, then a separate reviewer checks it up to twice. Takes extra AI steps; repairs only when it or the checks find problems.",
+        MASTERPIECE(2, "Two passes", "Plan carefully, then ask the AI to review it twice. Takes two extra AI steps.",
                 "Detail level: masterpiece. Develop the player's idea carefully. Consider, where relevant: "
                 + "1 concept and scope; 2 terrain fit; 3 layout and access; 4 silhouette and surfaces; 5 materials; "
                 + "6 roof or upper form; 7 lighting and mood; 8 interior; 9 setting; 10 review of concrete defects. "
