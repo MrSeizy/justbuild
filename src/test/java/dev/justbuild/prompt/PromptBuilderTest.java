@@ -292,6 +292,7 @@ class PromptBuilderTest {
         String accepted = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(), "{plan}", "VIEWS", 2, 2,
                 false, new CritiqueNote(critique(), RepairOutcome.ACCEPTED));
         assertTrue(accepted.contains("the candidate above is the repaired plan. Check each earlier finding"));
+        assertFalse(accepted.contains("avoids the reason it was rejected"), "nothing was rejected");
         String asked = PromptBuilder.critiqueContent(CONTEXT, "a hut", null, List.of(), List.of(new Exchange("Brick?", "yes")),
                 "{plan}", "VIEWS", 1, 2, false, null);
         assertTrue(asked.contains("The builder asked: Brick?\nPlayer answered: yes") && !asked.contains("You asked:"));
