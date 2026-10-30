@@ -18,6 +18,13 @@ public record Bounds(int minX, int minY, int minZ, int maxX, int maxY, int maxZ)
         return b;
     }
 
+    /** Bounds of every cell the operation can place: of, with a foundation's full depth below its top layer. */
+    public static Bounds touched(Operation op) {
+        Bounds b = of(op);
+        return op.op() != OpType.FOUNDATION ? b
+                : new Bounds(b.minX, b.minY - (Rasterizer.FOUNDATION_DEPTH - 1), b.minZ, b.maxX, b.maxY, b.maxZ);
+    }
+
     static Bounds base(Operation op) {
         Cell f = op.from();
         return switch (op.op()) {

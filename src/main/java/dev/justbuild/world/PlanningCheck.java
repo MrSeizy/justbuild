@@ -40,13 +40,13 @@ public final class PlanningCheck {
             if (result.outsideWorld() > 0) problems.add(problem(PlanningFeedback.Kind.OUTSIDE_WORLD));
             changes.putAll(edit ? Diff.between(before, result.placements(), baseline) : result.placements());
             changes.keySet().removeIf(p -> !allowed.test(p));
+            PlanRotation inverse = PlanRotation.forFacing(facing.getName()).inverse();
             if (zone != null) {
                 List<BlockPos> outside = changes.keySet().stream().filter(p -> !zone.contains(p)).toList();
-                if (!outside.isEmpty()) problems.add(zoneProblem(plan, outside, zone, origin, facing));
+                if (!outside.isEmpty()) problems.add(zoneProblem(plan, outside, origin, inverse));
             }
             try { constraints.check(origin, changes, before); }
             catch (PlanException e) { problems.add(problem(PlanningFeedback.Kind.CONSTRAINT)); }
-            PlanRotation inverse = PlanRotation.forFacing(facing.getName()).inverse();
             for (var issue : BuildQuality.details(changes, loaded)) {
                 Cell position = issue.position() == null ? null : planCell(issue.position(), origin, inverse);
                 problems.add(new PlanningFeedback.Problem(PlanningFeedback.Kind.valueOf(issue.kind().name()), position));
@@ -76,27 +76,30 @@ public final class PlanningCheck {
     }
 
     /**
-     * The ZONE finding: the plan-frame box and count of changes outside the zone, and up to 8 operations whose bounds
-     * reach outside the zone and overlap that box. Bounds cover every cell an operation could touch, so the list is approximate.
+     * The ZONE finding: the plan-frame box and count of changes outside the zone, and up to 8 operations, in plan order,
+     * whose reach covers a column of those changes at their heights. The list is a hint: an operation can be named for
+     * a column its shape skips, and changes no operation covers (door tops, bed heads, an edit's restored blocks) name none.
      */
-    private static PlanningFeedback.Problem zoneProblem(BuildPlan plan, List<BlockPos> outside, BuildZone zone,
-            BlockPos origin, Direction facing) {
-        PlanRotation inverse = PlanRotation.forFacing(facing.getName()).inverse();
+    private static PlanningFeedback.Problem zoneProblem(BuildPlan plan, List<BlockPos> outside, BlockPos origin, PlanRotation inverse) {
+        // Each outside column in the plan frame: {x, z, lowest y, highest y}.
+        Map<Long, int[]> columns = new HashMap<>();
         int x0 = Integer.MAX_VALUE, y0 = x0, z0 = x0, x1 = Integer.MIN_VALUE, y1 = x1, z1 = x1;
         for (BlockPos p : outside) {
             Cell c = planCell(p, origin, inverse);
             x0 = Math.min(x0, c.x()); y0 = Math.min(y0, c.y()); z0 = Math.min(z0, c.z());
             x1 = Math.max(x1, c.x()); y1 = Math.max(y1, c.y()); z1 = Math.max(z1, c.z());
+            int[] column = columns.computeIfAbsent(((long) c.x() << 32) | (c.z() & 0xffffffffL), k -> new int[] {c.x(), c.z(), c.y(), c.y()});
+            column[2] = Math.min(column[2], c.y()); column[3] = Math.max(column[3], c.y());
         }
         Bounds box = new Bounds(x0, y0, z0, x1, y1, z1);
         List<Integer> operations = new ArrayList<>();
-        BuildArea area;
-        try { area = zone.relativeTo(origin, facing); } catch (IllegalArgumentException farAway) { area = null; }
-        for (int i = 0; area != null && i < plan.operations().size() && i <= PlanningFeedback.Problem.LAST_OPERATION
+        for (int i = 0; i < plan.operations().size() && i <= PlanningFeedback.Problem.LAST_OPERATION
                 && operations.size() < PlanningFeedback.Problem.MAX_OPERATIONS; i++) {
-            Bounds reach;
-            try { reach = Bounds.of(plan.operations().get(i)); } catch (RuntimeException unbounded) { continue; }
-            if (overlaps(reach, box) && leaves(reach, area)) operations.add(i);
+            Bounds reach = Bounds.touched(plan.operations().get(i));
+            if (!overlaps(reach, box)) continue;
+            for (int[] c : columns.values())
+                if (c[0] >= reach.minX() && c[0] <= reach.maxX() && c[1] >= reach.minZ() && c[1] <= reach.maxZ()
+                        && c[2] <= reach.maxY() && c[3] >= reach.minY()) { operations.add(i); break; }
         }
         try {
             return new PlanningFeedback.Problem(PlanningFeedback.Kind.ZONE, new Cell(x0, y0, z0), new Cell(x1, y1, z1),
@@ -107,17 +110,6 @@ public final class PlanningCheck {
     private static boolean overlaps(Bounds a, Bounds b) {
         return a.minX() <= b.maxX() && b.minX() <= a.maxX() && a.minY() <= b.maxY() && b.minY() <= a.maxY()
                 && a.minZ() <= b.maxZ() && b.minZ() <= a.maxZ();
-    }
-
-    /** Whether a box reaches outside the area. A polygon has no holes, so testing the box's border cells is enough. */
-    private static boolean leaves(Bounds b, BuildArea area) {
-        if (b.minX() < area.minX() || b.maxX() > area.maxX() || b.minZ() < area.minZ() || b.maxZ() > area.maxZ()
-                || area.minY() != null && (b.minY() < area.minY() || b.maxY() > area.maxY())) return true;
-        for (int x = b.minX(); x <= b.maxX(); x++)
-            if (!Footprint.contains(area.polygon(), x, b.minZ()) || !Footprint.contains(area.polygon(), x, b.maxZ())) return true;
-        for (int z = b.minZ(); z <= b.maxZ(); z++)
-            if (!Footprint.contains(area.polygon(), b.minX(), z) || !Footprint.contains(area.polygon(), b.maxX(), z)) return true;
-        return false;
     }
 
     public static VoxelVolume capture(InspectionRequest box, BlockPos origin, Direction facing,

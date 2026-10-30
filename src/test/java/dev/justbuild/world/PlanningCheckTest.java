@@ -64,6 +64,27 @@ class PlanningCheckTest {
         assertEquals(List.of(expected), zones(east));
     }
 
+    @Test void theZoneFindingSkipsOperationsThatOnlyOverlapItsBox() {
+        // Operations 0 and 1 cross opposite sides of the zone; operation 2 sits inside the box between them.
+        var plan = new BuildPlan("Wall", "", List.of(
+                Operation.fill("stone", new Cell(-2, 1, 0), new Cell(3, 1, 0), false),
+                Operation.fill("stone", new Cell(0, 2, 0), new Cell(6, 2, 0), false),
+                Operation.set("oak_planks", new Cell(2, 1, 0))));
+        var zone = BuildZone.between(Level.OVERWORLD, new BlockPos(0, -1, -2), new BlockPos(3, -1, 2));
+        assertEquals(List.of(new PlanningFeedback.Problem(PlanningFeedback.Kind.ZONE, new Cell(-2, 1, 0), new Cell(6, 2, 0), 5, List.of(0, 1))),
+                zones(zoneCheck(plan, zone, Direction.NORTH)));
+    }
+
+    @Test void aFoundationBelowAZonesFloorIsNamed() {
+        // The foundation fills from y = 4 down to the stone at y = -1; the zone starts at y = 2.
+        var plan = new BuildPlan("Pad", "", List.of(
+                Operation.fill("stone", new Cell(0, 5, 0), new Cell(1, 5, 1), false),
+                Operation.foundation("cobblestone", new Cell(0, 4, 0), new Cell(1, 4, 1))));
+        var zone = BuildZone.between(Level.OVERWORLD, new BlockPos(-2, -1, -2), new BlockPos(3, -1, 3)).height(2, 10);
+        assertEquals(List.of(new PlanningFeedback.Problem(PlanningFeedback.Kind.ZONE, new Cell(0, 0, 0), new Cell(1, 1, 1), 8, List.of(1))),
+                zones(zoneCheck(plan, zone, Direction.NORTH)));
+    }
+
     private static List<PlanningFeedback.Problem> zones(PlanningCheck.Result result) {
         return result.feedback().problems().stream().filter(p -> p.kind() == PlanningFeedback.Kind.ZONE).toList();
     }
